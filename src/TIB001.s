@@ -2,6 +2,9 @@
 ;	Disassembly of the ROM of the TIB-001 FDC cartridge
 ;
 
+; - a lot of loading DirPointer with (0, StartofDir), move that to a subroutine
+; - check status register consistently BIT+BPL instead of LDA+AND#$80+BNE
+
 ; My notes/ideas regarding this disassembly
 ; - only a 3,5" 720 KB DD FDD can be used, not a 5.25" 360 KB one
 ; - only ONE drive can be used
@@ -21,12 +24,12 @@
 ; - The data sheet speaks of "cylinders", nowadays the word "track" is favored.
 
 P6510		= $01	; DR onboard I/O port of 6510
-PageCounter		= $02
-PtrBasText		= $7A	; pointer to momentary byte in BASIC line
-StatusIO		= $90	; Status of KERNAL after action
+PageCounter	= $02
+PtrBasText	= $7A	; pointer to momentary byte in BASIC line
+StatusIO	= $90	; Status of KERNAL after action
 FlgLoadVerify	= $93	; 0 = LOAD, 1 = VERIFY
 MSGFLG		= $9D	; flag: $80 = direct mode, 0 = program mode
-EndAddrBuf		= $AE	; end of cassette / end of program
+EndAddrBuf	= $AE	; vector, word - end of cassette / end of program
 LengthFileName	= $B7	; length of filename
 SecondAddress	= $B9	; actual secondary address
 DeviceNumber	= $BA	; actual device number
@@ -36,28 +39,28 @@ AddrFileName	= $BB	; pointer to string with filename
 NumOfSectors	= $F7	; number of sectors to read or write
 SectorL		= $F8	; --- number of the sector that is wanted
 SectorH		= $F9	; -/
-TempStore		= $FA
+TempStore	= $FA
 
-DirPointer		= $FB
+DirPointer	= $FB	; vector, word
 Z_FD		= $FD
 J_00FE		= $FE
 Z_FF		= $FF
-StackPage		= $0100
-NmiVector		= $0318	; pointer to NMI-interrupt ($FE47)
+StackPage	= $0100
+NmiVector	= $0318	; pointer to NMI-interrupt ($FE47)
 ICKOUT		= $0320	; pointer to KERNAL CHKOUT routine
 ILOAD		= $0330	; pointer to KERNAL LOAD routine
 ISAVE		= $0332	; pointer to KERNAL SAVE routine
 
 ; $0334-$033B = original free area = 8 bytes
-StartofDir		= $0334
-EndofDir		= $0335
-NewICKOUT		= $0336
+StartofDir	= $0334
+EndofDir	= $0335
+NewICKOUT	= $0336
 NewNMI		= $0338
 
 
 ;Fdc		= $034	; 
 
-TapeBuffer		= $033C	; cassette buffer
+TapeBuffer	= $033C	; cassette buffer
 FdcST0		= $033C ; Status Regiser 0
 FdcST1		= $033D ; Status Regiser 1
 FdcST2		= $033E ; Status Regiser 2
@@ -67,15 +70,15 @@ FdcR		= $0341 ; Record = sector
 FdcN		= $0342 ; Number of data bytes written into a sector
 FdcST3		= $0343 ; Status Regiser 3
 FdcPCN		= $0344	; present cylinder = track
-FdcCommand		= $0345 ; 
+FdcCommand	= $0345 ; 
 FdcHSEL		= $0346	; head, shifted twice, needed for FDC commands
-FdcTrack		= $0347	; 
+FdcTrack	= $0347	; 
 FdcHead		= $0348	; 
-FdcSector		= $0349	; 
-FdcNumber		= $034A	; bytes/sector during format, 2 = 512 b/s
+FdcSector	= $0349	; 
+FdcNumber	= $034A	; bytes/sector during format, 2 = 512 b/s
 FdcEOT		= $034B	; end of track
 
-FdcTrack2		= $034E	; = FdcTrack and $FE  ???
+FdcTrack2	= $034E	; = FdcTrack and $FE  ???
 
 TempStackPtr	= $0350	; temporary storage for the stack pointer
 
@@ -85,15 +88,15 @@ NumDirSectors	= $0364	; number of directory sectors
 				; also used deteming number of free bytes
 Counter		= $0366
 
-DirSector		= $0369	; momentary directory sector
-FdcFileName		= $036C	; temp storage for file name
+DirSector	= $0369	; momentary directory sector
+FdcFileName	= $036C	; temp storage for file name
 
-ErrorCode		= $0351	; $0B = file not found
-				; $10 = first part of name greater than 8 chars
-				; $11 = no file name
+ErrorCode	= $0351	; $0B = file not found
+			; $10 = first part of name greater than 8 chars
+			; $11 = no file name
 
-NewILOAD		= $03FC
-NewISAVE		= $03FE
+NewILOAD	= $03FC
+NewISAVE	= $03FE
 VICSCN		= $0400	; screenmemory
 
 
@@ -175,17 +178,17 @@ Status Register 3
 */
 
 DataRegister	= $DE81
-ResetFDC		= $DF80
+ResetFDC	= $DF80
 
 
 InitScreenKeyb	= $E518
-IncrClock22		= $F6BC
+IncrClock22	= $F6BC
 SetVectorsIO2	= $FD15
-TestRAM2		= $FD50
+TestRAM2	= $FD50
 InitSidCIAIrq2	= $FDA3
 InitialiseVIC2	= $FF5B
-OutByteChan		= $FFD2
-ScanStopKey		= $FFE1
+OutByteChan	= $FFD2
+ScanStopKey	= $FFE1
 
 D_FFFA		= $FFFA
 D_FFFB		= $FFFB
