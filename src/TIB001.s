@@ -43,7 +43,7 @@ TempStore	= $FA
 
 DirPointer	= $FB	; vector, word
 Z_FD		= $FD
-J_00FE		= $FE
+J_00FE		= $FE	; vector, unused
 Z_FF		= $FF
 StackPage	= $0100
 NmiVector	= $0318	; pointer to NMI-interrupt ($FE47)
@@ -1698,8 +1698,7 @@ FormatDiskLoop:
 	inc	FdcTrack2		;				[034E]
 	LoadB	Counter, 1
 
-	lda	FdcTrack		;				[0347]
-	cmp	#80			; 80 - last track?
+	CmpBI	FdcTrack, 80		; 80 - last track?
 	bne	FormatDiskLoop
 
 	LoadB	DirPointer, 0
@@ -2043,8 +2042,7 @@ ReadSector:				;				[8C78]
 	dec	NumOfSectors		;				[F7]
 	beq	A_8D36			;				[8D36]
 
-	lda	FdcEOT			;				[034B]
-	cmp	#$0A
+	CmpBI	FdcEOT, $0A		; ???
 	beq	A_8D0E			;				[8D0E]
 
 	jmp	ReadSector		;				[8C78]
@@ -2299,8 +2297,7 @@ A_8E95:					;				[8E95]
 	pha
 
 ; Convert to upper case, if needed
-	lda	Z_FD			;				[FD]
-	cmp	#$60			; < 'a' ?
+	CmpBI	Z_FD, $60		; < 'a' ?
 	bcc	:+			; yes, ->			[8EA6]
 	subv	$20
 :	jsr	OutByteChan		;				[FFD2]
@@ -2539,8 +2536,7 @@ FindFile:				;				[8FEA]
 	clc
 	rts
 
-@cont2:	lda	FdcFileName		;				[036C]
-	cmp	#'$'			; directory wanted?
+@cont2:	CmpBI	FdcFileName, '$'	; directory wanted?
 	bne	Search			;				[9011]
 
 	jmp	DisplayDir		;				[8E67]
@@ -2854,10 +2850,10 @@ A_919F:					;				[919F]
 
 	ldy	#0
 A_91CC:					;				[91CC]
-	tya
+	tya				; XXX no need to preserve Y
 	pha
 
-	lda	D_91FC,Y		;				[91FC]
+	lda	TotalBytesFreeTxt,Y
 	beq	A_91DD			;				[91DD]
 
 	jsr	OutByteChan		;				[FFD2]
@@ -2891,7 +2887,7 @@ A_91DE:					;				[91DE]
 	rts
 
  
-D_91FC:					;				[91FC]
+TotalBytesFreeTxt:
 .asciiz "TOTAL BYTES FREE "
 
 
