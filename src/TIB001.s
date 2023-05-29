@@ -255,13 +255,34 @@ _StopWatchdog:		jmp	StopWatchdog		; [807E] -> [8DBD]
 _RdDataRamDxxx:		jmp	RdDataRamDxxx		; [8081] -> [01A0]
 __Spare:		jmp	$FFFF			; [8084] -> [FFFF]
 
+; error and message codes, constants for ErrorCode, same as Msg00-11
+; messages without comment mark are not used internally in ROM
+ERR_OK 				= 0 ;
+ERR_DISK_WRITE_PROTECT 		= 1 ;
+ERR_DISK_UNUSABLE 		= 2
+ERR_DISK_NOT_FORMATTED 		= 3
+ERR_FILE_IS_CORRUPT 		= 4
+ERR_FORMATING_DISK 		= 5
+ERR_RENAMING_FILE 		= 6
+ERR_SCRATCHING_FILE 		= 7
+ERR_DURING_WRITE 		= 8
+ERR_DURING_READ 		= 9
+ERR_DISK_MAY_BE_DAMAGED 	= 10 ;
+ERR_FILE_NOT_FOUND 		= 11 ;
+ERR_NO_FILE_EXTENSION_SPECIFIED	= 12
+ERR_FILE_TOO_LARGE 		= 13 ;
+ERR_NO_MORE_DIRECTORY_SPACE 	= 14 ;
+ERR_DISK_UNRELIABLE 		= 15 ;
+ERR_NAME_TOO_LONG 		= 16 ; name longer than 8 characters
+ERR_NO_NAME_SPECIFIED 		= 17 ;
+
 
 ; Here starts the initialisation of the cartridge
 CartInit:				;				[8087]
 	ldx	#$FF
 	txs				; set the stack pointer
 
-	sei
+	sei				; XXX code should start with sei
 	cld
 
 	jsr	InitC64			;				[80F2]
@@ -269,7 +290,7 @@ CartInit2:				;				[808F]
 	jsr	LoadBootExe		; loading went OK?		[9294]
 	bcc	A_80AE			; yes, ->			[80AE]
 A_8094:					;				[8094]
-	CmpBI	ErrorCode, $0B		; file not found?
+	CmpBI	ErrorCode, ERR_FILE_NOT_FOUND ; file not found?
 	beq	A_80A8			; yes, ->			[80A8]
 
 	LoadB	VICCTR1, $1B		; screen on
@@ -481,8 +502,7 @@ A_820D:					;				[820D]
 	jmp	J_823C			;				[823C]
 
 A_821A:					;				[821A]
-	lda	#$10
-	sta	ErrorCode		;				[0351]
+	LoadB	ErrorCode, ERR_NAME_TOO_LONG
 
 	rts
 
@@ -751,7 +771,7 @@ Scratch:				;				[8355]
 	jsr	FindFile		; file found?			[8FEA]
 	bcs	A_8363			; yes, ->			[8363]
 
-	LoadB	ErrorCode, $0B		; file not found
+	LoadB	ErrorCode, ERR_FILE_NOT_FOUND ; file not found
 
 	rts
 
@@ -825,8 +845,7 @@ A_83B6:					;				[83B6]
 	and	#$40			; XXX optimize bit+bcs
 	beq	A_83D7			;				[83D7]
 
-	LoadB	ErrorCode, $01		; XXX which error code?
-
+	LoadB	ErrorCode, ERR_DISK_WRITE_PROTECT
 	jmp	ShowError		;				[926C]
 
 A_83D7:					;				[83D7]
@@ -835,7 +854,7 @@ A_83D7:					;				[83D7]
 
 	bcs	A_83F2			;				[83F2]
 
-	CmpBI	ErrorCode, $0B		; XXX which error code?
+	CmpBI	ErrorCode, ERR_FILE_NOT_FOUND
 	beq	A_8407			;				[8407]
 
 	lda	ErrorCode		;				[0351]
@@ -933,7 +952,7 @@ J_8472:					;				[8472]
 J_847D:					;				[847D]
 	jsr	SeekTrack		;				[898A]
 
-	LoadB	ErrorCode, 0
+	LoadB	ErrorCode, ERR_OK
 
 	jsr	WaitRasterLine		;				[8851]
 
@@ -974,9 +993,7 @@ J_8493:					;				[8493]
 
 	pla
 	pla
-	lda	#$0D
-	sta	ErrorCode		;				[0351]
-
+	LoadB	ErrorCode, ERR_FILE_TOO_LARGE
 	jmp	J_84F1			;				[84F1]
 
 A_84D9:					;				[84D9]
@@ -1512,7 +1529,7 @@ ReadSectors:				;				[885E]
 
 	LoadB	Counter, 0
 A_8863:					;				[8863]
-	LoadB	ErrorCode, 0
+	LoadB	ErrorCode, ERR_OK	; also 0 XXX
 
 	jsr	WaitRasterLine		;				[8851]
 	jsr	SetWatchdog		;				[8D90]
@@ -1521,7 +1538,7 @@ A_8863:					;				[8863]
 	CmpBI	Counter, 9		; whole track?
 	bne	A_887F			;				[887F]
 
-	LoadB	ErrorCode, $0A
+	LoadB	ErrorCode, ERR_DISK_MAY_BE_DAMAGED
 	bne	A_8887			; always ->
 
 A_887F:					;				[887F]
@@ -1823,7 +1840,7 @@ A_8A0F:					;				[8A0F]
 	LoadB	FdcTrack2, 0
 	LoadB	Counter, 1
 J_8A1E:					;				[8A1E]
-	LoadB	ErrorCode, 0
+	LoadB	ErrorCode, ERR_OK	; XXX also 0
 
 	lda	FdcTrack2		;				[034E]
 	lsr	A
@@ -1961,7 +1978,7 @@ J_8B10:					;				[8B10]
 	dec	Counter			;				[0366]
 	bpl	A_8B24			;				[8B24]
 
-	LoadB	ErrorCode, $0F
+	LoadB	ErrorCode, ERR_DISK_UNRELIABLE
 	jsr	ShowError		;				[926C]
 
 	LoadB	VICCTR1, $1B		; screen on (optimization, see above XXX)
@@ -1998,7 +2015,7 @@ P_8B49:					;				[8B49]
 	tsx
 	stx	TempStackPtr		;				[0350]
 
-	LoadB	ErrorCode, 0
+	LoadB	ErrorCode, ERR_OK
 	LoadB	FdcCommand, $66		; ???
 	LoadB	FdcEOT, 9
 	LoadB	FdcSector, 1
@@ -2025,7 +2042,7 @@ A_8B79:					;				[8B79]
 	CmpBI	DataRegister, 0		; XXX LDA DataRegister + BEQ is enough
 	beq	A_8B8A			;				[8B8A]
 
-	LoadB	ErrorCode, 1
+	LoadB	ErrorCode, ERR_DISK_WRITE_PROTECT
 A_8B8A:					;				[8B8A]
 	iny
 	bne	A_8B79			;				[8B79]
@@ -2434,8 +2451,8 @@ CartNMI:				;				[8DE7]
 	and	#2
 	beq	A_8E05			;				[8E05]
 
-	inc	ErrorCode		;				[0351]
-	ldx	TempStackPtr		;				[0350]
+	inc	ErrorCode		; XXX ??? why			[0351]
+	ldx	TempStackPtr		; XXX ??? why 			[0350]
 	txs
 
 	lda	ResetFDC		; reset the FDC			[DF80]
@@ -2464,7 +2481,7 @@ J_8E18:					;				[8E18]
 
 	jsr	SetupSector		;				[8899]
 
-	LoadB	ErrorCode, 0
+	LoadB	ErrorCode, ERR_OK
 
 	jsr	SeekTrack		;				[898A]
 	jsr	SetWatchdog		;				[8D90]
@@ -2478,7 +2495,7 @@ J_8E18:					;				[8E18]
 	CmpBI	Counter, 9		; whole track?
 	bne	A_8E55			;				[8E55]
 
-	LoadB	ErrorCode, $0A		; ???
+	LoadB	ErrorCode, ERR_DISK_MAY_BE_DAMAGED
 	bne	A_8E5D			; always! (XXX 2 bytes for BNE but 1 for RTS already)
 A_8E55:					;				[8E55]
 	inc	Counter			;				[0366]
@@ -2746,7 +2763,7 @@ A_8FA7:					;				[8FA7]
 	dec	NumDirSectors		;				[0364]
 	bpl	A_8F62			;				[8F62]
 
-	LoadB	ErrorCode, $0E
+	LoadB	ErrorCode, ERR_NO_MORE_DIRECTORY_SPACE
 
 	clc
 	rts
@@ -2777,13 +2794,13 @@ FindFile:				;				[8FEA]
 	lda	LengthFileName		; file name present?		[B7]
 	bne	A_8FF5			; yes, ->			[8FF5]
 
-	LoadB	ErrorCode, $11
+	LoadB	ErrorCode, ERR_NO_NAME_SPECIFIED
 
 	clc				; error found
 	rts
 
 A_8FF5:					;				[8FF5]
-	LoadB	ErrorCode, 0
+	LoadB	ErrorCode, ERR_OK
 
 	jsr	StripSP			;				[90A7]
 	jsr	PadOut			;				[90CE]
@@ -2896,7 +2913,7 @@ A_9079:					;				[9079]
 	dec	NumDirSectors		; searched all dir sectors?	[0364]
 	bpl	A_9024			; no, -> next one		[9024]
 A_90A0:	
-	LoadB	ErrorCode, $0B		; file not found
+	LoadB	ErrorCode, ERR_FILE_NOT_FOUND
 
 	clc
 	rts
@@ -2992,7 +3009,7 @@ A_90F6:					;				[90F6]
 
 
 A_9101:					;				[9101]
-	LoadB	ErrorCode, $10
+	LoadB	ErrorCode, ERR_NAME_TOO_LONG
 	rts
 
 ; Dot found, copy extension
