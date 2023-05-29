@@ -1,0 +1,32 @@
+
+AS = ca65
+LD = ld65
+ASFLAGS = -I inc -I .
+LDFLAGS =
+
+SOURCES = TIB001.s
+
+OBJS = $(SOURCES:.s=.o)
+
+BUILD_DIR = build
+
+FIRMWARE_ROM = $(BUILD_DIR)/tib001.bin
+REFERENCE_ROM = ../firmware/rom-8000-9FFFp.bin
+
+$(FIRMWARE_ROM): $(OBJS) rom.cfg
+	$(LD) -C rom.cfg $(OBJS) -o $@
+
+rom: $(FIRMWARE_ROM)
+
+all: rom
+
+clean:
+	rm -rf $(BUILD_DIR)
+
+regress: rom
+	diff $(FIRMWARE_ROM) $(REFERENCE_ROM)
+
+# a must!
+love:
+	@echo "Not war, eh?"
+
