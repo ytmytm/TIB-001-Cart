@@ -196,21 +196,22 @@ D_FFFB		= $FFFB
 ; GEOS macros for readability and shorter code
 .include "geosmac.inc"
 
-.segment "rom8000"
+			.segment "rom8000"
 
-S_8000:
-.word CartInit				;				[8087]
-.word CartNMI				;				[8DE7]
+			.assert *=$8000, error, "cartridge ROM must start at $8000"
+
+			.word CartInit				;				[8087]
+			.word CartNMI				;				[8DE7]
  
-S_8004:
-.byte $C3, $C2, $CD, $38, $30		; CBM80, identifying code for cartridge
-
+			.assert *=$8004, error, "cartridge signature CBM80 must be at $8004"
+			.byte $C3, $C2, $CD, $38, $30		; CBM80, cartridge signature
 
 ; ???  WHERE IS THIS JUMP TABLE USED  ???
 ; 1st possebility: the idea was there to use it but it never happened
 ; 2nd possebility: it is used by external programs
 
 ; 8009
+			.assert *=$8009, error, "jump table must be at $8009"
 _NewLoad:		jmp	NewLoad			; [8009] -> [86BC]
 _NewSave:		jmp	NewSave			; [800C] -> [838A]
 _FormatDisk:		jmp	FormatDisk		; [800F] -> [89DB]
@@ -252,7 +253,7 @@ _FindBlank:		jmp	FindBlank		; [8078] -> [8F4F]
 _PadOut:		jmp	PadOut			; [807B] -> [90CE]
 _StopWatchdog:		jmp	StopWatchdog		; [807E] -> [8DBD]
 _RdDataRamDxxx:		jmp	RdDataRamDxxx		; [8081] -> [01A0]
-_Spare:			jmp	$FFFF			; [8084] -> [FFFF]
+__Spare:		jmp	$FFFF			; [8084] -> [FFFF]
 
 
 ; Here starts the initialisation of the cartridge
