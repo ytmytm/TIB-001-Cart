@@ -286,31 +286,28 @@ CartInit:				;				[8087]
 	cld
 
 	jsr	InitC64			;				[80F2]
-CartInit2:				;				[808F]
+
+@tryagain:
 	jsr	LoadBootExe		; loading went OK?		[9294]
-	bcc	A_80AE			; yes, ->			[80AE]
-A_8094:					;				[8094]
+	bcc	@bootLoadDone		; yes, ->			[80AE]
+@checkerr:
 	CmpBI	ErrorCode, ERR_FILE_NOT_FOUND ; file not found?
-	beq	A_80A8			; yes, ->			[80A8]
+	beq	@done			; yes, ->			[80A8]
 
 	LoadB	VICCTR1, $1B		; screen on
+	jsr	TryAgain		; show message			[8124]
+	beq	@done			; RUN/STOP pressed?		[80A8]
+	jmp	@tryagain		;				[808F]
 
-	jsr	TryAgain		; another try?			[8124]
-	beq	A_80A8			; no, ->			[80A8]
-
-	jmp	CartInit2		;				[808F]
-
-; File "BOOT.EXE" not found
-A_80A8:					;				[80A8]
-	jsr	InitC64			;				[80F2]
-
+; File "BOOT.EXE" not found, return control to BASIC
+@done:	jsr	InitC64			;				[80F2]
 	jmp	(BasicCold)		;				[A000]
 
 ; Error found
-A_80AE:					;				[80AE]
+@bootLoadDone:
 	lda	ErrorCode		; error found?			[0351]
-	bne	A_8094			;				[8094]
-
+	bne	@checkerr		;				[8094]
+; no error, run BOOT.EXE from its load address ($1000)
 	jmp	(EndAddrBuf)		;				[00AE]
 
 
@@ -350,13 +347,11 @@ InitC64:				;				[80F2]
 	jsr	InitialiseVIC2		;				[FF5B]
 
 ; Copy the original vectors of the LOAD and SAVE routine to another place
-	ldx	#$03
-A_8100:					;				[8100]
-	lda	ILOAD,X			;				[0330]
+	ldx	#3
+:	lda	ILOAD,X			;				[0330]
 	sta	NewILOAD,X		;				[03FC]
-
 	dex
-	bpl	A_8100			;				[8100]
+	bpl	:-
 
 ; Copy the ICKOUT vector to another place
 	MoveW_	ICKOUT, NewICKOUT	; [0320,1] -> [0336,7]
@@ -372,57 +367,45 @@ TryAgain:				;				[8124]
 
 ; Clear the screen
 	ldy	#0
-A_8126:					;				[8126]
-	lda	#$20
+:	lda	#$20
 	sta	VICSCN,Y		;				[0400]
-	sta	VICSCN+256,Y		;				[0500]
-	sta	VICSCN+512,Y		;				[0600]
-	sta	VICSCN+768,Y		;				[0700]
-
-	lda	#1
+	sta	VICSCN+$0100,Y		;				[0500]
+	sta	VICSCN+$0200,Y		;				[0600]
+	sta	VICSCN+$0300,Y		;				[0700]
+	lda	#1			; set color to WHITE but it should be in the next loop
 	sta	ColourRAM,Y		;				[D800]
-
 	dey
-	bne	A_8126			;				[8126]
+	bne	:-
 
 ; Display two lines of text
-	ldy	#0
-A_813E:					;				[813E]
-	lda	Text1,Y			; '@' =	zero?			[8172]
-	beq	A_814F			; yes, -> stop displaying	[814F]
-
+	ldy	#0			; XXX Y is zero here already
+:	lda	Text1,Y			; '@' =	zero?			[8172]
+	beq	:+			; yes, -> stop displaying	[814F]
 	sta	VICSCN+40,Y		;				[0428]
-
 	lda	Text2,Y			;				[8199]
 	sta	VICSCN+80,Y		;				[0450]
-
 	iny
-	bne	A_813E			; always ->			[813E]
+	bne	:-
+:
 
-A_814F:					;				[814F]
 	LoadB	VICCTR1, $1B		; screen on
 
+	; long delay that can be interrupted with RUN/STOP
 	ldx	#$64
-
-; Wait for line 255
 	lda	#$FF
-A_8158:					;				[8158]
-	cmp	VICLINE			;				[D012]
-	bne	A_8158			;				[8158]
-A_815D:					;				[815D]
-	cmp	VICLINE			;				[D012]
-	beq	A_815D			;				[815D]
+:	cmp	VICLINE			;				[D012]
+	bne	:-
+:	cmp	VICLINE			;				[D012]
+	beq	:-
 
-	lda	CIA1DRB			;				[DC01]
-	cmp	#$7F			; RUN/STOP key pressed?
-	beq	A_8171			; yes, -> exit			[8171]
+	CmpBI	CIA1DRB, $7F		; RUN/STOP key pressed?
+	beq	@end			; yes, -> exit Z=1		[8171]
 
 	dex				; wait longer?
-	bne	A_8158			; yes, ->			[8158]
+	bne	:--			; yes, ->			[8158]
 
-	LoadB	VICCTR1, $0B		; screen off
-A_8171:					;				[8171]
-	rts
+	LoadB	VICCTR1, $0B		; screen off, exit Z=0
+@end:	rts
 
  
 Text1:					;				[8172]
@@ -438,13 +421,10 @@ Rename:					;				[81C0]
 	jsr	WaitRasterLine		;				[8851]
 
 	jsr	FindFile		; file found?			[8FEA]
-	bcs	A_81CC			; yes, -> 
-
+	bcs	:+			; yes, -> 
 	rts
 
-A_81CC:					;				[81CC]
-	ldy	LengthFileName		;				[B7]
-
+:	ldy	LengthFileName		;				[B7]
 ; ??? what is going on here ???
 	lda	(AddrFileName),Y	;				[BB]
 	lda	#0
@@ -452,86 +432,73 @@ A_81CC:					;				[81CC]
 	clc
 
 	cpy	TapeBuffer+89		;				[0395]
-	bne	A_81DF			;				[81DF]
+	bne	:+			;				[81DF]
 
-	lda	#$0B			; file not found
+	lda	#ERR_FILE_NOT_FOUND
 	jmp	ShowError		;				[926C]
 
-A_81DF:					;				[81DF]
-	ldx	#0
+:	ldx	#0
 	iny
-A_81E2:					;				[81E2]
-	lda	(AddrFileName),Y	;				[BB]
+
+:	lda	(AddrFileName),Y	;				[BB]
 	iny
 	sta	FdcFileName,X		;				[036C]
 	sta	TapeBuffer+78,X		;				[038A]
-
 	inx
 	cpx	#$0B
-	bne	A_81E2			;				[81E2]
+	bne	:-
 
 	ldy	#0
-	lda	#$2E
-A_81F4:					;				[81F4]
-	cmp	FdcFileName,Y		;				[036C]
-	beq	A_8220			;				[8220]
-
+	lda	#'.'
+:	cmp	FdcFileName,Y		;				[036C]
+	beq	@found_dot
 	iny
 	cpy	#$08
-	bne	A_81F4			;				[81F4]
+	bne	:-			;				[81F4]
 
 	ldy	#0
-A_8200:					;				[8200]
-	lda	FdcFileName,Y		;				[036C]
+:	lda	FdcFileName,Y		;				[036C]
 	iny
 	cmp	#$22
-	bne	A_8200			;				[8200]
+	bne	:-			;				[8200]
 
 	cpy	#$0A
-	bcs	A_821A			;				[821A]
-
+	bcs	@err_longname
 	dey
-A_820D:					;				[820D]
-	lda	#$20
-	sta	FdcFileName,Y		;				[036C]
 
+:	lda	#$20
+	sta	FdcFileName,Y		;				[036C]
 	iny
 	cpy	#$0B
-	bne	A_820D			;				[820D]
+	bne	:-			; XXX should jump to the next instruction, A is $20
+	jmp	@cont			; XXX beq will work here
 
-	jmp	J_823C			;				[823C]
-
-A_821A:					;				[821A]
+@err_longname:
 	LoadB	ErrorCode, ERR_NAME_TOO_LONG
-
 	rts
 
-A_8220:					;				[8220]
+@found_dot:
 	tya
 	pha
 
 	ldx	#$08
-A_8224:					;				[8224]
-	iny
+:	iny
 	lda	TapeBuffer+78,Y		;				[038A]
 	sta	FdcFileName,X		;				[036C]
-
 	inx
 	cpx	#$0B
-	bne	A_8224			;				[8224]
+	bne	:-
 
 	pla
 	tay
-	lda	#$20
-A_8234:					;				[8234]
-	sta	FdcFileName,Y		;				[036C]
 
+	lda	#$20
+:	sta	FdcFileName,Y		;				[036C]
 	iny
 	cpy	#$08
-	bne	A_8234			;				[8234]
-J_823C:					;				[823C]
-	jsr	WaitRasterLine		;				[8851]
+	bne	:-			;				[8234]
 
+@cont:	jsr	WaitRasterLine		;				[8851]
 
 	PushB	DirPointer
 	PushB	DirPointer+1
@@ -540,17 +507,14 @@ J_823C:					;				[823C]
 	jsr	Search			;				[9011]
 
 	PopB	DirSector
-
-	bcs	A_8291			;				[8291]
+	bcs	@err
 
 	jsr	WaitRasterLine		;				[8851]
 
 	LoadB	DirPointer, 0
-
 	MoveB	StartofDir, DirPointer+1
 
 	LoadB	NumOfSectors, 1
-
 	MoveB	DirSector, SectorL
 
 	jsr	SetWatchdog		;				[8D90]
@@ -563,13 +527,11 @@ J_823C:					;				[823C]
 	PopB	DirPointer
 
 	ldy	#0
-A_827E:					;				[827E]
-	lda	FdcFileName,Y		;				[036C]
+:	lda	FdcFileName,Y		;				[036C]
 	jsr	WrDataRamDxxx		;				[01AF]
-
 	iny
 	cpy	#$0B
-	bne	A_827E			;				[827E]
+	bne	:-
 
 	jsr	WaitRasterLine		;				[8851]
 	jsr	WriteDirectory		;				[850F]
@@ -577,32 +539,30 @@ A_827E:					;				[827E]
 	clc
 	rts
 
-A_8291:					;				[8291]
-	sec
+@err:	sec				; XXX C=1 already here
 	pla
 	pla
 	rts
 
 
 ;**  New routine for opening a channel for output
+; XXX seems unused/unfinished (unless used only from tools somehow)
 NewCkout:				;				[8295]
 	pha
 
 	CmpBI	DeviceNumber, 9		; our DD drive? (XXX)
-	beq	A_82A1			; yes, ->			[82A1]
+	beq	__NewCkout		; yes, ->			[82A1]
 
 	pla
 	jmp	(TapeBuffer+188)	; = ($03F8)			[03F8]
 ; ??? where is this vector filled ???
 ; I would expect (NewICKOUT) = ($0336)
- 
 
 ; Not used
 S_82A0:
 	rti
  
- 
-A_82A1:					;				[82A1]
+__NewCkout:
 	sei
 	tya
 	pha
@@ -613,8 +573,7 @@ A_82A1:					;				[82A1]
 	ldy	#0
 	lda	(PtrBasText),Y		;				[7A]
 	cmp	#'"'			; quote found?
-	bne	J_8307			; no, ->			[8307]
-
+	bne	@end
 	iny
 
 ; Save current Y
@@ -622,161 +581,123 @@ A_82A1:					;				[82A1]
 	pha
 
 ; Check if the string between the quotes is not too long
-A_82B1:					;				[82B1]
-	lda	(PtrBasText),Y		;				[7A]
+:	lda	(PtrBasText),Y		;				[7A]
 	iny
 	cpy	#$21			; 33 or more characters?
-	bcs	A_82D8			; yes, -> exit			[82D8]
-
+	bcs	@toolong		; yes, -> exit			[82D8]
 	cmp	#'"'			; quote found?
-	bne	A_82B1			; no, ->			[82B1]
+	bne	:-
 
 ; Restore original Y
 	pla
 	tay
 
 	lda	(PtrBasText),Y		;				[7A]
-	cmp	#'S'			; 'S' ?
-	bne	A_82DD			; no, -> next possible char	[82DD]
-
 ; Handle as SCRATCH
+	cmp	#'S'			; 'S' ?
+	bne	:+
 	lda	PtrBasText		;				[7A]
 	addv	3
 	sta	AddrFileName		;				[BB]
 	MoveB	PtrBasText+1, AddrFileName+1
-
 	jsr	GetlengthFName		;				[8336]
 	jsr	Scratch			;				[8355]
+	jmp	@end
 
-	jmp	J_8307			;				[8307]
-
-A_82D8:					;				[82D8]
+@toolong:
 	pla
 	sec
-	jmp	J_8307			;				[8307]
+	jmp	@end
 
 ; Handle as RENAME
-A_82DD:					;				[82DD]
-	cmp	#'R'			; 'R' ?
-	bne	A_82F5			; no, -> next possible char	[82F5]
+:	cmp	#'R'			; 'R' ?
+	bne	:+
 
 	lda	PtrBasText		;				[7A]
 	addv	3
 	sta	AddrFileName		;				[BB]
 	MoveB	PtrBasText+1, AddrFileName+1
-
-	jsr	P_831A			;				[831A]
+	jsr	RenameFilePrep
 	jsr	Rename			;				[81C0]
-
-	jmp	J_8307			;				[8307]
+	jmp	@end
 
 ; Handle as NEW = format disk
-A_82F5:					;				[82F5]
-	cmp	#'N'			; 'N' ?
-	bne	J_8307			; no, -> exit			[8307]
+:	cmp	#'N'			; 'N' ?
+	bne	@end
 
 	lda	PtrBasText		;				[7A]
 	addv	3
 	sta	AddrFileName		;				[BB]
 	MoveB	PtrBasText+1, AddrFileName+1
-
 	jsr	FormatDisk		;				[89DB]
-J_8307:					;				[8307]
-	php
 
+@end:	php
 	lda	ErrorCode		;				[0351]
 	jsr	ShowError		;				[926C]
-
 	LoadB	VICCTR1, $1B		; screen on
-
 	plp
 
 	pla
 	tax
-
 	pla
 	tay
-
 	pla
-
 	rts
 
-
-
-P_831A:					;				[831A]
+RenameFilePrep:
+; what does it do?
 	ldy	#0
-A_831C:					;				[831C]
-	lda	(AddrFileName),Y	;				[BB]
-	cmp	#$3D
-	beq	A_8325			;				[8325]
-
+:	lda	(AddrFileName),Y	;				[BB]
+	cmp	#'='
+	beq	:+			;				[8325]
 	iny
-	bne	A_831C			;				[831C]
-A_8325:					;				[8325]
-	tya
-	sty	LengthFileName		;				[B7]
-
+	bne	:-
+:	tya
+	sty	LengthFileName		; XXX destroyed immediately by GetlengthFName
 	tya
 	pha
-
 	jsr	GetlengthFName		;				[8336]
-
 	MoveB	LengthFileName, TapeBuffer+89
-
 	PopB	LengthFileName
-
 	rts
 
 
 ;**  Get the length of the file name between the quotes
 GetlengthFName:				;				[8336]
 	ldy	#1
-
 ; Look for a quote
-A_8338:					;				[8338]
-	lda	(PtrBasText),Y		;				[7A]
+:	lda	(PtrBasText),Y		;				[7A]
 	cmp	#'"'			; quote found?
-	beq	A_8341			; yes, ->			[8341]
-
+	beq	:+			; yes, ->			[8341]
 	iny
-	bne	A_8338			; always ->
-; Note: length has already been checked. Therefore "always".
+	bne	:-
 
-A_8341:					;				[8341]
-	tya
-
+:	tya
 	iny
 	sty	LengthFileName		;				[B7]
-
 	clc
 	adc	PtrBasText		;				[7A]
 	sta	PtrBasText		;				[7A]
-
 	rts
 
-
+; 'Soace'?
 SetSoace:				;				[834B]
 	sta	StartofDir		;				[0334]
-
 	addv	2
 	sta	EndofDir		;				[0335]
-
 	rts
 
 
 ;**  Scratch a file
 Scratch:				;				[8355]
 	jsr	InitStackProg		;				[8D5A]
-
 	jsr	FindFile		; file found?			[8FEA]
-	bcs	A_8363			; yes, ->			[8363]
+	bcs	@found			; yes
 
-	LoadB	ErrorCode, ERR_FILE_NOT_FOUND ; file not found
-
+	LoadB	ErrorCode, ERR_FILE_NOT_FOUND
 	rts
 
-A_8363:					;				[8363]
-	ldy	#0
+@found:	ldy	#0
 	lda	#$E5			; means: file has been deleted
 	jsr	WrDataRamDxxx		;				[01AF]
 ; Note: MS-DOS saves the first character
@@ -805,11 +726,11 @@ NewSave:				;				[838A]
 	stx	TapeBuffer+43		;				[0367]
 
 	CmpBI	DeviceNumber, 9		; XXX device
-	beq	A_8397			;				[8397]
+	beq	__NewSave
 
 	jmp	(NewISAVE)		;				[03FE]
 
-A_8397:					;				[8397]
+__NewSave:
 	lda	EndAddrBuf		;				[AE]
 	sec
 	sbc	$00,X			; minus start address LB
@@ -822,18 +743,16 @@ A_8397:					;				[8397]
 ; TapeBuffer+37 / TapeBuffer+36 now contains the length of the file
 
 ; End address > start address?
-	bcs	A_83B6			; yes, ->			[83B6]
+	bcs	@cont			; yes, -> OK			[83B6]
 
 ; File too large
-	lda	#$0D			; file too large
+	lda	#ERR_FILE_TOO_LARGE
 	jsr	ShowError		;				[926C]
-
 	LoadB	VICCTR1, $1b		; screen on
-
 	rts
 
-A_83B6:					;				[83B6]
-	lsr	NumDirSectors		;				[0364]
+; continue with save file
+@cont:	lsr	NumDirSectors		;				[0364]
 	lsr	NumDirSectors		;				[0364]
 	inc	NumDirSectors		;				[0364]
 
@@ -843,53 +762,43 @@ A_83B6:					;				[83B6]
 
 	lda	FdcST3			;				[0343]
 	and	#$40			; XXX optimize bit+bcs
-	beq	A_83D7			;				[83D7]
-
+	beq	@cont2
 	LoadB	ErrorCode, ERR_DISK_WRITE_PROTECT
 	jmp	ShowError		;				[926C]
 
-A_83D7:					;				[83D7]
-	jsr	GetFATs			;				[8813]
+@cont2:	jsr	GetFATs			;				[8813]
 	jsr	FindFile		;				[8FEA]
-
-	bcs	A_83F2			;				[83F2]
+	bcs	@overwrite
 
 	CmpBI	ErrorCode, ERR_FILE_NOT_FOUND
-	beq	A_8407			;				[8407]
+	beq	@newfile
 
 	lda	ErrorCode		;				[0351]
 	jsr	ShowError		;				[926C]
 
 	LoadB	VICCTR1, $1b		; screen on (jump here every time and save few bytes) XXX
-
 	rts
 
-A_83F2:					;				[83F2]
+@overwrite:
 	jsr	StopWatchdog		;				[8DBD]
-
 	PushB	DirPointer
 	PushB	DirPointer+1
-
 	jsr	ClearFATs		;				[8650]
-
 	PopB	DirPointer+1
 	PopB	DirPointer
+	jmp	@dosave			;				[8418]
 
-	jmp	J_8418			;				[8418]
-
-A_8407:					;				[8407]
+@newfile:
 	jsr	FindBlank		;				[8F4F]
 
 	lda	ErrorCode		; error found?			[0351]
-	beq	J_8418			;				[8418]
+	beq	@dosave			;				[8418]
 
 	jsr	ShowError		;				[926C]
-
 	LoadB	VICCTR1, $1B		; screen on
-
 	rts
 
-J_8418:					;				[8418]
+@dosave:
 	jsr	StopWatchdog		;				[8DBD]
 
 	PushB	DirPointer+1
@@ -945,6 +854,8 @@ J_8418:					;				[8418]
 	iny
 	lda	$00,X			;				[00]
 	jsr	WrDataRamDxxx		;				[01AF]
+
+; jumptable has this function, why? what is it?
 J_8472:					;				[8472]
 	LoadB	TapeBuffer+41, 1
 	MoveB	TapeBuffer+44, NumDirSectors
@@ -988,20 +899,16 @@ J_8493:					;				[8493]
 
 	ldx	#1
 	jsr	FindNextFAT		;				[85B2]
-
-	bcs	A_84D9			;				[84D9]
+	bcs	:+			; no more FATs?
 
 	pla
 	pla
 	LoadB	ErrorCode, ERR_FILE_TOO_LARGE
 	jmp	J_84F1			;				[84F1]
 
-A_84D9:					;				[84D9]
-	jsr	MarkFAT			;				[8534]
-
+:	jsr	MarkFAT			;				[8534]
 	PopB	DirPointer+1
 	PopB	DirPointer
-
 	jmp	J_8493			;				[8493]
 
 A_84E5:					;				[84E5]
@@ -1018,16 +925,13 @@ J_84F1:					;				[84F1]
 	LoadB	VICCTR1, $1B		; screen on
 
 	cli
-
 	LoadB	StatusIO, 0
-
 	clc
 	rts
 
 A_8506:					;				[8506]
 	jsr	Specify			;				[891A]
 	jsr	Recalibrate		;				[88F7]
-
 	jmp	J_847D			;				[847D]
 
 WriteDirectory:				;				[850F]
@@ -1072,7 +976,7 @@ MarkFAT:
 
 	pla
 	and	#1
-	bne	A_857B			;				[857B]
+	bne	:+
 
 	ldy	#0
 	lda	TapeBuffer+26		;				[0356]
@@ -1083,12 +987,10 @@ MarkFAT:
 
 	and	#$F0
 	ora	TapeBuffer+27		;				[0357]
-	jsr	WrDataRamDxxx		;				[01AF]
-
+	jsr	WrDataRamDxxx		; XXX JMP <-> JSR+RTS (unless this TXS stuff matters?)
 	rts
 
-A_857B:					;				[857B]
-	ldy	#1
+:	ldy	#1
 	jsr	RdDataRamDxxx		;				[01A0]
 
 	and	#$0F
@@ -1113,7 +1015,6 @@ A_857B:					;				[857B]
 	lsr	TapeBuffer+27		;				[0357]
 	ror	A
 	jsr	WrDataRamDxxx		;				[01AF]
-
 	rts
 
 FindFAT:				;				[85A8]
@@ -1127,7 +1028,7 @@ FindNextFAT:				;				[85B2]
 
 	lda	TapeBuffer+30		;				[035A]
 	ora	TapeBuffer+31		;				[035B]
-	beq	A_85E7			;				[85E7]
+	beq	:+
 
 	AddVB	1, TapeBuffer+26	; XXX this is IncW candidate but needs LDA TapeBuffer+27 at the end
 	lda	TapeBuffer+27		;				[0357]
@@ -1143,21 +1044,17 @@ FindNextFAT:				;				[85B2]
 	clc
 	rts
 
-A_85E7:	
-	MoveW_	TapeBuffer+26, TapeBuffer+30
-
+:	MoveW_	TapeBuffer+26, TapeBuffer+30
 	dex
-	bmi	A_860A			;				[860A]
+	bmi	:+			;				[860A]
 
 	AddVB	1, TapeBuffer+26	; XXX this is IncW candidate but needs LDA TapeBuffer+27 at the end
 	lda	TapeBuffer+27		;				[0357]
 	adc	#0
 	sta	TapeBuffer+27		;				[0357]
-
 	jmp	FindNextFAT		;				[85B2]
 
-A_860A:					;				[860A]
-	sec
+:	sec
 	rts
 
 WriteFATs:				;				[860C]
@@ -1203,22 +1100,19 @@ ClearFATs:				;				[8650]
 	sta	TapeBuffer+29		;				[0359]
 
 	LoadW_	TapeBuffer+26, 0
-A_866D:					;				[866D]
-	jsr	GetNextCluster		;				[87A4]
+
+:	jsr	GetNextCluster		;				[87A4]
 	jsr	MarkFAT			;				[8534]
 
-	MoveW_	TapeBuffer+30, TapeBuffer+28
-
-	cmp	#$0F
-	bne	A_866D			;				[866D]
-
+	MoveB	TapeBuffer+30, TapeBuffer+28
+	MoveB	TapeBuffer+31, TapeBuffer+29
+	cmp	#$0F			; TapeBuffer+31,+29
+	bne	:-
 	rts
 
 Enfile:					;				[8684]
 	MoveW_	TapeBuffer+30, TapeBuffer+28
-
-	LoadW_	TapeBuffer+26, $0FFF	; ???
-
+	LoadW_	TapeBuffer+26, $0FFF	; ??? FAT magic?
 	jmp	MarkFAT			;				[8534]
 
 
@@ -1235,17 +1129,13 @@ LoadBootExe2:				;				[869D]
 	jsr	InitStackProg		;				[8D5A]
 
 	jsr	FindFile		; File found?			[8FEA]
-	bcc	A_86B4			; no, ->			[86B4]
-
+	bcc	:+			; no, ->			[86B4]
 	PushB	VICCTR1
-	bcs	A_86EB			; always ->			[86EB]
+	bcs	__LoadFileFound		; always ->			[86EB]
 
-A_86B4:					;				[86B4]
-	sec
-
+:	sec
 	LoadB	SecondAddress, 0
 	sta	FlgLoadVerify		;				[93]
-
 	rts
 
 
@@ -1261,12 +1151,12 @@ NewLoad:				;				[86BC]
 	pha
 
 	CmpBI	DeviceNumber, 9		; XXX device number
-	beq	A_86CC			;				[86CC]
+	beq	__NewLoad
 
 	pla
 	jmp	(NewILOAD)		;				[03FC]
 
-A_86CC:					;				[86CC]
+__NewLoad:
 	pla
 ; ??? is VERIFY ignored ???
 
@@ -1274,80 +1164,63 @@ A_86CC:					;				[86CC]
 
 	jsr	InitStackProg		;				[8D5A]
 	jsr	FindFile		;				[8FEA]
-
-	bcs	A_86EB			;				[86EB]
+	bcs	__LoadFileFound
 
 	pla
-	and	#$7F
+	and	#$7F			; XXX why?
 	sta	VICCTR1			;				[D011]
 
 	lda	ErrorCode		;				[0351]
 	jsr	ShowError		;				[926C]
 
 	LoadB	VICCTR1, $1B		; screen on
-
 	rts
 
 
 ; File found
-A_86EB:					;				[86EB]
-	ldy	#$10
+__LoadFileFound:
+	ldy	#$10			; load address?
 	jsr	RdDataRamDxxx		;				[01A0]
-
 	iny
 	sta	TapeBuffer+47		;				[036B]
-
 	jsr	RdDataRamDxxx		;				[01A0]
-
-	iny
+	iny				; XXX not needed
 	sta	TapeBuffer+46		;				[036A]
 
-	ldy	#$1A
+	ldy	#$1A			; first cluster?
 	jsr	RdDataRamDxxx		;				[01A0]
-
 	iny
 	sta	TapeBuffer+30		;				[035A]
-
 	jsr	RdDataRamDxxx		;				[01A0]
-
 	iny
 	sta	TapeBuffer+31		;				[035B]
 
-	jsr	RdDataRamDxxx		;				[01A0]
-
+	jsr	RdDataRamDxxx		; length?			[01A0]
 	iny
 	sta	TapeBuffer+37		;				[0361]
-
 	jsr	RdDataRamDxxx		;				[01A0]
-
 	iny
-
 	sta	TapeBuffer+36		;				[0360]
-
 	jsr	RdDataRamDxxx		;				[01A0]
-
 	iny
 	sta	TapeBuffer+35		;				[035F]
-
 	jsr	RdDataRamDxxx		;				[01A0]
-
-	iny
+	iny				; XXX not needed, GetFATs calls SetupSector and destros Y
 	sta	TapeBuffer+34		;				[035E]
 
 	jsr	GetFATs			;				[8813]
 	jsr	CalcFirst		;				[883A]
 
-
 	MoveB	TapeBuffer+37, TapeBuffer+38
 	MoveB	TapeBuffer+36, TapeBuffer+39
 
-	lda	SecondAddress		;				[B9]
-	beq	A_8747			;				[8747]
+	lda	SecondAddress		; load address from user?
+	beq	:+			; yes(?)
 
-	MoveW_	TapeBuffer+46, EndAddrBuf
-A_8747:					;				[8747]
-	MoveW_	EndAddrBuf, DirPointer
-J_874F:					;				[874F]
+	MoveW_	TapeBuffer+46, EndAddrBuf ; no, from directory
+:	MoveW_	EndAddrBuf, DirPointer
+
+@loop:
 	LoadB	NumOfSectors, 2
 
 	jsr	SetupSector		;				[8899]
@@ -1365,16 +1238,13 @@ J_874F:					;				[874F]
 	PopB	DirPointer+1
 	PopB	DirPointer
 
-	lda	TapeBuffer+31		;				[035B]
-	cmp	#$0F
-	beq	A_877C			;				[877C]
+	CmpBI	TapeBuffer+31, $0F	; magic FAT value for end of file?
+	beq	@done
 
 	jsr	CalcFirst		;				[883A]
+	jmp	@loop
 
-	jmp	J_874F			;				[874F]
-
-A_877C:					;				[877C]
-	lda	EndAddrBuf		;				[AE]
+@done:	lda	EndAddrBuf		;				[AE]
 	clc
 	adc	TapeBuffer+37		;				[0361]
 	tax
@@ -1388,12 +1258,11 @@ A_877C:					;				[877C]
 	LoadB	StatusIO, 0
 
 	pla
-	and	#$7F
+	and	#$7F			; XXX why?
 	sta	VICCTR1			;				[D011]
 
 	txa
 	pha
-
 	tya
 	pha
 
@@ -1429,23 +1298,18 @@ GetNextCluster:				;				[87A4]
 
 	lda	TapeBuffer+30		;				[035A]
 	and	#1
-	bne	A_87E5			;				[87E5]
+	bne	:+
 
 	ldy	#0
 	jsr	RdDataRamDxxx		;				[01A0]
-
 	iny
 	sta	TapeBuffer+30		;				[035A]
-
 	jsr	RdDataRamDxxx		;				[01A0]
-
 	and	#$0F
 	sta	TapeBuffer+31		;				[035B]
-
 	rts
 
-A_87E5:					;				[87E5]
-	ldy	#1
+:	ldy	#1
 	lda	#0
 	sta	TapeBuffer+31		;				[035B]
 
@@ -1515,86 +1379,69 @@ CalcFirst:				;				[883A]
 ;**  Wait for rasterline $1FF
 WaitRasterLine:				;				[8851]
 	LoadB	VICCTR1, $0b		; screen off
-A_8856:					;				[8856]
-	lda	VICLINE			; read rasterline bit 00.7	[D012]
-	cmp	#$FF			; = 255?
-	bne	A_8856			; no, -> wait			[8856]
-
+:	CmpBI	VICLINE, $FF
+	bne :-
 	rts
-
 
 ;**  Read multiple sectors
 ; IMHO it reads 9 sectors = a complete track of one side
 ReadSectors:				;				[885E]
 
 	LoadB	Counter, 0
-A_8863:					;				[8863]
-	LoadB	ErrorCode, ERR_OK	; also 0 XXX
+
+@loop:	LoadB	ErrorCode, ERR_OK	; also 0 XXX
 
 	jsr	WaitRasterLine		;				[8851]
 	jsr	SetWatchdog		;				[8D90]
 	jsr	ReadSector		;				[8C78]
 
-	CmpBI	Counter, 9		; whole track?
-	bne	A_887F			;				[887F]
+	CmpBI	Counter, 9		; read whole track?
+	bne	:+
 
 	LoadB	ErrorCode, ERR_DISK_MAY_BE_DAMAGED
-	bne	A_8887			; always ->
+	bne	@end			; always ->
 
-A_887F:					;				[887F]
-	inc	Counter			;				[0366]
-
+:	inc	Counter			;				[0366]
 	lda	ErrorCode		; error found?			[0351]
-	bne	A_888A			; yes, -> 			[888A]
-A_8887:					;				[8887]
+	bne	@err			; yes, -> 			[888A]
+@end:					;				[8887]
 	jmp	StopWatchdog		;				[8DBD]
 
-A_888A:					;				[888A]
-	jsr	Delay41ms		;				[89D0]
+@err:	jsr	Delay41ms		;				[89D0]
 	jsr	Specify			;				[891A]
 	jsr	Recalibrate		;				[88F7]
 	jsr	SeekTrack		;				[898A]
-
-	jmp	A_8863			;				[8863]
+	jmp	@loop
 
 
 ;**  Setup the data needed for the FDC
 SetupSector:				;				[8899]
-
 	CmpBI	SectorH, >1440
-	bcc	A_88A5			;				[88A5]
-
+	bcc	:+
 	CmpBI	SectorL, <1440
-	bcs	A_88E0			;				[88E0]
+	bcs	@end			; exit but don't report any error?
 ; FYI: 5*256 + 160 = 1440 = number of sectors on 3.5" 720 KB disk
-
 ; BUG: if (SectorH > 5) and SectorL < 160) then routine continues as well
 
-
 ; Convert sector to track
-A_88A5:					;				[88A5]
-	ldx	#0
-	ldy	#0
-A_88A9:					;				[88A9]
-	lda	SectorL			;				[F8]
+:	ldx	#0			; tracks
+	ldy	#0			; XXX Y not used here
+
+:	lda	SectorL			;				[F8]
 	subv	9
 	sta	SectorL			;				[F8]
-
 	inx
-	bcs	A_88A9			; if SectorL > 8 then repeat	[88A9]
+	bcs	:-			; if SectorL > 8 then repeat	[88A9]
 
 	lda	SectorH			;				[F9]
 	sbc	#0
 	sta	SectorH			;				[F9]
-
-	bcs	A_88A9			; if SectorH > 0 then repeat	[88A9]
+	bcs	:-			; if SectorH > 0 then repeat	[88A9]
 
 	dex
-
 ; Correct last subtraction
 	AddVB	10, SectorL		; one extra because FDC counts 1..9
 	sta	FdcSector		;				[0349]
-
 	inc	SectorH			;				[F9]
 	sta	FdcEOT			;				[034B]
 
@@ -1612,26 +1459,21 @@ A_88A9:					;				[88A9]
 
 	and	#$FE
 	sta	FdcTrack2		;				[034E]
-A_88E0:					;				[88E0]
-	rts
+@end:	rts
 
 
 ; ??? not used anywhere AFAIK
 E_88E1:					;				[88E1]
 	lsr	A
 	sta	FdcTrack		;				[0347]
-
 	pla
 	and	#1
 	sta	FdcHead			;				[0348]
-
 	asl	A
 	asl	A
 	sta	FdcHSEL			;				[0346]
-
 	stx	FdcSector		;				[0349]
 	stx	FdcEOT			;				[034B]
-
 	rts
 
 
@@ -1639,23 +1481,19 @@ E_88E1:					;				[88E1]
 Recalibrate:				;				[88F7]
 	jsr	Wait4FdcReady		;				[89C0]
 
-
 	LoadB	DataRegister, 7		; ???
 	jsr	Wait4DataReady		;				[89C8]
 
 	LoadB	DataRegister, 0		; drive 0
-A_8907:					;				[8907]
-	jsr	SenseIrqStatus		;				[894A]
 
+:	jsr	SenseIrqStatus		;				[894A]
 	lda	FdcST0			;				[033C]
-	and	#$20			; command completed?
-	beq	A_8907			; no, ->			[8907]
-
+	and	#%00100000		; command completed?
+	beq	:-			; no, ->			[8907]
 	lda	FdcPCN			; track = 0?			[0344]
-	bne	A_8907			; no, -> wait			[8907]
+	bne	:-			; no, -> wait			[8907]
 
 	jsr	SenseDrvStatus		; XXX jmp and remove next rts	[8933]
-
 	rts
 
 
@@ -1704,32 +1542,30 @@ SenseIrqStatus:				;				[894A]
 ReadStatus:				;				[8962]
 	ldy	#0
 	ldx	#0			; try counter
-A_8966:					;				[8966]
-	lda	StatusRegister		; XXX bbsf 5			[DE80]
-	and	#$20
-	bne	A_8966			;				[8966]
 
+:	lda	StatusRegister		; XXX bbsf 5			[DE80]
+	and	#%00100000
+	bne	:-
 	dex				; 256 tries done?
-	beq	A_8988			; yes, -> error			[8988]
+	beq	@err			; yes, -> error			[8988]
 
 	lda	StatusRegister		;				[DE80]
 	and	#$C0
 	cmp	#$C0			; FDC ready?
-	bne	A_8966			; no, -> wait			[8966]
+	bne	:-			; no, -> wait			[8966]
 
 	lda	DataRegister		;				[DE81]
 	sta	FdcST0,Y		;				[033C]
 
-	ldx	#0
+	ldx	#0			; reset try counter
 	iny
 	cpy	#7			; seven bytes read?
-	bne	A_8966			; no, -> more			[8966]
+	bne	:-			; no, -> more			[8966]
 
-	clc
+	clc				; no error
 	rts
 
-A_8988:					;				[8988]
-	sec				; error
+@err:	sec				; error
 	rts
 
 
@@ -1743,39 +1579,34 @@ SeekTrack:				;				[898A]
 
 	MoveB	FdcTrack, DataRegister
 	jsr	Wait4DataReady		;				[89C8]
-A_89A4:					;				[89A4]
-	jsr	SenseIrqStatus		;				[894A]
 
+:	jsr	SenseIrqStatus		;				[894A]
 	lda	FdcST0			;				[033C]
 	lda	FdcST0			; why twice ???			[033C]
-	and	#$20			; command completed? XXX bbcf 5
-	beq	A_89A4			; no, -> wait			[89A4]
-
+	and	#%00100000		; command completed? XXX bbcf 5
+	beq	:-			; no, -> wait			[89A4]
 	CmpB	FdcPCN, FdcTrack	; same track as present track?
-	beq	A_89BF			; yes, -> exit			[89BF]
+	beq	@end			; yes, -> exit			[89BF]
 
 	jsr	Recalibrate		;				[88F7]
 	jmp	SeekTrack		;				[898A]
 
-A_89BF:					;				[89BF]
-	rts
+@end:	rts
 
 
 ;**  Wait until the FDC is ready
 Wait4FdcReady:				;				[89C0]
-	lda	StatusRegister		;				[DE80]
-	and	#$1F			; FDC is busy?
-	bne	Wait4FdcReady		; yes, -> wait			[89C0]
-
+:	lda	StatusRegister		;				[DE80]
+	and	#%00011111		; FDC is busy?
+	bne	:-			; yes, -> wait			[89C0]
 	rts
 
 
 ;**  Wait until the data register is ready
 Wait4DataReady:				;				[89C8]
-	lda	StatusRegister		;				[DE80]
-	and	#$80			; FDC ready? XXX bbcf 7
-	beq	Wait4DataReady		; no, -> wait			[89C8]
-
+:	lda	StatusRegister		;				[DE80]
+	and	#%10000000		; FDC ready? XXX bbcf 7
+	beq	:-			; no, -> wait			[89C8]
 	rts
 
 
@@ -1783,63 +1614,53 @@ Wait4DataReady:				;				[89C8]
 Delay41ms:				;				[89D0]
 	ldx	#$C8
 	ldy	#$28
-A_89D4:					;				[89D4]
-	dex
-	bne	A_89D4			;				[89D4]
-
+:	dex
+	bne	:-
 	dey
-	bne	A_89D4			;				[89D4]
-
+	bne	:-
 	rts
-
 
 
 FormatDisk:				;				[89DB]
 	sei
-	jsr	WaitRasterLine		;				[8851]
+	jsr	WaitRasterLine		; this could be done later
 
 	ldy	#0
-A_89E1:					;				[89E1]
-	lda	(AddrFileName),Y	;				[BB]
+:	lda	(AddrFileName),Y	;				[BB]
 	cmp	#$22
-	beq	A_89F1			;				[89F1]
-
+	beq	:+
 	sta	FdcFileName,Y		;				[036C]
-
 	iny
 	cpy	#$0B
-	bne	A_89E1			;				[89E1]
-
+	bne	:-
 	sec
 	rts
 
-A_89F1:					;				[89F1]
-	cpy	#$0B
-	beq	A_89FD			;				[89FD]
+:	cpy	#$0B
+	beq	:+
 
 	lda	#$20
 	sta	FdcFileName,Y		;				[036C]
-
 	iny
-	bne	A_89F1			;				[89F1]
-A_89FD:					;				[89FD]
-	jsr	GetlengthFName		;				[8336]
+	bne	:-
+
+:	jsr	GetlengthFName		;				[8336]
 	jsr	InitStackProg		;				[8D5A]
 
 	lda	FdcST3			;				[0343]
-	and	#$40
-	beq	A_8A0F			;				[8A0F]
+	and	#%01000000		; XXX bit / bbrf 6
+	beq	:+			;				[8A0F]
 
-	lda	#1
+	lda	#ERR_DISK_WRITE_PROTECT
 	jmp	ShowError		;				[926C]
 
-A_8A0F:					;				[8A0F]
-	ldx	#$0F
-	jsr	P_8B30			;				[8B30]
+:	ldx	#15
+	jsr	ClearDirectory
 
 	LoadB	FdcTrack2, 0
 	LoadB	Counter, 1
-J_8A1E:					;				[8A1E]
+
+FormatDiskLoop:
 	LoadB	ErrorCode, ERR_OK	; XXX also 0
 
 	lda	FdcTrack2		;				[034E]
@@ -1861,68 +1682,56 @@ J_8A1E:					;				[8A1E]
 	jsr	FormatTrack		;				[8B93]
 
 	lda	ErrorCode		; error found?			[0351]
-	beq	A_8A4F			;				[8A4F]
-A_8A4C:					;				[8A4C]
-	jmp	J_8B10			;				[8B10]
+	beq	@cont
+@err:	jmp	@tryagain
 
-A_8A4F:					;				[8A4F]
-	jsr	SetWatchdog		;				[8D90]
+@cont:	jsr	SetWatchdog		;				[8D90]
 	jsr	P_8B49			;				[8B49]
-
-	bcs	A_8A4C			;				[8A4C]
+	bcs	@err			;				[8A4C]
 
 	lda	ErrorCode		; error found?			[0351]
-	beq	A_8A5F			;				[8A5F]
+	beq	@cont2			;				[8A5F]
+	jmp	@tryagain
 
-	jmp	J_8B10			;				[8B10]
-
-A_8A5F:					;				[8A5F]
-	jsr	StopWatchdog		;				[8DBD]
+@cont2:	jsr	StopWatchdog		;				[8DBD]
 
 	inc	FdcTrack2		;				[034E]
 	LoadB	Counter, 1
 
 	lda	FdcTrack		;				[0347]
-	cmp	#$50			; 80 - last track?
-	bne	J_8A1E			;				[8A1E]
+	cmp	#80			; 80 - last track?
+	bne	FormatDiskLoop
 
 	LoadB	DirPointer, 0
 	MoveB	StartofDir, DirPointer+1
 
-	ldy	#0
-A_8A7C:					;				[8A7C]
-	lda	D_943E,Y		;				[943E]
+	ldy	#0			; FAT12 identifier+BIOS Parameter Block?
+:	lda	D_943E,Y		;				[943E]
 	jsr	WrDataRamDxxx		;				[01AF]
-
 	iny
 	cpy	#$20
-	bne	A_8A7C			;				[8A7C]
+	bne	:-
 
 	MoveB	EndofDir, DirPointer+1
 
-	lda	#$F9
+	lda	#$F9			; $FFF9 - FAT#1 magic?
 	ldy	#0
 	jsr	WrDataRamDxxx		;				[01AF]
-
+	iny
+	lda	#$FF
+	jsr	WrDataRamDxxx		;				[01AF]
 	iny
 	lda	#$FF
 	jsr	WrDataRamDxxx		;				[01AF]
 
-	iny
-	lda	#$FF
-	jsr	WrDataRamDxxx		;				[01AF]
+	LoadB	DirPointer+1, $D8	; page $D800 in RAM?
 
-	lda	#$D8
-	sta	DirPointer+1		;				[FC]
-
-	lda	#$F9
+	lda	#$F9			; $FFF9 - FAT#2 magic?
 	ldy	#0
 	jsr	WrDataRamDxxx		;				[01AF]
-
 	iny
 	lda	#$FF
 	jsr	WrDataRamDxxx		;				[01AF]
-
 	iny
 	lda	#$FF
 	jsr	WrDataRamDxxx		;				[01AF]
@@ -1941,79 +1750,67 @@ A_8A7C:					;				[8A7C]
 	jsr	StopWatchdog		;				[8DBD]
 
 	ldx	#1
-	jsr	P_8B30			;				[8B30]
+	jsr	ClearDirectory
 
 	MoveB	StartofDir, DirPointer+1
 
 	ldx	#0
 	ldy	#0
-A_8AE4:					;				[8AE4]
-	lda	FdcFileName,X		;				[036C]
+:	lda	FdcFileName,X		; volume label?			[036C]
 	inx
 	jsr	WrDataRamDxxx		;				[01AF]
-
 	iny
 	cpy	#$0B
-	bne	A_8AE4			;				[8AE4]
-
-	lda	#$08
+	bne	:-
+	lda	#$08			; volume label attribute?
 	jsr	WrDataRamDxxx		;				[01AF]
 
 	LoadB	SectorL, 7
-
 	jsr	SetupSector		;				[8899]
-
 	LoadB	NumOfSectors, 1
-
 	jsr	SetWatchdog		;				[8D90]
 	jsr	WriteSector		;				[8BEE]
 	jsr	StopWatchdog		;				[8DBD]
 
 	LoadB	VICCTR1, $1B		; screen on
-
 	clc
 	rts
 
-J_8B10:					;				[8B10]
+@tryagain:
 	dec	Counter			;				[0366]
-	bpl	A_8B24			;				[8B24]
+	bpl	@enderr
 
 	LoadB	ErrorCode, ERR_DISK_UNRELIABLE
 	jsr	ShowError		;				[926C]
 
 	LoadB	VICCTR1, $1B		; screen on (optimization, see above XXX)
-
 	clc
 	rts
 
-A_8B24:					;				[8B24]
+@enderr:
 	jsr	StopWatchdog		;				[8DBD]
 	jsr	Specify			;				[891A]
 	jsr	Recalibrate		;				[88F7]
+	jmp	FormatDiskLoop
 
-	jmp	J_8A1E			;				[8A1E]
-
-P_8B30:					;				[8B30]
+ClearDirectory:
+; clear directory under $D000, X has count of pages
 	LoadB	DirPointer, 0
 	MoveB	StartofDir, DirPointer+1
 
 	lda	#0
-	ldy	#0
-A_8B3D:					;				[8B3D]
-	jsr	WrDataRamDxxx		;				[01AF]
-
+	ldy	#0			; XXX tay
+:	jsr	WrDataRamDxxx		;				[01AF]
 	iny
-	bne	A_8B3D			;				[8B3D]
-
+	bne	:-
 	inc	DirPointer+1		;				[FC]
 	dex
-	bpl	A_8B3D			;				[8B3D]
-
+	bpl	:-
 	rts
 
 P_8B49:					;				[8B49]
 	tsx
-	stx	TempStackPtr		;				[0350]
+	stx	TempStackPtr		; XXX why? watchdog?		[0350]
 
 	LoadB	ErrorCode, ERR_OK
 	LoadB	FdcCommand, $66		; ???
@@ -2021,35 +1818,28 @@ P_8B49:					;				[8B49]
 	LoadB	FdcSector, 1
 
 	ldy	#0
-A_8B63:					;				[8B63]
-	lda	StatusRegister		;				[DE80]
+:	lda	StatusRegister		; XXX optimize bit+bpl		[DE80]
 	and	#$80
-	beq	A_8B63			;				[8B63]
-
+	beq	:-
 	lda	FdcCommand,Y		;				[0345]
 	sta	DataRegister		;				[DE81]
-
 	iny
 	cpy	#9
-	bne	A_8B63			;				[8B63]
+	bne	:-
 
-	ldx	#$0F
+	ldx	#15			; retries
 	ldy	#0
-A_8B79:					;				[8B79]
-	bit	StatusRegister		; FDC ready? XXX bbcf 7		[DE80]
-	bpl	A_8B79			; no, -> wait			[8B79]
+:	bit	StatusRegister		; FDC ready? XXX bbcf 7		[DE80]
+	bpl	:-			; no, -> wait			[8B79]
 
 	CmpBI	DataRegister, 0		; XXX LDA DataRegister + BEQ is enough
-	beq	A_8B8A			;				[8B8A]
+	beq	:+			;				[8B8A]
 
 	LoadB	ErrorCode, ERR_DISK_WRITE_PROTECT
-A_8B8A:					;				[8B8A]
-	iny
-	bne	A_8B79			;				[8B79]
-
+:	iny
+	bne	:--
 	dex
-	bpl	A_8B79			;				[8B79]
-
+	bpl	:--
 	jmp	ReadStatus		;				[8962]
 
 
@@ -2064,46 +1854,35 @@ FormatTrack:				;				[8B93]
 	LoadB	FdcFormatData+5, 0
 
 	ldy	#0
-A_8BB5:					;				[8BB5]
-	bit	StatusRegister		; FDC ready?			[DE80]
-	bpl	A_8BB5			; no, -> wait			[8BB5]
-
+:	bit	StatusRegister		; FDC ready?			[DE80]
+	bpl	:-
 	lda	FdcFormatData,Y		;				[0352]
 	sta	DataRegister		;				[DE81]
-
 	iny
 	cpy	#6			; 6 bytes written?
-	bne	A_8BB5			; no, -> more			[8BB5]
+	bne	:-
 
 ;* Supply the data field for each sector, see data sheet for details
 	LoadB	FdcSector, 1
 
-	ldx	#$08
-A_8BCC:					;				[8BCC]
-	ldy	#0
-
+	ldx	#8			; 9 sectors
+@loop:	ldy	#0
 ; Supply TCHRN information
-A_8BCE:					;				[8BCE]
-	lda	FdcTrack,Y		;				[0347]
-A_8BD1:					;				[8BD1]
-	bit	StatusRegister		; FDC ready?			[DE80]
-	bpl	A_8BD1			; no, -> wait			[8BD1]
-
+:	lda	FdcTrack,Y		;				[0347]
+:	bit	StatusRegister		; FDC ready?			[DE80]
+	bpl	:-			; no, -> wait			[8BD1]
 	sta	DataRegister		;				[DE81]
-
 	iny
 	cpy	#$04			; supplied neede 5 bytes?
-	bne	A_8BCE			; no, -> more			[8BCE]
-
+	bne	:--
 	inc	FdcSector		; next sector			[0349]
-
 	dex				; nine sectors done?
-	bpl	A_8BCC			; no, -> more			[8BCC]
-A_8BE4:					;				[8BE4]
-	lda	StatusRegister		;				[DE80]
-	and	#$20			; execution finished?
-	bne	A_8BE4			; no, -> wait			[8BE4]
+	bpl	@loop			; no, -> more			[8BCC]
 
+A_8BE4:					;				[8BE4]
+:	lda	StatusRegister		;				[DE80]
+	and	#%00100000		; execution finished?
+	bne	:-
 	jmp	ReadStatus		;				[8962]
 
 
@@ -2111,17 +1890,15 @@ A_8BE4:					;				[8BE4]
 WriteSector:				;				[8BEE]
 	ldy	#0
 	LoadB	FdcCommand, $65		; code for "write sector"
-A_8BF5:					;				[8BF5]
-	lda	StatusRegister		;				[DE80]
-	and	#$80			; FDC ready? ; XXX BPL like above
-	beq	A_8BF5			; no, -> wait			[8BF5]
 
+:	lda	StatusRegister		;				[DE80]
+	and	#$80			; FDC ready? ; XXX BPL like above
+	beq	:-
 	lda	FdcCommand,Y		;				[0345]
 	sta	DataRegister		;				[DE81]
-
 	iny
 	cpy	#9			; nine sectors done?
-	bne	A_8BF5			; no, -> more			[8BF5]
+	bne	:-
 
 	LoadB	PageCounter, 1
 
@@ -2129,19 +1906,18 @@ A_8BF5:					;				[8BF5]
 	jsr	WriteData		;				[0179]
 
 	lda	ErrorCode		; error found?			[0351]
-	bne	A_8C36			; yes, -> exit			[8C36]
+	bne	@err
 
 	jsr	ReadStatus		; error found?			[8962]
-	bcs	A_8C23			; yes, ->			[8C23]
+	bcs	@retry
 
 	lda	FdcST1			;				[033D]
 	and	#$F8
 	cmp	#$80			; error found?
-	beq	A_8C39			; no, ->			[8C39]
+	beq	@next			; no, ->			[8C39]
 
 ; Error found, but we try again. But: HOW MAY TRIES ???
-A_8C23:					;				[8C23]
-	dec	DirPointer+1		;				[FC]
+@retry:	dec	DirPointer+1		;				[FC]
 	dec	DirPointer+1		;				[FC]
 
 	jsr	Specify			;				[891A]
@@ -2152,25 +1928,23 @@ A_8C23:					;				[8C23]
 	jmp	WriteSector		;				[8BEE]
 
 ; Error found
-A_8C36:					;				[8C36]
-	jmp	StopWatchdog		;				[8DBD]
+@err:	jmp	StopWatchdog		;				[8DBD]
 
-A_8C39:					;				[8C39]
-	jsr	SetWatchdog		;				[8D90]
+@next:	jsr	SetWatchdog		;				[8D90]
 
 	inc	FdcEOT			;				[034B]
 	inc	FdcSector		;				[0349]
 
 	dec	NumOfSectors		; all sectors written?		[F7]
-	beq	A_8C75			; yes, -> exit			[8C75]
+	beq	@end			; yes, -> exit			[8C75]
 
 	CmpBI	FdcEOT, 9+1		; complete track written?
-	beq	A_8C50			; yes, -> next track		[8C50]
+	beq	@nexttrack		; yes, -> next track		[8C50]
 
 	jmp	WriteSector		;				[8BEE]
 
 ; Go to the next track
-A_8C50:					;				[8C50]
+@nexttrack:
 	LoadB	FdcEOT, 1
 	sta	FdcSector		;				[0349]
 
@@ -2184,18 +1958,16 @@ A_8C50:					;				[8C50]
 	sta	FdcHSEL			;				[0346]
 
 	cmp	#4			; head 1?
-	beq	A_8C72			; yes, -> continue		[8C72]
+	beq	@cont			; yes, -> continue		[8C72]
 
 ; Head 0 -> head 1 means: next track
 	inc	FdcTrack		;				[0347]
 	jsr	SeekTrack		;				[898A]
 
 	jsr	SetWatchdog		;				[8D90]
-A_8C72:					;				[8C72]
-	jmp	WriteSector		;				[8BEE]
+@cont:	jmp	WriteSector		;				[8BEE]
 
-A_8C75:					;				[8C75]
-	jmp	StopWatchdog		;				[8DBD]
+@end:	jmp	StopWatchdog		;				[8DBD]
 
 
 ;**  Read a sector
@@ -2204,25 +1976,21 @@ ReadSector:				;				[8C78]
 	sty	L_0119+1		;				[011A]
 
 	LoadB	FdcCommand, $66		; "Read sector" command
-
 ; Write the needed bytes into the FDC
-A_8C82:					;				[8C82]
-	lda	StatusRegister		;				[DE80]
+:	lda	StatusRegister		;				[DE80]
 	and	#$80			; FDC busy? XXX BPL like above
-	beq	A_8C82			; yes, -> wait			[8C82]
-
+	beq	:-
 	lda	FdcCommand,Y		;				[0345]
 	sta	DataRegister		;				[DE81]
-
 	iny
 	cpy	#9			; nine bytes written?
-	bne	A_8C82			; no, -> next one		[8C82]
+	bne	:-
 
 	CmpBI	TapeBuffer+39, 2
-	bcs	A_8CB7			;				[8CB7]
+	bcs	@sector			;				[8CB7]
 
 	and	#1
-	beq	A_8CB1			;				[8CB1]
+	beq	@part			;				[8CB1]
 
 	MoveB	TapeBuffer+38, L_0165+1	; number of bytes to read after	first 256 bytes
 
@@ -2231,28 +1999,28 @@ A_8C82:					;				[8C82]
 	LoadB	NumOfSectors, 1
 
 	jsr	RdBytesSector		;				[0139]
-	jmp	A_8CC0			;				[8CC0]
+	jmp	@cont
 
-A_8CB1:					;				[8CB1]
-	MoveB	TapeBuffer+38, L_0119+1
-A_8CB7:					;				[8CB7]
-	LoadB	PageCounter, 1		; read two pages
-
+; part of page
+@part:	MoveB	TapeBuffer+38, L_0119+1
+; whole sector
+@sector:
+	LoadB	PageCounter, 1		; read two pages, whole sector
 	ldy	#0
 	jsr	ReadPagesFlop		;				[0102]
-A_8CC0:					;				[8CC0]
-	lda	ErrorCode		; error found?			[0351]
-	bne	A_8CE9			; yes, -> 			[8CE9]
+
+@cont:	lda	ErrorCode		; error found?			[0351]
+	bne	@end			; yes, -> 			[8CE9]
 
 	jsr	ReadStatus		;				[8962]
-	bcs	A_8CD3			;				[8CD3]
+	bcs	@retry
 
 	lda	FdcST1			;				[033D]
 	and	#$F8
 	cmp	#$80
-	beq	A_8CEA			;				[8CEA]
-A_8CD3:					;				[8CD3]
-	dec	DirPointer+1		;				[FC]
+	beq	@next
+
+@retry:	dec	DirPointer+1		;				[FC]
 	dec	DirPointer+1		;				[FC]
 	jsr	StopWatchdog		;				[8DBD]
 	jsr	Specify			;				[891A]
@@ -2262,21 +2030,16 @@ A_8CD3:					;				[8CD3]
 
 	jmp	ReadSector		;				[8C78]
 
-A_8CE9:					;				[8CE9]
-	rts
+@end:	rts
 
-A_8CEA:					;				[8CEA]
-	jsr	SetWatchdog		;				[8D90]
-
+@next:	jsr	SetWatchdog		;				[8D90]
 	inc	FdcEOT			;				[034B]
 	inc	FdcSector		;				[0349]
-
 	CmpBI	TapeBuffer+39, 2	;				[0363]
 	bcc	A_8D36			;				[8D36]
 
 	subv	2
 	sta	TapeBuffer+39		;				[0363]
-
 	dec	NumOfSectors		;				[F7]
 	beq	A_8D36			;				[8D36]
 
@@ -2312,26 +2075,25 @@ A_8D33:					;				[8D33]
 A_8D36:					;				[8D36]
 	rts
 
+; unused
 E_8D37:					;				[8D37]
 	ldx	#2
+; unused
 A_8D39:					;				[8D39]
-	lda	Wait4FdcReady		;				[89C0]
+:	lda	Wait4FdcReady		;				[89C0]
 	and	#1
-	bne	A_8D39			;				[8D39]
-
+	bne	:-
 	rts
 
+; unused, hex digit printing directly to top of screen
 E_8D41:					;				[8D41]
 	pha
-
 	and	#$0F
 	tay
 	lda	D_8D80,Y		;				[8D80]
 	sta	VICSCN+1,X		;				[0401]
-
 	pla
 	pha
-
 	lsr	A
 	lsr	A
 	lsr	A
@@ -2339,7 +2101,6 @@ E_8D41:					;				[8D41]
 	tay
 	lda	D_8D80,Y		;				[8D80]
 	sta	VICSCN,X		;				[0400]
-
 	pla
 	rts
 
@@ -2347,26 +2108,21 @@ E_8D41:					;				[8D41]
 ;**  Initialize the program that should run in the stack page
 InitStackProg:				;				[8D5A]
 ; Preset the "Read data" command,
-	ldx	#$08
-A_8D5C:					;				[8D5C]
-	lda	CmdReadData,X		;				[8D77]
+	ldx	#8
+:	lda	CmdReadData,X		;				[8D77]
 	sta	FdcCommand,X		;				[0345]
-
 	dex
-	bpl	A_8D5C			;				[8D5C]
+	bpl	:-
 
 ; Actual copy
-	ldx	#$BE
-A_8D67:					;				[8D67]
-	lda	StackProgram,X		;				[9462]
+	ldx	#$BE	; XXX this must BE SEGMENT LENGTH XXX
+:	lda	StackProgram,X		;				[9462]
 	sta	StackPage1,X		;				[0101]
-
 	dex
-	bne	A_8D67			;				[8D67]
+	bne	:-
 
 	jsr	Specify			;				[891A]
-	jsr	Recalibrate		;				[88F7]
-
+	jsr	Recalibrate		; JMP instead of JSR+RTS?	[88F7]
 	rts
 
 
@@ -2375,6 +2131,7 @@ A_8D67:					;				[8D67]
 CmdReadData:				;				[8D77]
 .byte $66, $00, $02, $00, $01, $02, $01, $1B, $FF 
 
+; XXX unused, part of unused hex-printing routine
 D_8D80:					;				[8D80]
 ; '0123456789ABCDEF' in screencodes
 .byte "0123456789"
@@ -2409,17 +2166,14 @@ StopWatchdog:				;				[8DBD]
 
 J_8DCB:					;				[8DCB]
 	pha
-
 	txa
 	pha
-
 	tya
 	pha
 
 	jsr	IncrClock22		;				[F6BC]
 	jsr	ScanStopKey		;				[FFE1]
-
-	beq	A_8DDE			;				[8DDE]
+	beq	:+
 
 	pla
 	tay
@@ -2428,10 +2182,8 @@ J_8DCB:					;				[8DCB]
 	pla
 	rti
 
-A_8DDE:					;				[8DDE]
-	jsr	InitSidCIAIrq2		;				[FDA3]
+:	jsr	InitSidCIAIrq2		;				[FDA3]
 	jsr	InitScreenKeyb		;				[E518]
-
 	jmp	(BasicNMI)		;				[A002]
 
 
@@ -2441,15 +2193,13 @@ A_8DDE:					;				[8DDE]
 ; XXX NMI is called from watchdog timer (CIA2)
 CartNMI:				;				[8DE7]
 	pha
-
 	PushB	P6510
 	LoadB	P6510, $37
 
-	lda	CIA2IRQ			; XXX bbsf			[DD0D]
-	bpl	A_8E05			;				[8E05]
-
-	and	#2
-	beq	A_8E05			;				[8E05]
+	lda	CIA2IRQ			; XXX what is bit 7 and 1?
+	bpl	:+
+	and	#%00000010
+	beq	:+
 
 	inc	ErrorCode		; XXX ??? why			[0351]
 	ldx	TempStackPtr		; XXX ??? why 			[0350]
@@ -2459,13 +2209,13 @@ CartNMI:				;				[8DE7]
 
 	jmp	StopWatchdog		;				[8DBD]
 
-A_8E05:					;				[8E05]
-	jsr	NewRoutines		;				[80C0]
+:	jsr	NewRoutines		;				[80C0]
 
 	PopB	P6510
-
 	pla
 	jmp	J_8DCB			;				[8DCB]
+
+
 
 ReadDirectory:				;				[8E0F]
 	LoadB	NumOfSectors, 1
@@ -2493,22 +2243,19 @@ J_8E18:					;				[8E18]
 	jsr	ReadSector		;				[8C78]
 
 	CmpBI	Counter, 9		; whole track?
-	bne	A_8E55			;				[8E55]
+	bne	@nottrack		;				[8E55]
 
 	LoadB	ErrorCode, ERR_DISK_MAY_BE_DAMAGED
-	bne	A_8E5D			; always! (XXX 2 bytes for BNE but 1 for RTS already)
-A_8E55:					;				[8E55]
+	bne	@end			; always! (XXX 2 bytes for BNE but 1 for RTS already)
+
+@nottrack:
 	inc	Counter			;				[0366]
-
 	lda	ErrorCode		; error found?			[0351]
-	bne	A_8E5E			;				[8E5E]
-A_8E5D:					;				[8E5D]
-	rts
+	bne	@err			;				[8E5E]
+@end:	rts
 
-A_8E5E:					;				[8E5E]
-	jsr	Specify			;				[891A]
+@err:	jsr	Specify			;				[891A]
 	jsr	Recalibrate		;				[88F7]
-
 	jmp	J_8E18			;				[8E18]
 
 
@@ -2523,15 +2270,13 @@ DisplayDir:				;				[8E67]
 	LoadB	VICCTR1, $1B		; screen on
 
 	lda	ErrorCode		; error found?			[0351]
-	beq	A_8E80			; no, ->			[8E80]
-
+	beq	:+
 	clc
 	rts
 
 
 ; ??? what has been loaded exactly at this point ???
-A_8E80:					;				[8E80]
-	LoadB	DirPointer, 0
+:	LoadB	DirPointer, 0
 	MoveB	StartofDir, DirPointer+1
 
 	ldy	#$0B
@@ -2556,12 +2301,9 @@ A_8E95:					;				[8E95]
 ; Convert to upper case, if needed
 	lda	Z_FD			;				[FD]
 	cmp	#$60			; < 'a' ?
-	bcc	A_8EA6			; yes, ->			[8EA6]
-
-	sec
-	sbc	#$20
-A_8EA6:					;				[8EA6]
-	jsr	OutByteChan		;				[FFD2]
+	bcc	:+			; yes, ->			[8EA6]
+	subv	$20
+:	jsr	OutByteChan		;				[FFD2]
 
 	lda	Z_FD			;				[FD]
 ; ??? why ???, see next instruction
@@ -2573,7 +2315,7 @@ A_8EA6:					;				[8EA6]
 	cpy	#$0B
 	bne	A_8E95			;				[8E95]
 
-	lda	#$0D
+	lda	#13			; new line
 	jsr	OutByteChan		;				[FFD2]
 
 	jmp	J_8F1A			;				[8F1A]
@@ -2691,6 +2433,7 @@ A_8F46:					;				[8F46]
 	pla
 	rts
 
+
 FindBlank:				;				[8F4F]
 	LoadB	NumDirSectors, 7
 	LoadB	SectorL, 7		; XXX optimization, directory starts at sector 7
@@ -2708,35 +2451,28 @@ A_8F62:					;				[8F62]
 	LoadB	TapeBuffer+38, 0
 
 	jsr	ReadSectors		;				[885E]
-
 	lda	ErrorCode		; error found?			[0351]
-	beq	A_8F82			;				[8F82]
+	beq	@noerr			;				[8F82]
 
 	clc
 	rts
 
-A_8F82:					;				[8F82]
-	LoadB	DirPointer, 0
+@noerr:	LoadB	DirPointer, 0
 	MoveB	StartofDir, DirPointer+1
 A_8F8B:					;				[8F8B]
 	ldx	#0
 	ldy	#0
-A_8F8F:					;				[8F8F]
-	jsr	RdDataRamDxxx		;				[01A0]
-
+:	jsr	RdDataRamDxxx		;				[01A0]
 	iny
 	cmp	#0
 	beq	A_8FD3			;				[8FD3]
-
 	cmp	#$E5
 	beq	A_8FD3			;				[8FD3]
-
 	cmp	FdcFileName,X		;				[036C]
 	bne	A_8FA7			;				[8FA7]
-
 	inx
 	cpx	#$0A
-	bne	A_8F8F			;				[8F8F]
+	bne	:-
 
 	sec
 	rts
@@ -2771,20 +2507,15 @@ A_8FA7:					;				[8FA7]
 A_8FD3:					;				[8FD3]
 	ldy	#$1F
 	lda	#0
-A_8FD7:					;				[8FD7]
-	jsr	WrDataRamDxxx		;				[01AF]
-
+:	jsr	WrDataRamDxxx		;				[01AF]
 	dey
-	bpl	A_8FD7			;				[8FD7]
+	bpl	:-
 
 	ldy	#$0A
-A_8FDF:					;				[8FDF]
-	lda	FdcFileName,Y		;				[036C]
+:	lda	FdcFileName,Y		;				[036C]
 	jsr	WrDataRamDxxx		;				[01AF]
-
 	dey
-	bpl	A_8FDF			;				[8FDF]
-
+	bpl	:-
 	clc
 	rts
 
@@ -2792,27 +2523,23 @@ A_8FDF:					;				[8FDF]
 ;**  Check the file name
 FindFile:				;				[8FEA]
 	lda	LengthFileName		; file name present?		[B7]
-	bne	A_8FF5			; yes, ->			[8FF5]
+	bne	@cont
 
 	LoadB	ErrorCode, ERR_NO_NAME_SPECIFIED
-
 	clc				; error found
 	rts
 
-A_8FF5:					;				[8FF5]
-	LoadB	ErrorCode, ERR_OK
+@cont:	LoadB	ErrorCode, ERR_OK
 
 	jsr	StripSP			;				[90A7]
 	jsr	PadOut			;				[90CE]
-
 	lda	ErrorCode		; error found?			[0351]
-	beq	A_9007			; no, -> continue		[9007]
+	beq	@cont2
 
 	clc
 	rts
 
-A_9007:					;				[9007]
-	lda	FdcFileName		;				[036C]
+@cont2:	lda	FdcFileName		;				[036C]
 	cmp	#'$'			; directory wanted?
 	bne	Search			;				[9011]
 
@@ -3018,31 +2745,25 @@ A_9107:					;				[9107]
 	pha				; save Y
 
 	ldx	#8
-A_910B:					;				[910B]
-	iny
+:	iny
 	lda	(AddrFileName),Y	;				[BB]
 	sta	FdcFileName,X		;				[036C]
-
 	inx
 	cpx	#11
-	bne	A_910B			;				[910B]
+	bne	:-
 
 	pla
 	tay				; restore Y
-
 	cpy	#8
-	beq	A_9126			;				[9126]
+	beq	:++
 
 ; Fill up with spaces
 	lda	#' '
-A_911E:					;				[911E]
-	sta	FdcFileName,Y		;				[036C]
-
+:	sta	FdcFileName,Y		;				[036C]
 	iny
 	cpy	#8
-	bne	A_911E			;				[911E]
-A_9126:					;				[9126]
-	rts
+	bne	:-
+:	rts
 
 
 SaveRloc:				;				[9127]
@@ -3070,30 +2791,22 @@ SaveRloc:				;				[9127]
 	jsr	BN2DEC			;				[920E]
 
 	ldy	#$04
-	lda	#$30
-A_9150:					;				[9150]
-	cmp	NumDirSectors,Y		;				[0364]
-	bne	A_915C			;				[915C]
-
+	lda	#'0'
+:	cmp	NumDirSectors,Y		;				[0364]
+	bne	:+			;				[915C]
 	dey
-	bpl	A_9150			;				[9150]
-
+	bpl	:-			;				[9150]
 	jsr	OutByteChan		; JMP instead of JSR+RTS	[FFD2]
-
 	rts
 
-A_915C:					;				[915C]
-	tya
+:	tya
 	pha
-
 	lda	NumDirSectors,Y		;				[0364]
 	jsr	OutByteChan		;				[FFD2]
-
 	pla
 	tay
 	dey
-	bpl	A_915C			;				[915C]
-
+	bpl	:-			;				[915C]
 	rts
 
 
@@ -3159,30 +2872,22 @@ A_91DD:					;				[91DD]
 	pla
 A_91DE:					;				[91DE]
 	ldy	#5
-	lda	#$30
-A_91E2:					;				[91E2]
-	cmp	NumDirSectors,Y		;				[0364]
-	bne	A_91EE			;				[91EE]
-
+	lda	#'0'
+:	cmp	NumDirSectors,Y		;				[0364]
+	bne	:+
 	dey
-	bpl	A_91E2			;				[91E2]
-
+	bpl	:-
 	jsr	OutByteChan		; JMP instead of JSR+RTS XXX	[FFD2]
-
 	rts
 
-A_91EE:					;				[91EE]
-	tya
+:	tya
 	pha
-
 	lda	NumDirSectors,Y		;				[0364]
 	jsr	OutByteChan		;				[FFD2]
-
 	pla
 	tay
 	dey
-	bpl	A_91EE			;				[91EE]
-
+	bpl	:-
 	rts
 
  
@@ -3192,10 +2897,8 @@ D_91FC:					;				[91FC]
 
 BN2DEC:					;				[920E]
 	ldy	#5			; start with 100000
-A_9210:					;				[9210]
-	ldx	#0
-A_9212:					;				[9212]
-	lda	TapeBuffer+34		;				[035E]
+@loop:	ldx	#0
+:	lda	TapeBuffer+34		;				[035E]
 	sec
 	sbc	D_925A,Y		;				[925A]
 	sta	TapeBuffer+34		;				[035E]
@@ -3206,16 +2909,14 @@ A_9212:					;				[9212]
 
 	lda	TapeBuffer+36		;				[0360]
 	sbc	D_9266,Y		;				[9266]
-	bcc	A_9233			;				[9233]
+	bcc	:+
 
 	sta	TapeBuffer+36		;				[0360]
-
 	inx
-	bne	A_9212			;				[9212]
+	bne	:-
 
 ; Oops, we subtracted to much. add it again
-A_9233:					;				[9233]
-	lda	TapeBuffer+34		;				[035E]
+:	lda	TapeBuffer+34		;				[035E]
 	clc
 	adc	D_925A,Y		;				[925A]
 	sta	TapeBuffer+34		;				[035E]
@@ -3225,18 +2926,15 @@ A_9233:					;				[9233]
 	sta	TapeBuffer+35		;				[035F]
 
 	txa
-	clc
-	adc	#$30
+	addv	'0'
 	sta	NumDirSectors,Y		;				[0364]
 
 	dey				; next multiple of ten?
-	bne	A_9210			; yes, ->			[9210]
+	bne	@loop			; yes, ->			[9210]
 
 	lda	TapeBuffer+34		;				[035E]
-	clc
-	adc	#$30
+	addv	'0'
 	sta	NumDirSectors,Y		;				[0364]
-
 	rts
 
 
@@ -3252,39 +2950,31 @@ D_9266:					;				[9266]
 ;**  Show an error message
 ShowError:				;				[926C]
 	ldx	MSGFLG			; direct mode?			[9D]
-	bmi	A_9271			; yes, -> display error		[9271]
-
+	bmi	:+			; yes, -> display error		[9271]
 	rts
 
-A_9271:					;				[9271]
-	tax
+:	tax
 	lda	TblErrorMsgL,X		;				[92DC]
 	sta	DirPointer		;				[FB]
-
 	lda	TblErrorMsgH,X		;				[92EE]
 	sta	DirPointer+1		;				[FC]
 
 	ldy	#0
 	jsr	StopWatchdog		;				[8DBD]
-J_9281:					;				[9281]
-	lda	(DirPointer),Y		; end of message?		[FB]
-	beq	A_9292			; yes, -> exit			[9292]
 
+:	lda	(DirPointer),Y		; end of message?		[FB]
+	beq	@end			; yes, -> exit			[9292]
 	tya
 	pha
 ; Note: saving Y is not needed, OUTBYTECHAN does save Y
-
 	lda	(DirPointer),Y		;				[FB]
 	jsr	OutByteChan		;				[FFD2]
-
 	pla
 	tay
-
 	iny
-	jmp	J_9281			;				[9281]
+	jmp	:-
 
-A_9292:					;				[9292]
-	clc
+@end:	clc
 	rts
 
 
@@ -3357,12 +3047,14 @@ Msg11:
 .asciiz "NO NAME SPECIFIED"
  
 D_943E:					;				[943E]
+; volume label? BIOS Parameter Block? (see FormatDisk)
 .byte $EB, $28, $90, $43, $36, $34, $20, $50	; .(.C64 P  $943E
 .byte $4E, $43, $49, $00, $02, $02, $01, $00	; NCI.....  $9446
 .byte $02, $70, $00, $A0, $05, $F9, $03, $00	; .p......  $944E
 .byte $09, $00, $02, $00, $00, $00, $00, $00	; ........  $9456
-.byte $00, $00, $00, $00			; ....  $945E
 
+; unused
+.byte $00, $00, $00, $00			; ....  $945E
 
 ;**  Program that is meant to run in the Stack
 StackProgram:				;				[9462]
@@ -3378,11 +3070,11 @@ StackPage1:				;				[0101]
 ReadPagesFlop:				;				[0102]
 	tsx
 	stx	TempStackPtr		;				[0350]
-A_0106:					;				[0106]
+ReadPagesFlopLoop:
 	ldx	#$30			; 64K RAM config		[30]
-A_0108:					;				[0108]
-	bit	StatusRegister		; FDC ready?			[DE80]
-	bpl	A_0108			; no, -> wait			[0108]
+ReadPagesFlopNextByte:
+:	bit	StatusRegister		; FDC ready?			[DE80]
+	bpl	:-
 
 	lda	DataRegister		; read byte			[DE81]
 	stx	P6510			; 64K RAM config
@@ -3393,27 +3085,25 @@ A_0108:					;				[0108]
 ; "#0" in the next line can be changed by the program
 L_0119:					;				[0119]
 	cpy	#0			; finished with reading?
-	bne	A_0108			; no, -> next byte		[0108]
+	bne	ReadPagesFlopNextByte	; no, -> next byte		[0108]
 
 	inc	DirPointer+1		;				[FC]
 	dec	PageCounter		; more pages to be read?	[02]
-	bpl	A_0106	 		; yes, ->			[0106]
+	bpl	ReadPagesFlopLoop	; yes, ->			[0106]
 
 	cpy	#0			; whole sector read?
-	beq	A_0138			; yes, -> exit			[0138]
+	beq	@end			; yes, -> exit			[0138]
 	inc	PageCounter		;				[02]
 
 ; Read the rest of the sector, FDC expects this
-A_0129:					;				[0129]
-	bit	StatusRegister		; FDC ready?			[DE80]
-	bpl	A_0129			; no, -> wait			[0129]
+:	bit	StatusRegister		; FDC ready?			[DE80]
+	bpl	:-			; no, -> wait			[0129]
 	lda	DataRegister		; dummy read			[DE81]
 	iny				; finished reading?
-	bne	A_0129			; no, -> next byte		[0129]
+	bne	:-			; no, -> next byte		[0129]
 	dec	PageCounter		; more pages to be read?	[02]
-	bpl	A_0129			; yes, ->			[0129]
-A_0138:					;				[0138]
-	rts
+	bpl	:-			; yes, ->			[0129]
+@end:	rts
 
 
 ;**  Read a number of bytes from the momentary sector
@@ -3424,24 +3114,21 @@ RdBytesSector:				;				[0139]
 	stx	TempStackPtr		;				[0350]
 
 	ldx	#$30			; 64K RAM config
-A_013F:					;				[013F]
-	bit	StatusRegister		; FDC ready?			[DE80]
-	bpl	A_013F			; no, -> wait			[013F]
-
+:	bit	StatusRegister		; FDC ready?			[DE80]
+	bpl	:-			; no, -> wait			[013F]
 	lda	DataRegister		; read byte			[DE81]
 	stx	P6510			; 64K RAM config
 	sta	(DirPointer),Y		; store byte			[FB]
 	LoadB	P6510, $37		; I/O+ROM config (XXX should rather restore config from entry point)
 	iny				; finished reading?
-	bne	A_013F			; no, -> next byte		[013F]
-
+	bne	:-			; no, -> next byte		[013F]
 ; Next page in RAM
 	inc	DirPointer+1		;				[FC]
 
 ; Read next number of bytes. See L_0165.
-A_0154:					;				[0154]
-	bit	StatusRegister		; FDC ready?			[DE80]
-	bpl	A_0154			; no, -> wait			[0154]
+RdBytesSectorByte:
+:	bit	StatusRegister		; FDC ready?			[DE80]
+	bpl	:-			; no, -> wait			[0154]
 
 	lda	DataRegister		; read byte			[DE81]
 	stx	P6510			; 64K RAM config		[01]
@@ -3452,49 +3139,42 @@ A_0154:					;				[0154]
 ; "#0" in the next line can be changed by the program
 L_0165:					;				[0165]
 	cpy	#0			; finished with reading?
-	bne	A_0154			; no, -> next byte		[0154]
+	bne	RdBytesSectorByte	; no, -> next byte		[0154]
 	cpy	#0			; whole sector read? XXX? always BEQ here?
-	beq	A_0178			; yes, -> exit			[0178]
+	beq	@end			; yes, -> exit			[0178]
 
 ; Read the rest of the sector, FDC expects this
-A_016D:					;				[016D]
-	bit	StatusRegister		; FDC ready?			[DE80]
-	bpl	A_016D			; no, -> wait			[016D]
+:	bit	StatusRegister		; FDC ready?			[DE80]
+	bpl	:-			; no, -> wait			[016D]
 
 	lda	DataRegister		; dummy read			[DE81]
 	iny				; finished reading?
-	bne	A_016D			; no, -> next byte		[016D]
-A_0178:					;				[0178]
-	rts
+	bne	:-			; no, -> next byte		[016D]
+@end:	rts
 
 
 ;**  Write 512 bytes of data to the disk
 WriteData:				;				[0179]
 	tsx				; save the SP in case there is an error
 	stx	TempStackPtr		;				[0350]
-A_017D:					;				[017D]
-	ldx	#$30			; 64 KB of RAM visible
-	stx	P6510			;				[01]
 
+:	ldx	#$30			; 64 KB of RAM visible
+	stx	P6510			;				[01]
 	lda	(DirPointer),Y		; read byte from RAM under I/O	[FB]
 	ldx	#$37
 	stx	P6510			; I/O+ROM
-A_0187:				;				[0187]
-	bit	StatusRegister		; FDC ready?			[DE80]
-	bpl	A_0187			; no, -> wait			[0187]
-
+:	bit	StatusRegister		; FDC ready?			[DE80]
+	bpl	:-			; no, -> wait			[0187]
 	sta	DataRegister		;				[DE81]
-
 	iny
-	bne	A_017D			;				[017D]
+	bne	:--
 
 	inc	DirPointer+1		;				[FC]
 	dec	PageCounter		; two pages done?		[02]
-	bpl	A_017D			; no, -> next 256 bytes		[017D]
-
+	bpl	:--			; no, -> next 256 bytes		[017D]
 	rts
 
-
+; unused!
 StackPage153:				;				[0199]
 	LoadB	P6510, $35		; I/O+RAM only
 	jmp	(J_00FE)		;				[00FE]
