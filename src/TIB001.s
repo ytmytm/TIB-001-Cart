@@ -2988,12 +2988,13 @@ LoadBootExe:				;				[9294]
 	ldy	#>$0801
 	jmp	LoadBootExe2		;				[869D]
 
- 
+
+; unused, FAT volume label? but format doesn't reference it 
 S_92A7:
 .asciiz "T.I.B.  VOL"
 
+; unused, ROM doesn't print this message
 S_92B3:					;				[92B3]
-
 ;'T.I.B PLC DISK DRIVER INSTALLED@' in screencodes
 .byte $14, $2E, $09, $2E, $02, $20, $10, $0C, $03, $20, $04, $09, $13, $0B, $20, $04, $12, $09, $16, $05, $12, $20, $09, $0E, $13, $14, $01, $0C, $0C, $05, $04, $00
  
@@ -3008,7 +3009,6 @@ TblErrorMsgL:				;				[92DC]
 TblErrorMsgH:				;				[92EE]
 .hibytes TblErrorMsg
  
-S_9300:
 Msg00:
 .asciiz "OK"
 Msg01:
@@ -3042,7 +3042,7 @@ Msg0E:
 Msg0F:
 .asciiz "DISK FOUND TO BE UNRELIABLE"
 Msg10:
-.asciiz "NAME TO LONG"
+.asciiz "NAME TO LONG" ; XXX typo!
 Msg11:
 .asciiz "NO NAME SPECIFIED"
  
