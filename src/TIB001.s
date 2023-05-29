@@ -20,104 +20,103 @@
 ; Remarks:
 ; - The data sheet speaks of "cylinders", nowadays the word "track" is favored.
 
-
-.eq P6510		= $01	; DR onboard I/O port of 6510
-.eq PageCounter		= $02
-.eq PtrBasText		= $7A	; pointer to momentary byte in BASIC line
-.eq StatusIO		= $90	; Status of KERNAL after action
-.eq FlgLoadVerify	= $93	; 0 = LOAD, 1 = VERIFY
-.eq MSGFLG		= $9D	; flag: $80 = direct mode, 0 = program mode
-.eq EndAddrBuf		= $AE	; end of cassette / end of program
-.eq LengthFileName	= $B7	; length of filename
-.eq SecondAddress	= $B9	; actual secondary address
-.eq DeviceNumber	= $BA	; actual device number
-.eq AddrFileName	= $BB	; pointer to string with filename
+P6510		= $01	; DR onboard I/O port of 6510
+PageCounter		= $02
+PtrBasText		= $7A	; pointer to momentary byte in BASIC line
+StatusIO		= $90	; Status of KERNAL after action
+FlgLoadVerify	= $93	; 0 = LOAD, 1 = VERIFY
+MSGFLG		= $9D	; flag: $80 = direct mode, 0 = program mode
+EndAddrBuf		= $AE	; end of cassette / end of program
+LengthFileName	= $B7	; length of filename
+SecondAddress	= $B9	; actual secondary address
+DeviceNumber	= $BA	; actual device number
+AddrFileName	= $BB	; pointer to string with filename
 
 ; The used RS232 variabels:
-.eq NumOfSectors	= $F7	; number of sectors to read or write
-.eq SectorL		= $F8	; --- number of the sector that is wanted
-.eq SectorH		= $F9	; -/
-.eq TempStore		= $FA
+NumOfSectors	= $F7	; number of sectors to read or write
+SectorL		= $F8	; --- number of the sector that is wanted
+SectorH		= $F9	; -/
+TempStore		= $FA
 
-.eq DirPointer		= $FB
-.eq Z_FD		= $FD
-.eq J_00FE		= $FE
-.eq Z_FF		= $FF
-.eq StackPage		= $0100
-.eq NmiVector		= $0318	; pointer to NMI-interrupt ($FE47)
-.eq ICKOUT		= $0320	; pointer to KERNAL CHKOUT routine
-.eq ILOAD		= $0330	; pointer to KERNAL LOAD routine
-.eq ISAVE		= $0332	; pointer to KERNAL SAVE routine
+DirPointer		= $FB
+Z_FD		= $FD
+J_00FE		= $FE
+Z_FF		= $FF
+StackPage		= $0100
+NmiVector		= $0318	; pointer to NMI-interrupt ($FE47)
+ICKOUT		= $0320	; pointer to KERNAL CHKOUT routine
+ILOAD		= $0330	; pointer to KERNAL LOAD routine
+ISAVE		= $0332	; pointer to KERNAL SAVE routine
 
 ; $0334-$033B = original free area = 8 bytes
-.eq StartofDir		= $0334
-.eq EndofDir		= $0335
-.eq NewICKOUT		= $0336
-.eq NewNMI		= $0338
+StartofDir		= $0334
+EndofDir		= $0335
+NewICKOUT		= $0336
+NewNMI		= $0338
 
 
-;.eq Fdc		= $034	; 
+;Fdc		= $034	; 
 
-.eq TapeBuffer		= $033C	; cassette buffer
-.eq FdcST0		= $033C ; Status Regiser 0
-.eq FdcST1		= $033D ; Status Regiser 1
-.eq FdcST2		= $033E ; Status Regiser 2
-.eq FdcC		= $033F ; Cylinder
-.eq FdcH		= $0340 ; Head
-.eq FdcR		= $0341 ; Record = sector
-.eq FdcN		= $0342 ; Number of data bytes written into a sector
-.eq FdcST3		= $0343 ; Status Regiser 3
-.eq FdcPCN		= $0344	; present cylinder = track
-.eq FdcCommand		= $0345 ; 
-.eq FdcHSEL		= $0346	; head, shifted twice, needed for FDC commands
-.eq FdcTrack		= $0347	; 
-.eq FdcHead		= $0348	; 
-.eq FdcSector		= $0349	; 
-.eq FdcNumber		= $034A	; bytes/sector during format, 2 = 512 b/s
-.eq FdcEOT		= $034B	; end of track
+TapeBuffer		= $033C	; cassette buffer
+FdcST0		= $033C ; Status Regiser 0
+FdcST1		= $033D ; Status Regiser 1
+FdcST2		= $033E ; Status Regiser 2
+FdcC		= $033F ; Cylinder
+FdcH		= $0340 ; Head
+FdcR		= $0341 ; Record = sector
+FdcN		= $0342 ; Number of data bytes written into a sector
+FdcST3		= $0343 ; Status Regiser 3
+FdcPCN		= $0344	; present cylinder = track
+FdcCommand		= $0345 ; 
+FdcHSEL		= $0346	; head, shifted twice, needed for FDC commands
+FdcTrack		= $0347	; 
+FdcHead		= $0348	; 
+FdcSector		= $0349	; 
+FdcNumber		= $034A	; bytes/sector during format, 2 = 512 b/s
+FdcEOT		= $034B	; end of track
 
-.eq FdcTrack2		= $034E	; = FdcTrack and $FE  ???
+FdcTrack2		= $034E	; = FdcTrack and $FE  ???
 
-.eq TempStackPtr	= $0350	; temporary storage for the stack pointer
+TempStackPtr	= $0350	; temporary storage for the stack pointer
 
-.eq FdcFormatData	= $0352	; block of data used by the format command
+FdcFormatData	= $0352	; block of data used by the format command
 
-.eq NumDirSectors	= $0364	; number of directory sectors
+NumDirSectors	= $0364	; number of directory sectors
 				; also used deteming number of free bytes
-.eq Counter		= $0366
+Counter		= $0366
 
-.eq DirSector		= $0369	; momentary directory sector
-.eq FdcFileName		= $036C	; temp storage for file name
+DirSector		= $0369	; momentary directory sector
+FdcFileName		= $036C	; temp storage for file name
 
-.eq ErrorCode		= $0351	; $0B = file not found
+ErrorCode		= $0351	; $0B = file not found
 				; $10 = first part of name greater than 8 chars
 				; $11 = no file name
 
-.eq NewILOAD		= $03FC
-.eq NewISAVE		= $03FE
-.eq VICSCN		= $0400	; screenmemory
+NewILOAD		= $03FC
+NewISAVE		= $03FE
+VICSCN		= $0400	; screenmemory
 
 
-.eq BasicCold		= $A000
-.eq BasicNMI		= $A002
-.eq VICCTR1		= $D011	; controlregister 1
-.eq VICLINE		= $D012	; line to generate IRQ
-.eq ColourRAM		= $D800	; color RAM area for screen
-.eq CIA1DRB		= $DC01	; data register port B
-.eq CIA2TI1L		= $DD04	; low byte timer 1
-.eq CIA2TI1H		= $DD05	; high byte timer 1
-.eq CIA2TI2L		= $DD06	; low byte timer 2
-.eq CIA2TI2H		= $DD07	; high byte timer 2
-.eq CIA2IRQ		= $DD0D	; IRQ-register
-.eq CIA2CRA		= $DD0E	; controlregister 1
-.eq CIA2CRB		= $DD0F	; controlregister 2
+BasicCold		= $A000
+BasicNMI		= $A002
+VICCTR1		= $D011	; controlregister 1
+VICLINE		= $D012	; line to generate IRQ
+ColourRAM		= $D800	; color RAM area for screen
+CIA1DRB		= $DC01	; data register port B
+CIA2TI1L		= $DD04	; low byte timer 1
+CIA2TI1H		= $DD05	; high byte timer 1
+CIA2TI2L		= $DD06	; low byte timer 2
+CIA2TI2H		= $DD07	; high byte timer 2
+CIA2IRQ		= $DD0D	; IRQ-register
+CIA2CRA		= $DD0E	; controlregister 1
+CIA2CRB		= $DD0F	; controlregister 2
 
 
 ; Registers for the GM82C765B
 ;  Note: No other address lines than A0 are used so in fact any address in its 
 ;        page could be used.
 ;        The GM82C765B is used in programmed I/O mode, thus no DMA is used.
-.eq StatusRegister	= $DE80	; bit, if bit = (H) then ...
+StatusRegister	= $DE80	; bit, if bit = (H) then ...
 				;  0  =  FDD0 is busy
 				;  1  =  FDD1 is busy
 				;  2  =  FDD2 is busy
@@ -127,6 +126,7 @@
 				;  6  =  data direcion, 765 => CPU
 				;  7  =  data register = ready
 
+.feature c_comments
 /*
 Status Register 0
 
@@ -170,30 +170,31 @@ Status Register 3
  b7     FT  Fault (if supported: 1=Drive failure)
 */
 
-.eq DataRegister	= $DE81
-.eq ResetFDC		= $DF80
+DataRegister	= $DE81
+ResetFDC		= $DF80
 
 
-.eq InitScreenKeyb	= $E518
-.eq IncrClock22		= $F6BC
-.eq SetVectorsIO2	= $FD15
-.eq TestRAM2		= $FD50
-.eq InitSidCIAIrq2	= $FDA3
-.eq InitialiseVIC2	= $FF5B
-.eq OutByteChan		= $FFD2
-.eq ScanStopKey		= $FFE1
+InitScreenKeyb	= $E518
+IncrClock22		= $F6BC
+SetVectorsIO2	= $FD15
+TestRAM2		= $FD50
+InitSidCIAIrq2	= $FDA3
+InitialiseVIC2	= $FF5B
+OutByteChan		= $FFD2
+ScanStopKey		= $FFE1
 
-.eq D_FFFA		= $FFFA
-.eq D_FFFB		= $FFFB
+D_FFFA		= $FFFA
+D_FFFB		= $FFFB
 
 
-.ba $8000				; Begin address of this block
+.segment "rom8000"
+
 S_8000:
-.wo CartInit				;				[8087]
-.wo CartNMI				;				[8DE7]
+.word CartInit				;				[8087]
+.word CartNMI				;				[8DE7]
  
 S_8004:
-.by $C3, $C2, $CD, $38, $30		; CBM80, identifying code for cartridge
+.byte $C3, $C2, $CD, $38, $30		; CBM80, identifying code for cartridge
 
 
 ; ???  WHERE IS THIS JUMP TABLE USED  ???
@@ -504,10 +505,11 @@ A_8171:					;				[8171]
 
  
 Text1:					;				[8172]
-.tp 'PLEASE LEAVE UNTIL C64 + DRIVE SYNC UP@'
+;.tp 'PLEASE LEAVE UNTIL C64 + DRIVE SYNC UP@'
+.byte $10, $0C, $05, $01, $13, $05, $20, $0C, $05, $01, $16, $05, $20, $15, $0E, $14, $09, $0C, $20, $03, $36, $34, $20, $2B, $20, $04, $12, $09, $16, $05, $20, $13, $19, $0E, $03, $20, $15, $10, $00
 Text2:					;				[8199]
-.tp ' OR PRESS RUN/STOP IF NO DISC PRESENT @'
-
+;.tp ' OR PRESS RUN/STOP IF NO DISC PRESENT @'
+.byte $20, $0F, $12, $20, $10, $12, $05, $13, $13, $20, $12, $15, $0E, $2F, $13, $14, $0F, $10, $20, $09, $06, $20, $0E, $0F, $20, $04, $09, $13, $03, $20, $10, $12, $05, $13, $05, $0E, $14, $20, $00
 
 ;**  Rename a file 
 Rename:					;				[81C0]
@@ -2708,10 +2710,12 @@ A_8D67:					;				[8D67]
 
 ;**  Bytes need for the command "Read data"  IMHO
 CmdReadData:				;				[8D77]
-.by $66, $00, $02, $00, $01, $02, $01, $1B, $FF 
-D_8D80:					;				[8D80]
-.tp '0123456789ABCDEF'
+.byte $66, $00, $02, $00, $01, $02, $01, $1B, $FF 
 
+D_8D80:					;				[8D80]
+; '0123456789ABCDEF' in screencodes
+.byte "0123456789"
+.byte $01, $02, $03, $04, $05, $06 ; 
 
 ;**  Set the timer of CIA2 to generate an IRQ when FDC has to wait too long
 SetWatchdog:				;				[8D90]
@@ -3622,8 +3626,7 @@ A_91EE:					;				[91EE]
 
  
 D_91FC:					;				[91FC]
-.tx 'TOTAL BYTES FREE '
-.by $00
+.asciiz "TOTAL BYTES FREE "
 
 
 BN2DEC:					;				[920E]
@@ -3678,11 +3681,11 @@ A_9233:					;				[9233]
 
 ;** The hexadecimal values of 0, 10, 100, 1000, 10000 and 100000 in three bytes
 D_925A:					;				[925A]
-.by $00, $0A, $64, $E8, $10, $A0
+.byte $00, $0A, $64, $E8, $10, $A0
 D_9260:					;				[9260]
-.by $00, $00, $00, $03, $27, $86
+.byte $00, $00, $00, $03, $27, $86
 D_9266:					;				[9266]
-.by $00, $00, $00, $00, $00, $01
+.byte $00, $00, $00, $00, $00, $01
 
 
 ;**  Show an error message
@@ -3743,129 +3746,76 @@ LoadBootExe:				;				[9294]
 
  
 S_92A7:
-.tx 'T.I.B.  VOL'
-.by $00
+.asciiz "T.I.B.  VOL"
 
 S_92B3:					;				[92B3]
-.tp 'T.I.B PLC DISK DRIVER INSTALLED@'
+
+;'T.I.B PLC DISK DRIVER INSTALLED@' in screencodes
+.byte $14, $2E, $09, $2E, $02, $20, $10, $0C, $03, $20, $04, $09, $13, $0B, $20, $04, $12, $09, $16, $05, $12, $20, $09, $0E, $13, $14, $01, $0C, $0C, $05, $04, $00
  
 BootExe:
-.tx 'BOOT.EXE'
-.by $00
- 
+.asciiz "BOOT.EXE"
+
+.define TblErrorMsg	Msg00, Msg01, Msg02, Msg03, Msg04, Msg05, Msg06, Msg07, Msg08, Msg09, Msg0A, Msg0B, Msg0C, Msg0D, Msg0E, Msg0F, Msg10, Msg11 
 
 TblErrorMsgL:				;				[92DC]
-.by <Msg00
-.by <Msg01
-.by <Msg02
-.by <Msg03
-.by <Msg04
-.by <Msg05
-.by <Msg06
-.by <Msg07
-.by <Msg08
-.by <Msg09
-.by <Msg0A
-.by <Msg0B
-.by <Msg0C
-.by <Msg0D
-.by <Msg0E
-.by <Msg0F
-.by <Msg10
-.by <Msg11
-
+.lobytes TblErrorMsg
 
 TblErrorMsgH:				;				[92EE]
-.by >Msg00
-.by >Msg01
-.by >Msg02
-.by >Msg03
-.by >Msg04
-.by >Msg05
-.by >Msg06
-.by >Msg07
-.by >Msg08
-.by >Msg09
-.by >Msg0A
-.by >Msg0B
-.by >Msg0C
-.by >Msg0D
-.by >Msg0E
-.by >Msg0F
-.by >Msg10
-.by >Msg11
-
+.hibytes TblErrorMsg
  
 S_9300:
 Msg00:
-.tx 'OK'
-.by $00
+.asciiz "OK"
 Msg01:
-.tx 'DISK IS WRITE PROTECTED'
-.by $00
+.asciiz "DISK IS WRITE PROTECTED"
 Msg02:
-.tx 'DISK IS UNUSABLE'
-.by $00
+.asciiz "DISK IS UNUSABLE"
 Msg03:
-.tx 'DISK IS NOT FORMATTED'
-.by $00
+.asciiz "DISK IS NOT FORMATTED"
 Msg04:
-.tx 'FILE IS CORRUPT'
-.by $00
+.asciiz "FILE IS CORRUPT"
 Msg05:
-.tx 'FORMATING DISK'
-.by $00
+.asciiz "FORMATING DISK"
 Msg06:
-.tx 'RENAMING FILE'
-.by $00
+.asciiz "RENAMING FILE"
 Msg07:
-.tx 'SCRATCHING FILE'
-.by $00
+.asciiz "SCRATCHING FILE"
 Msg08:
-.tx 'ERROR DURING WRITE'
-.by $00
+.asciiz "ERROR DURING WRITE"
 Msg09:
-.tx 'ERROR DURING READ'
-.by $00
+.asciiz "ERROR DURING READ"
 Msg0A:
-.tx 'DISK MAY BE DAMAGED'
-.by $00
+.asciiz "DISK MAY BE DAMAGED"
 Msg0B:
-.tx 'FILE NOT FOUND'
-.by $00
+.asciiz "FILE NOT FOUND"
 Msg0C:
-.tx 'NO FILE EXT SPECIFIED'
-.by $00
+.asciiz "NO FILE EXT SPECIFIED"
 Msg0D:
-.tx 'FILE TO LARGE'
-.by $00
+.asciiz "FILE TO LARGE"
 Msg0E:
-.tx 'NO MORE DIRECTORY SPACE'
-.by $00
+.asciiz "NO MORE DIRECTORY SPACE"
 Msg0F:
-.tx 'DISK FOUND TO BE UNRELIABLE'
-.by $00
+.asciiz "DISK FOUND TO BE UNRELIABLE"
 Msg10:
-.tx 'NAME TO LONG'
-.by $00
+.asciiz "NAME TO LONG"
 Msg11:
-.tx 'NO NAME SPECIFIED'
-.by $00
+.asciiz "NO NAME SPECIFIED"
  
 D_943E:					;				[943E]
-.by $EB, $28, $90, $43, $36, $34, $20, $50	; .(.C64 P  $943E
-.by $4E, $43, $49, $00, $02, $02, $01, $00	; NCI.....  $9446
-.by $02, $70, $00, $A0, $05, $F9, $03, $00	; .p......  $944E
-.by $09, $00, $02, $00, $00, $00, $00, $00	; ........  $9456
-.by $00, $00, $00, $00			; ....  $945E
+.byte $EB, $28, $90, $43, $36, $34, $20, $50	; .(.C64 P  $943E
+.byte $4E, $43, $49, $00, $02, $02, $01, $00	; NCI.....  $9446
+.byte $02, $70, $00, $A0, $05, $F9, $03, $00	; .p......  $944E
+.byte $09, $00, $02, $00, $00, $00, $00, $00	; ........  $9456
+.byte $00, $00, $00, $00			; ....  $945E
 
 
 ;**  Program that is meant to run in the Stack
 StackProgram:				;				[9462]
-.rb $0101
+.segment "romstack"
 
 StackPage1:				;				[0101]
-.by $00					; .  $0101
+.byte $00					; .  $0101
  
 
 ;**  Read a number of pages (= 256 bytes) form the floppy
@@ -4064,12 +4014,7 @@ WrDataRamDxxx:				;				[01AF]
 
 	ldx	TempStore		; restore X			[FA]
 	rts
-.re
-
  
-S_9521:
-.fb $FF, $0ADF
- 
-.en					; End of part to assemble
+.end					; End of part to assemble
  
  
