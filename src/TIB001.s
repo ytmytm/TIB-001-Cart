@@ -209,132 +209,50 @@ S_8004:
 ; ???  WHERE IS THIS JUMP TABLE USED  ???
 ; 1st possebility: the idea was there to use it but it never happened
 ; 2nd possebility: it is used by external programs
-F_8009:					;				[8009]
-	jmp	NewLoad			;				[86BC]
 
-F_800C:					;				[800C]
-	jmp	NewSave			;				[838A]
-
-F_800F:					;				[800F]
-	jmp	FormatDisk		;				[89DB]
-
-F_8012:					;				[8012]
-	jmp	DisplayDir		;				[8E67]
-
-F_8015:					;				[8015]
-	jmp	ReadSector		;				[8C78]
-
-F_8018:					;				[8018]
-	jmp	SetWatchdog		;				[8D90]
-
-F_801B:					;				[801B]
-	jmp	ReadSectors		;				[885E]
-
-F_801E:					;				[801E]
-	jmp	WriteSector		;				[8BEE]
-
-F_8021:					;				[8021]
-	jmp	ReadStatus		;				[8962]
-
-F_8024:					;				[8024]
-	jmp	Scratch			;				[8355]
-
-F_8027:					;				[8027]
-	jmp	Rename			;				[81C0]
-
-F_802A:					;				[802A]
-	jmp	FormatTrack		;				[8B93]
-
-F_802D:					;				[802D]
-	jmp	InitStackProg		;				[8D5A]
-
-F_8030:					;				[8030]
-	jmp	SetupSector		;				[8899]
-
-F_8033:					;				[8033]
-	jmp	Specify			;				[891A]
-
-F_8036:					;				[8036]
-	jmp	Recalibrate		;				[88F7]
-
-F_8039:					;				[8039]
-	jmp	SetSoace		;				[834B]
-
-F_803C:					;				[803C]
-	jmp	GetNextCluster		;				[87A4]
-
-F_803F:					;				[803F]
-	jmp	Enfile			;				[8684]
-
-F_8042:					;				[8042]
-	jmp	MarkFAT			;				[8534]
-
-F_8045:					;				[8045]
-	jmp	FindFAT			;				[85A8]
-
-F_8048:					;				[8048]
-	jmp	FindNextFAT		;				[85B2]
-
-F_804B:					;				[804B]
-	jmp	WriteFATs		;				[860C]
-
-F_804E:					;				[804E]
-	jmp	ClearFATs		;				[8650]
-
-F_8051:					;				[8051]
-	jmp	CalcFirst		;				[883A]
-
-F_8054:					;				[8054]
-	jmp	GetFATs			;				[8813]
-
-F_8057:					;				[8057]
-	jmp	SeekTrack		;				[898A]
-
-F_805A:					;				[805A]
-	jmp	FindFile		;				[8FEA]
-
-F_805D:					;				[805D]
-	jmp	WriteDirectory		;				[850F]
-
-F_8060:					;				[8060]
-	jmp	ReadDirectory		;				[8E0F]
-
-F_8063:					;				[8063]
-	jmp	J_8472			;				[8472]
-
-F_8066:					;				[8066]
-	jmp	SaveRloc		;				[9127]
-
-F_8069:					;				[8069]
-	jmp	ShowError		;				[926C]
-
-F_806C:					;				[806C]
-	jmp	ShowBytesFree		;				[916A]
-
-F_806F:					;				[806F]
-	jmp	BN2DEC			;				[920E]
-
-F_8072:					;				[8072]
-	jmp	StripSP			;				[90A7]
-
-F_8075:					;				[8075]
-	jmp	Search			;				[9011]
-
-F_8078:					;				[8078]
-	jmp	FindBlank		;				[8F4F]
-
-F_807B:					;				[807B]
-	jmp	PadOut			;				[90CE]
-
-F_807E:					;				[807E]
-	jmp	StopWatchdog		;				[8DBD]
-
-F_8081:					;				[8081]
-	jmp	RdDataRamDxxx		;				[01A0]
-
-; Spare
-F_8084:					;				[8084]
-	jmp	$FFFF			;				[FFFF]
+; 8009
+_NewLoad:		jmp	NewLoad			; [8009] -> [86BC]
+_NewSave:		jmp	NewSave			; [800C] -> [838A]
+_FormatDisk:		jmp	FormatDisk		; [800F] -> [89DB]
+_DisplayDir:		jmp	DisplayDir		; [8012] -> [8E67]
+_ReadSector:		jmp	ReadSector		; [8015] -> [8C78]
+_SetWatchdog:		jmp	SetWatchdog		; [8018] -> [8D90]
+_ReadSectors:		jmp	ReadSectors		; [801B] -> [885E]
+_WriteSector:		jmp	WriteSector		; [801E] -> [8BEE]
+_ReadStatus:		jmp	ReadStatus		; [8021] -> [8962]
+_Scratch:		jmp	Scratch			; [8024] -> [8355]
+_Rename:		jmp	Rename			; [8027] -> [81C0]
+_FormatTrack:		jmp	FormatTrack		; [802A] -> [8B93]
+_InitStackProg:		jmp	InitStackProg		; [802D] -> [8D5A]
+_SetupSector:		jmp	SetupSector		; [8030] -> [8899]
+_Specify:		jmp	Specify			; [8033] -> [891A]
+_Recalibrate:		jmp	Recalibrate		; [8036] -> [88F7]
+_SetSoace:		jmp	SetSoace		; [8039] -> [834B]
+_GetNextCluster:	jmp	GetNextCluster		; [803C] -> [87A4]
+_Enfile:		jmp	Enfile			; [803F] -> [8684]
+_MarkFAT:		jmp	MarkFAT			; [8042] -> [8534]
+_FindFAT:		jmp	FindFAT			; [8045] -> [85A8]
+_FindNextFAT:		jmp	FindNextFAT		; [8048] -> [85B2]
+_WriteFATs:		jmp	WriteFATs		; [804B] -> [860C]
+_ClearFATs:		jmp	ClearFATs		; [804E] -> [8650]
+_CalcFirst:		jmp	CalcFirst		; [8051] -> [883A]
+_GetFATs:		jmp	GetFATs			; [8054] -> [8813]
+_SeekTrack:		jmp	SeekTrack		; [8057] -> [898A]
+_FindFile:		jmp	FindFile		; [805A] -> [8FEA]
+_WriteDirectory:	jmp	WriteDirectory		; [805D] -> [850F]
+_ReadDirectory:		jmp	ReadDirectory		; [8060] -> [8E0F]
+_J_8472:		jmp	J_8472			; [8063] -> [8472]
+_SaveRloc:		jmp	SaveRloc		; [8066] -> [9127]
+_ShowError:		jmp	ShowError		; [8069] -> [926C]
+_ShowBytesFree:		jmp	ShowBytesFree		; [806C] -> [916A]
+_BN2DEC:		jmp	BN2DEC			; [806F] -> [920E]
+_StripSP:		jmp	StripSP			; [8072] -> [90A7]
+_Search:		jmp	Search			; [8075] -> [9011]
+_FindBlank:		jmp	FindBlank		; [8078] -> [8F4F]
+_PadOut:		jmp	PadOut			; [807B] -> [90CE]
+_StopWatchdog:		jmp	StopWatchdog		; [807E] -> [8DBD]
+_RdDataRamDxxx:		jmp	RdDataRamDxxx		; [8081] -> [01A0]
+_Spare:			jmp	$FFFF			; [8084] -> [FFFF]
 
 
 ; Here starts the initialisation of the cartridge
