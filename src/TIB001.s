@@ -193,6 +193,11 @@ ScanStopKey	= $FFE1
 D_FFFA		= $FFFA
 D_FFFB		= $FFFB
 
+; device number, this can be set externally via ca65: -DDEVNUM=9 or 'make DEVNUM=9'
+.ifndef DEVNUM
+DEVNUM = 9
+.endif
+
 ; GEOS macros for readability and shorter code
 .include "geosmac.inc"
 ; FAT12 constants
@@ -372,7 +377,7 @@ TryAgain:				;				[8124]
 
 ; Clear the screen
 	ldy	#0
-:	lda	#$20
+:	lda	#' '
 	sta	VICSCN,Y		;				[0400]
 	sta	VICSCN+$0100,Y		;				[0500]
 	sta	VICSCN+$0200,Y		;				[0600]
@@ -555,7 +560,7 @@ Rename:					;				[81C0]
 NewCkout:				;				[8295]
 	pha
 
-	CmpBI	DeviceNumber, 9		; our DD drive? (XXX)
+	CmpBI	DeviceNumber, DEVNUM	; our DD drive?
 	beq	__NewCkout		; yes, ->			[82A1]
 
 	pla
@@ -730,7 +735,7 @@ NewSave:				;				[838A]
 	sei
 	stx	TapeBuffer+43		;				[0367]
 
-	CmpBI	DeviceNumber, 9		; XXX device
+	CmpBI	DeviceNumber, DEVNUM	; our device?
 	beq	__NewSave
 
 	jmp	(NewISAVE)		;				[03FE]
@@ -1155,7 +1160,7 @@ NewLoad:				;				[86BC]
 
 	pha
 
-	CmpBI	DeviceNumber, 9		; XXX device number
+	CmpBI	DeviceNumber, DEVNUM	; our device number?
 	beq	__NewLoad
 
 	pla

@@ -1,7 +1,6 @@
 
 # TODO
 
-- change device number to 7 (via define)
 - disassemble these essential utilities:
 	- format
 	- dispasc (display text files)
@@ -45,3 +44,16 @@
                   and number of remaining switches
 		- 3.5 to IMG file on 1581 or SD2IEC and back
 
+# Build system
+
+You need latest cc65 package with ca65/ld65 and GNU Make.
+
+Run `make` to build 8K ROM file in `build/tib001.bin`.
+
+Run `make clean && make regress` to check of the resulting binary matches reference V1.1 ROM.
+
+You can set parameters within `Makefile` or pass them from the command line. For example:
+```
+make DEVNUM=7
+```
+to assemble ROM with DD-001 mapped to device #7.

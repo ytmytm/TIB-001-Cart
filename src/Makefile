@@ -1,7 +1,14 @@
 
+# configuration
+
+# DD-001 device number
+DEVNUM ?= 9
+
+# buld part
+
 AS = ca65
 LD = ld65
-ASFLAGS = -t none -I inc -I .
+ASFLAGS = -t none -I inc -I . -DDEVNUM=$(DEVNUM)
 LDFLAGS = 
 
 SOURCES = TIB001.s
