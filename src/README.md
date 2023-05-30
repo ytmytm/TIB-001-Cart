@@ -18,8 +18,7 @@
 
 # Source code
 
-- add constants for BIOS Parameter Block and file entries
-- change fixed length of $0101 code to actual segment length
+- use constants for BIOS Parameter Block and file entries
 - replace some bit testing jumps by GEOS macros
 
 # Optimizations

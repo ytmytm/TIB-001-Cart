@@ -2,7 +2,7 @@
 AS = ca65
 LD = ld65
 ASFLAGS = -t none -I inc -I .
-LDFLAGS = -t none
+LDFLAGS = 
 
 SOURCES = TIB001.s
 
@@ -15,7 +15,7 @@ REFERENCE_ROM = ../firmware/rom-8000-9FFFp.bin
 
 $(FIRMWARE_ROM): $(OBJS) rom.cfg
 	-mkdir -p $(BUILD_DIR)
-	$(LD) -C rom.cfg $(OBJS) -o $@
+	$(LD) $(LDFLAGS) -C rom.cfg $(OBJS) -o $@
 
 rom: $(FIRMWARE_ROM)
 

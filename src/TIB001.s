@@ -195,6 +195,11 @@ D_FFFB		= $FFFB
 
 ; GEOS macros for readability and shorter code
 .include "geosmac.inc"
+; FAT12 constants
+.include "fat12.inc"
+
+; linker will update that
+.import __STACK0101_LAST__
 
 			.segment "rom8000"
 
@@ -2113,7 +2118,7 @@ InitStackProg:				;				[8D5A]
 	bpl	:-
 
 ; Actual copy
-	ldx	#$BE	; XXX this must BE SEGMENT LENGTH XXX
+	ldx	#<(__STACK0101_LAST__-2)
 :	lda	StackProgram,X		;				[9462]
 	sta	StackPage1,X		;				[0101]
 	dex
