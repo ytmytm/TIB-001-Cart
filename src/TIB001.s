@@ -30,10 +30,10 @@ StatusIO	= $90	; Status of KERNAL after action
 FlgLoadVerify	= $93	; 0 = LOAD, 1 = VERIFY
 MSGFLG		= $9D	; flag: $80 = direct mode, 0 = program mode
 EndAddrBuf	= $AE	; vector, word - end of cassette / end of program
-LengthFileName	= $B7	; length of filename
+FNLEN	= $B7	; length of filename
 SecondAddress	= $B9	; actual secondary address
 DeviceNumber	= $BA	; actual device number
-AddrFileName	= $BB	; pointer to string with filename
+FNADR	= $BB	; pointer to string with filename
 
 ; The used RS232 variabels:
 NumOfSectors	= $F7	; number of sectors to read or write
@@ -187,8 +187,8 @@ SetVectorsIO2	= $FD15
 TestRAM2	= $FD50
 InitSidCIAIrq2	= $FDA3
 InitialiseVIC2	= $FF5B
-OutByteChan	= $FFD2
-ScanStopKey	= $FFE1
+KERNAL_CHROUT	= $FFD2
+KERNAL_STOP	= $FFE1
 
 D_FFFA		= $FFFA
 D_FFFB		= $FFFB
@@ -434,9 +434,9 @@ Rename:					;				[81C0]
 	bcs	:+			; yes, -> 
 	rts
 
-:	ldy	LengthFileName		;				[B7]
+:	ldy	FNLEN		;				[B7]
 ; ??? what is going on here ???
-	lda	(AddrFileName),Y	;				[BB]
+	lda	(FNADR),Y	;				[BB]
 	lda	#0
 	lda	#0			; ??? again?
 	clc
@@ -450,7 +450,7 @@ Rename:					;				[81C0]
 :	ldx	#0
 	iny
 
-:	lda	(AddrFileName),Y	;				[BB]
+:	lda	(FNADR),Y	;				[BB]
 	iny
 	sta	FdcFileName,X		;				[036C]
 	sta	TapeBuffer+78,X		;				[038A]
@@ -608,8 +608,8 @@ __NewCkout:
 	bne	:+
 	lda	PtrBasText		;				[7A]
 	addv	3
-	sta	AddrFileName		;				[BB]
-	MoveB	PtrBasText+1, AddrFileName+1
+	sta	FNADR		;				[BB]
+	MoveB	PtrBasText+1, FNADR+1
 	jsr	GetlengthFName		;				[8336]
 	jsr	Scratch			;				[8355]
 	jmp	@end
@@ -625,8 +625,8 @@ __NewCkout:
 
 	lda	PtrBasText		;				[7A]
 	addv	3
-	sta	AddrFileName		;				[BB]
-	MoveB	PtrBasText+1, AddrFileName+1
+	sta	FNADR		;				[BB]
+	MoveB	PtrBasText+1, FNADR+1
 	jsr	RenameFilePrep
 	jsr	Rename			;				[81C0]
 	jmp	@end
@@ -637,8 +637,8 @@ __NewCkout:
 
 	lda	PtrBasText		;				[7A]
 	addv	3
-	sta	AddrFileName		;				[BB]
-	MoveB	PtrBasText+1, AddrFileName+1
+	sta	FNADR		;				[BB]
+	MoveB	PtrBasText+1, FNADR+1
 	jsr	FormatDisk		;				[89DB]
 
 @end:	php
@@ -657,18 +657,18 @@ __NewCkout:
 RenameFilePrep:
 ; what does it do?
 	ldy	#0
-:	lda	(AddrFileName),Y	;				[BB]
+:	lda	(FNADR),Y	;				[BB]
 	cmp	#'='
 	beq	:+			;				[8325]
 	iny
 	bne	:-
 :	tya
-	sty	LengthFileName		; XXX destroyed immediately by GetlengthFName
+	sty	FNLEN		; XXX destroyed immediately by GetlengthFName
 	tya
 	pha
 	jsr	GetlengthFName		;				[8336]
-	MoveB	LengthFileName, TapeBuffer+89
-	PopB	LengthFileName
+	MoveB	FNLEN, TapeBuffer+89
+	PopB	FNLEN
 	rts
 
 
@@ -684,7 +684,7 @@ GetlengthFName:				;				[8336]
 
 :	tya
 	iny
-	sty	LengthFileName		;				[B7]
+	sty	FNLEN		;				[B7]
 	clc
 	adc	PtrBasText		;				[7A]
 	sta	PtrBasText		;				[7A]
@@ -1632,7 +1632,7 @@ FormatDisk:				;				[89DB]
 	jsr	WaitRasterLine		; this could be done later
 
 	ldy	#0
-:	lda	(AddrFileName),Y	;				[BB]
+:	lda	(FNADR),Y	;				[BB]
 	cmp	#'"'
 	beq	:+
 	sta	FdcFileName,Y		;				[036C]
@@ -2179,7 +2179,7 @@ J_8DCB:					;				[8DCB]
 	pha
 
 	jsr	IncrClock22		;				[F6BC]
-	jsr	ScanStopKey		;				[FFE1]
+	jsr	KERNAL_STOP		;				[FFE1]
 	beq	:+
 
 	pla
@@ -2309,7 +2309,7 @@ A_8E95:					;				[8E95]
 	CmpBI	Z_FD, $60		; < 'a' ?
 	bcc	:+			; yes, ->			[8EA6]
 	subv	$20
-:	jsr	OutByteChan		;				[FFD2]
+:	jsr	KERNAL_CHROUT		;				[FFD2]
 
 	lda	Z_FD			;				[FD]
 ; ??? why ???, see next instruction
@@ -2322,7 +2322,7 @@ A_8E95:					;				[8E95]
 	bne	A_8E95			;				[8E95]
 
 	lda	#13			; new line
-	jsr	OutByteChan		;				[FFD2]
+	jsr	KERNAL_CHROUT		;				[FFD2]
 
 	jmp	J_8F1A			;				[8F1A]
 
@@ -2358,7 +2358,7 @@ A_8ED3:					;				[8ED3]
 	pha
 
 	lda	Z_FD			;				[FD]
-	jsr	OutByteChan		;				[FFD2]
+	jsr	KERNAL_CHROUT		;				[FFD2]
 
 	lda	Z_FD			;				[FD]
 	pla
@@ -2370,7 +2370,7 @@ A_8EED:					;				[8EED]
 	bpl	A_8ED3			;				[8ED3]
 
 	lda	#$2E
-	jsr	OutByteChan		;				[FFD2]
+	jsr	KERNAL_CHROUT		;				[FFD2]
 
 	ldx	#2
 A_8EF7:					;				[8EF7]
@@ -2390,7 +2390,7 @@ A_8EF7:					;				[8EF7]
 	pha
 
 	lda	Z_FD			;				[FD]
-	jsr	OutByteChan		;				[FFD2]
+	jsr	KERNAL_CHROUT		;				[FFD2]
 
 	pla
 	tay
@@ -2403,7 +2403,7 @@ A_8F0F:					;				[8F0F]
 	jsr	SaveRloc		;				[9127]
 
 	lda	#$0D
-	jsr	OutByteChan		;				[FFD2]
+	jsr	KERNAL_CHROUT		;				[FFD2]
 J_8F1A:					;				[8F1A]
 	lda	DirPointer		; XXX? AddVB $20, DirPointer + LDA DirPointer+1?
 	addv	FILE_ENTRY_SIZE		; next directory entry
@@ -2531,7 +2531,7 @@ A_8FD3:					; found empty entry		[8FD3]
 
 ;**  Check the file name
 FindFile:				;				[8FEA]
-	lda	LengthFileName		; file name present?		[B7]
+	lda	FNLEN		; file name present?		[B7]
 	bne	@cont
 
 	LoadB	ErrorCode, ERR_NO_NAME_SPECIFIED
@@ -2657,8 +2657,8 @@ A_90A0:
 
 ;**  Copy the file name to two places
 ; Strip spaces? Reverse of PadOut?
-; in: (AddrFileName), LengthFileName
-; out: (AddrFileName), uses FdcFileName as a work area
+; in: (FNADR), FNLEN
+; out: (FNADR), uses FdcFileName as a work area
 StripSP:				;				[90A7]
 ; note: StripSP is the name according the manual but what does it mean then?
 	ldy	#0
@@ -2666,7 +2666,7 @@ StripSP:				;				[90A7]
 
 ; Copy the given file name to a temporary storage
 A_90AB:					;				[90AB]
-	lda	(AddrFileName),Y	;				[BB]
+	lda	(FNADR),Y	;				[BB]
 	iny
 	cmp	#' '
 
@@ -2679,44 +2679,44 @@ A_90B4:					;				[90B4]
 
 	inx
 A_90B8:					;				[90B8]
-	cpy	LengthFileName		; whole name copied?		[B7]
+	cpy	FNLEN		; whole name copied?		[B7]
 	bne	A_90AB			; no, -> next character		[90AB]
 
 	lda	#0
 	sta	FdcFileName,X		; zero end the name		[036C]
 
 ; And copy it again
-	ldy	LengthFileName		;				[B7]
+	ldy	FNLEN		;				[B7]
 ; note: why? Y already had this length
 
 A_90C3:					;				[90C3]
 	lda	FdcFileName,Y		;				[036C]
 	beq	A_90CD			;				[90CD]
 
-	sta	(AddrFileName),Y	;				[BB]
+	sta	(FNADR),Y	;				[BB]
 
 	dey
 	bne	A_90C3			;				[90C3]
 A_90CD:					;				[90CD]
 	rts
 
-; in (AddrFileName), LengthFileName in 'xx.zz'
+; in (FNADR), FNLEN in 'xx.zz'
 ; out: FdcFileName in 'xx       zz ' normalized for directory entry
 PadOut:					;				[90CE]
 	ldy	#0
 A_90D0:					;				[90D0]
-	lda	(AddrFileName),Y	;				[BB]
+	lda	(FNADR),Y	;				[BB]
 	cmp	#'.'			; dot?
 	beq	A_9107			; yes, -> 			[9107]
 
 	iny
-	cpy	LengthFileName		; end of the name?		[B7]
+	cpy	FNLEN		; end of the name?		[B7]
 	bne	A_90D0			; no, -> next character		[90D0]
 
 ; Check if name start with '$' = directory wanted
 	ldy	#0
 	lda	#'$'
-	cmp	(AddrFileName),Y	; yes?				[BB]
+	cmp	(FNADR),Y	; yes?				[BB]
 	bne	A_90E7			; no, ->			[90E7]
 
 	sta	FdcFileName		;				[036C]
@@ -2759,7 +2759,7 @@ A_9107:					;				[9107]
 
 	ldx	#FE_OFFS_EXT
 :	iny
-	lda	(AddrFileName),Y	;				[BB]
+	lda	(FNADR),Y	;				[BB]
 	sta	FdcFileName,X		;				[036C]
 	inx
 	cpx	#FE_OFFS_NAME_END
@@ -2782,10 +2782,10 @@ A_9107:					;				[9107]
 ; print 2 spaces and file size (in bytes)
 SaveRloc:				;				[9127]
 	lda	#' '
-	jsr	OutByteChan		;				[FFD2]
+	jsr	KERNAL_CHROUT		;				[FFD2]
 
 	lda	#' '			; XXX seems unneeded, $FFD2 saves everything
-	jsr	OutByteChan		;				[FFD2]
+	jsr	KERNAL_CHROUT		;				[FFD2]
 
 	ldy	#FE_OFFS_SIZE
 	ldx	#0
@@ -2807,13 +2807,13 @@ SaveRloc:				;				[9127]
 	bne	:+			;				[915C]
 	dey
 	bpl	:-			;				[9150]
-	jsr	OutByteChan		; XXX JMP instead of JSR+RTS, print final 0
+	jsr	KERNAL_CHROUT		; XXX JMP instead of JSR+RTS, print final 0
 	rts
 
 :	tya				; XXX TYA+PHA, PLA+TAY, no need to preserve for $FFD2
 	pha
 	lda	NumDirSectors,Y		; print actual digits		[0364]
-	jsr	OutByteChan		;				[FFD2]
+	jsr	KERNAL_CHROUT		;				[FFD2]
 	pla
 	tay
 	dey
@@ -2871,7 +2871,7 @@ A_91CC:					;				[91CC]
 	lda	TotalBytesFreeTxt,Y
 	beq	A_91DD			;				[91DD]
 
-	jsr	OutByteChan		;				[FFD2]
+	jsr	KERNAL_CHROUT		;				[FFD2]
 
 	pla
 	tay
@@ -2888,13 +2888,13 @@ A_91DE:					;				[91DE]
 	bne	:+
 	dey
 	bpl	:-
-	jsr	OutByteChan		; print final 0, JMP instead of JSR+RTS XXX	[FFD2]
+	jsr	KERNAL_CHROUT		; print final 0, JMP instead of JSR+RTS XXX	[FFD2]
 	rts
 
 :	tya				; XXX no need for TYA+PHA, PLA+TAY
 	pha
 	lda	NumDirSectors,Y		; print digits			[0364]
-	jsr	OutByteChan		;				[FFD2]
+	jsr	KERNAL_CHROUT		;				[FFD2]
 	pla
 	tay
 	dey
@@ -2977,9 +2977,9 @@ ShowError:				;				[926C]
 	beq	@end			; yes, -> exit			[9292]
 	tya
 	pha
-; XXX Note: saving Y is not needed, OUTBYTECHAN does save Y
+; XXX Note: saving Y is not needed, KERNAL_CHROUT does save Y
 	lda	(DirPointer),Y		;				[FB]
-	jsr	OutByteChan		;				[FFD2]
+	jsr	KERNAL_CHROUT		;				[FFD2]
 	pla
 	tay
 	iny
@@ -2991,10 +2991,10 @@ ShowError:				;				[926C]
 
 ;**  Load the File BOOT.EXE ino memory - part 1
 LoadBootExe:				;				[9294]
-	LoadW_	AddrFileName, BootExe
-	LoadB	LengthFileName, 8
+	LoadW_	FNADR, BootExeName		; this is SETNAM
+	LoadB	FNLEN, BootExeNameEnd-BootExeName	; filename length
 
-; Load address: $0801
+; Load address: $0801, but not really - in fact BOOT.EXE loads and starts at $1000
 	ldx	#<$0801
 	ldy	#>$0801
 	jmp	LoadBootExe2		;				[869D]
@@ -3008,9 +3008,12 @@ S_92A7:
 S_92B3:					;				[92B3]
 ;'T.I.B PLC DISK DRIVER INSTALLED@' in screencodes
 .byte $14, $2E, $09, $2E, $02, $20, $10, $0C, $03, $20, $04, $09, $13, $0B, $20, $04, $12, $09, $16, $05, $12, $20, $09, $0E, $13, $14, $01, $0C, $0C, $05, $04, $00
- 
-BootExe:
-.asciiz "BOOT.EXE"
+
+; boot file name that gets loaded and executed from its load address
+BootExeName:	.byte "BOOT.EXE"
+BootExeNameEnd:
+; unused filename terminator byte
+		.byte 0
 
 .define TblErrorMsg	Msg00, Msg01, Msg02, Msg03, Msg04, Msg05, Msg06, Msg07, Msg08, Msg09, Msg0A, Msg0B, Msg0C, Msg0D, Msg0E, Msg0F, Msg10, Msg11 
 
