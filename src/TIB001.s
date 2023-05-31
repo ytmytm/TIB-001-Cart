@@ -84,12 +84,12 @@ TempStackPtr	= $0350	; temporary storage for the stack pointer
 
 FdcFormatData	= $0352	; block of data used by the format command
 
-NumDirSectors	= $0364	; number of directory sectors
+NumDirSectors	= $0364	; (1) number of directory sectors
 				; also used deteming number of free bytes
 Counter		= $0366
 
-DirSector	= $0369	; momentary directory sector
-FdcFileName	= $036C	; temp storage for file name
+DirSector	= $0369	; (2) momentary directory sector
+FdcFileName	= $036C	; (13?) temp storage for file name
 
 ErrorCode	= $0351	; $0B = file not found
 			; $10 = first part of name greater than 8 chars
@@ -455,7 +455,7 @@ Rename:					;				[81C0]
 	sta	FdcFileName,X		;				[036C]
 	sta	TapeBuffer+78,X		;				[038A]
 	inx
-	cpx	#$0B
+	cpx	#FE_OFFS_NAME_END
 	bne	:-
 
 	ldy	#0
@@ -463,23 +463,23 @@ Rename:					;				[81C0]
 :	cmp	FdcFileName,Y		;				[036C]
 	beq	@found_dot
 	iny
-	cpy	#$08
+	cpy	#FE_OFFS_EXT
 	bne	:-			;				[81F4]
 
 	ldy	#0
 :	lda	FdcFileName,Y		;				[036C]
 	iny
-	cmp	#$22
+	cmp	#'"'
 	bne	:-			;				[8200]
 
-	cpy	#$0A
+	cpy	#FE_OFFS_NAME_END-1
 	bcs	@err_longname
 	dey
 
-:	lda	#$20
+:	lda	#' '
 	sta	FdcFileName,Y		;				[036C]
 	iny
-	cpy	#$0B
+	cpy	#FE_OFFS_NAME_END
 	bne	:-			; XXX should jump to the next instruction, A is $20
 	jmp	@cont			; XXX beq will work here
 
@@ -491,21 +491,21 @@ Rename:					;				[81C0]
 	tya
 	pha
 
-	ldx	#$08
+	ldx	#FE_OFFS_EXT
 :	iny
 	lda	TapeBuffer+78,Y		;				[038A]
 	sta	FdcFileName,X		;				[036C]
 	inx
-	cpx	#$0B
+	cpx	#FE_OFFS_NAME_END
 	bne	:-
 
 	pla
 	tay
 
-	lda	#$20
+	lda	#' '
 :	sta	FdcFileName,Y		;				[036C]
 	iny
-	cpy	#$08
+	cpy	#FE_OFFS_EXT
 	bne	:-			;				[8234]
 
 @cont:	jsr	WaitRasterLine		;				[8851]
@@ -540,7 +540,7 @@ Rename:					;				[81C0]
 :	lda	FdcFileName,Y		;				[036C]
 	jsr	WrDataRamDxxx		;				[01AF]
 	iny
-	cpy	#$0B
+	cpy	#FE_OFFS_NAME_END
 	bne	:-
 
 	jsr	WaitRasterLine		;				[8851]
@@ -674,10 +674,10 @@ RenameFilePrep:
 
 ;**  Get the length of the file name between the quotes
 GetlengthFName:				;				[8336]
-	ldy	#1
+	ldy	#1			; offset 1 - skip over start quote
 ; Look for a quote
 :	lda	(PtrBasText),Y		;				[7A]
-	cmp	#'"'			; quote found?
+	cmp	#'"'			; end quote found?
 	beq	:+			; yes, ->			[8341]
 	iny
 	bne	:-
@@ -707,8 +707,8 @@ Scratch:				;				[8355]
 	LoadB	ErrorCode, ERR_FILE_NOT_FOUND
 	rts
 
-@found:	ldy	#0
-	lda	#$E5			; means: file has been deleted
+@found:	ldy	#FE_OFFS_NAME
+	lda	#FE_DELETED		; means: file has been deleted
 	jsr	WrDataRamDxxx		;				[01AF]
 ; Note: MS-DOS saves the first character
 
@@ -799,7 +799,7 @@ __NewSave:
 	jmp	@dosave			;				[8418]
 
 @newfile:
-	jsr	FindBlank		;				[8F4F]
+	jsr	FindBlank		; find available directory entry
 
 	lda	ErrorCode		; error found?			[0351]
 	beq	@dosave			;				[8418]
@@ -820,52 +820,46 @@ __NewSave:
 	PopB	DirPointer
 	PopB	DirPointer+1
 
-	ldy	#$16
-	lda	#$79
+	ldy	#FE_OFFS_LAST_WRITE_TIME
+	lda	#$79			; write time (1)
+	jsr	WrDataRamDxxx		;				[01AF]
+	iny
+	lda	#$0C			; write time (2)
 	jsr	WrDataRamDxxx		;				[01AF]
 
 	iny
-	lda	#$0C
+	lda	#5			; write date (1)
+	jsr	WrDataRamDxxx		;				[01AF]
+	iny
+	lda	#$17			; write date (2)
 	jsr	WrDataRamDxxx		;				[01AF]
 
 	iny
-	lda	#5
+	lda	TapeBuffer+30		; start cluster lo		[035A]
+	jsr	WrDataRamDxxx		;				[01AF]
+	iny
+	lda	TapeBuffer+31		; start cluster hi		[035B]
 	jsr	WrDataRamDxxx		;				[01AF]
 
 	iny
-	lda	#$17
+	lda	TapeBuffer+37		; length lo			[0361]
 	jsr	WrDataRamDxxx		;				[01AF]
-
 	iny
-	lda	TapeBuffer+30		;				[035A]
+	lda	TapeBuffer+36		; length hi			[0360]
 	jsr	WrDataRamDxxx		;				[01AF]
 
-	iny
-	lda	TapeBuffer+31		;				[035B]
-	jsr	WrDataRamDxxx		;				[01AF]
+	iny				; XXX not needed, Y is changed below
 
-	iny
-	lda	TapeBuffer+37		;				[0361]
-	jsr	WrDataRamDxxx		;				[01AF]
-
-	iny
-
-	lda	TapeBuffer+36		;				[0360]
-	jsr	WrDataRamDxxx		;				[01AF]
-
-	iny
-
-	ldx	TapeBuffer+43		;				[0367]
-	lda	$01,X			;				[01]
-
-	ldy	#$10
-	jsr	WrDataRamDxxx		;				[01AF]
-
+	ldx	TapeBuffer+43		; index to zp where load adress stayed	[0367]
+	lda	$01,X			; load addr hi			[01]
+	ldy	#FE_OFFS_LOAD_ADDRESS
+	jsr	WrDataRamDxxx		; load addr hi			[01AF]
 	iny
 	lda	$00,X			;				[00]
-	jsr	WrDataRamDxxx		;				[01AF]
+	jsr	WrDataRamDxxx		; load addr lo			[01AF]
 
 ; jumptable has this function, why? what is it?
+; XXX 'save file'?
 J_8472:					;				[8472]
 	LoadB	TapeBuffer+41, 1
 	MoveB	TapeBuffer+44, NumDirSectors
@@ -877,14 +871,13 @@ J_847D:					;				[847D]
 
 	jsr	WaitRasterLine		;				[8851]
 
-	ldx	TapeBuffer+43		;				[0367]
-	lda	$00,X			;				[00]
+	ldx	TapeBuffer+43		; zp index to load address	[0367]
+	lda	$00,X			; copy load address to DirPointer
 	sta	DirPointer		;				[FB]
-
 	lda	$01,X			;				[01]
 	sta	DirPointer+1		;				[FC]
-J_8493:					;				[8493]
-	jsr	CalcFirst		;				[883A]
+
+@loop:	jsr	CalcFirst		;				[883A]
 
 	MoveW_	TapeBuffer+30, TapeBuffer+28
 
@@ -901,32 +894,32 @@ J_8493:					;				[8493]
 	lda	ErrorCode		; error found?			[0351]
 	bne	A_8506			;				[8506]
 
-	dec	NumDirSectors		;				[0364]
-	beq	A_84E5			;				[84E5]
+	dec	NumDirSectors		; are we done?			[0364]
+	beq	@end			;				[84E5]
 
 	PushB	DirPointer
 	PushB	DirPointer+1
 
 	ldx	#1
 	jsr	FindNextFAT		;				[85B2]
-	bcs	:+			; no more FATs?
+	bcs	:+			; no more FAT clusters free?
 
 	pla
 	pla
-	LoadB	ErrorCode, ERR_FILE_TOO_LARGE
-	jmp	J_84F1			;				[84F1]
+	LoadB	ErrorCode, ERR_FILE_TOO_LARGE ; is it rather 'DISK FULL'?
+	jmp	@enderr
 
-:	jsr	MarkFAT			;				[8534]
+:	jsr	MarkFAT			; mark cluster occupied		[8534]
 	PopB	DirPointer+1
 	PopB	DirPointer
-	jmp	J_8493			;				[8493]
+	jmp	@loop			; save next cluster		[8493]
 
-A_84E5:					;				[84E5]
+@end:	; file was saved
 	jsr	Enfile			;				[8684]
 	jsr	WaitRasterLine		;				[8851]
 	jsr	WriteFATs		;				[860C]
 	jsr	WriteDirectory		;				[850F]
-J_84F1:					;				[84F1]
+@enderr: ; error during file saving, directory and FAT were not updated
 	jsr	StopWatchdog		;				[8DBD]
 
 	lda	ErrorCode		;				[0351]
@@ -1068,12 +1061,12 @@ FindNextFAT:				;				[85B2]
 	rts
 
 WriteFATs:				;				[860C]
-	LoadB	NumOfSectors, 3
+	LoadB	NumOfSectors, DD_FAT_SIZE
 
 	MoveB	EndofDir, DirPointer+1
 	LoadB	DirPointer, 0
 
-	LoadB	SectorL, 1
+	LoadB	SectorL, DD_SECT_FAT1
 	LoadB	SectorH, 0
 
 	jsr	SetupSector		;				[8899]
@@ -1085,9 +1078,9 @@ WriteFATs:				;				[860C]
 	MoveB	EndofDir, DirPointer+1
 	LoadB	DirPointer, 0
 
-	LoadB	NumOfSectors, 3
+	LoadB	NumOfSectors, DD_FAT_SIZE
 
-	LoadB	SectorL, 4
+	LoadB	SectorL, DD_SECT_FAT2
 
 	jsr	SetupSector		;				[8899]
 	jsr	SeekTrack		;				[898A]
@@ -1116,7 +1109,7 @@ ClearFATs:				;				[8650]
 
 	MoveB	TapeBuffer+30, TapeBuffer+28
 	MoveB	TapeBuffer+31, TapeBuffer+29
-	cmp	#$0F			; TapeBuffer+31,+29
+	cmp	#$0F			; compare with TapeBuffer+31,+29
 	bne	:-
 	rts
 
@@ -1369,18 +1362,20 @@ GetFATs:				;				[8813]
 	jmp	StopWatchdog		;				[8DBD]
 
 
+; in: TapeBuffer+30/31 (cluster number?)
+; out: SectorL/H
+; calc: out=in*2+10
 CalcFirst:				;				[883A]
 	MoveB	TapeBuffer+31, SectorH
 
 	lda	TapeBuffer+30		;				[035A]
 	asl	A
 	rol	SectorH			;				[F9]
-	clc
-	adc	#$0A
+	addv	10
 	sta	SectorL			;				[F8]
 
 	lda	SectorH			;				[F9]
-	adc	#0
+	adc	#0			; XXX BCC+INC would be enough
 	sta	SectorH			;				[F9]
 
 	rts
@@ -1395,6 +1390,7 @@ WaitRasterLine:				;				[8851]
 
 ;**  Read multiple sectors
 ; IMHO it reads 9 sectors = a complete track of one side
+; XXX it also looks like 9 retries
 ReadSectors:				;				[885E]
 
 	LoadB	Counter, 0
@@ -1426,9 +1422,9 @@ ReadSectors:				;				[885E]
 
 ;**  Setup the data needed for the FDC
 SetupSector:				;				[8899]
-	CmpBI	SectorH, >1440
+	CmpBI	SectorH, >DD_TOTAL_SECTORS ; 1440
 	bcc	:+
-	CmpBI	SectorL, <1440
+	CmpBI	SectorL, <DD_TOTAL_SECTORS
 	bcs	@end			; exit but don't report any error?
 ; FYI: 5*256 + 160 = 1440 = number of sectors on 3.5" 720 KB disk
 ; BUG: if (SectorH > 5) and SectorL < 160) then routine continues as well
@@ -1438,28 +1434,28 @@ SetupSector:				;				[8899]
 	ldy	#0			; XXX Y not used here
 
 :	lda	SectorL			;				[F8]
-	subv	9
+	subv	DD_SECTORS_PER_TRACK
 	sta	SectorL			;				[F8]
 	inx
 	bcs	:-			; if SectorL > 8 then repeat	[88A9]
 
-	lda	SectorH			;				[F9]
+	lda	SectorH			; XXX BCS+DEC?			[F9]
 	sbc	#0
 	sta	SectorH			;				[F9]
 	bcs	:-			; if SectorH > 0 then repeat	[88A9]
 
 	dex
 ; Correct last subtraction
-	AddVB	10, SectorL		; one extra because FDC counts 1..9
+	AddVB	1+DD_SECTORS_PER_TRACK, SectorL	; one extra because FDC counts 1..9
 	sta	FdcSector		;				[0349]
-	inc	SectorH			;				[F9]
+	inc	SectorH			; 				[F9]
 	sta	FdcEOT			;				[034B]
 
 	txa
-	and	#1
+	and	#1			; odd or even?
 	sta	FdcHead			;				[0348]
 
-	asl	A
+	asl	A			; *4
 	asl	A
 	sta	FdcHSEL			;				[0346]
 
@@ -1497,8 +1493,8 @@ Recalibrate:				;				[88F7]
 	LoadB	DataRegister, 0		; drive 0
 
 :	jsr	SenseIrqStatus		;				[894A]
-	lda	FdcST0			;				[033C]
-	and	#%00100000		; command completed?
+	lda	FdcST0			; 				[033C]
+	and	#%00100000		; command completed? XXX bbrf
 	beq	:-			; no, ->			[8907]
 	lda	FdcPCN			; track = 0?			[0344]
 	bne	:-			; no, -> wait			[8907]
@@ -1615,7 +1611,7 @@ Wait4FdcReady:				;				[89C0]
 ;**  Wait until the data register is ready
 Wait4DataReady:				;				[89C8]
 :	lda	StatusRegister		;				[DE80]
-	and	#%10000000		; FDC ready? XXX bbcf 7
+	and	#%10000000		; FDC ready? XXX bbrf 7
 	beq	:-			; no, -> wait			[89C8]
 	rts
 
@@ -1637,7 +1633,7 @@ FormatDisk:				;				[89DB]
 
 	ldy	#0
 :	lda	(AddrFileName),Y	;				[BB]
-	cmp	#$22
+	cmp	#'"'
 	beq	:+
 	sta	FdcFileName,Y		;				[036C]
 	iny
@@ -1649,7 +1645,7 @@ FormatDisk:				;				[89DB]
 :	cpy	#$0B
 	beq	:+
 
-	lda	#$20
+	lda	#' '
 	sta	FdcFileName,Y		;				[036C]
 	iny
 	bne	:-
@@ -1714,12 +1710,15 @@ FormatDiskLoop:
 	LoadB	DirPointer, 0
 	MoveB	StartofDir, DirPointer+1
 
-	ldy	#0			; FAT12 identifier+BIOS Parameter Block?
-:	lda	D_943E,Y		;				[943E]
+	ldy	#0			; FAT12 identifier+BIOS Parameter Block
+:	lda	BIOSParameterBlock,Y	;				[943E]
 	jsr	WrDataRamDxxx		;				[01AF]
 	iny
-	cpy	#$20
+	cpy	#32
 	bne	:-
+	; XXX would have to set also boot signature ($AA55)
+	; XXX and file system name 'FAT12   '
+	; XXX and volume name (from FdcFileName) and randomize volume serial
 
 	MoveB	EndofDir, DirPointer+1
 
@@ -1765,16 +1764,16 @@ FormatDiskLoop:
 
 	ldx	#0
 	ldy	#0
-:	lda	FdcFileName,X		; volume label?			[036C]
+:	lda	FdcFileName,X		; volume label			[036C]
 	inx
 	jsr	WrDataRamDxxx		;				[01AF]
 	iny
-	cpy	#$0B
+	cpy	#FE_OFFS_NAME_END
 	bne	:-
-	lda	#$08			; volume label attribute?
+	lda	#FE_ATTR_VOLUME_ID	; volume label attribute
 	jsr	WrDataRamDxxx		;				[01AF]
 
-	LoadB	SectorL, 7
+	LoadB	SectorL, DD_SECT_ROOT
 	jsr	SetupSector		;				[8899]
 	LoadB	NumOfSectors, 1
 	jsr	SetWatchdog		;				[8D90]
@@ -1858,8 +1857,8 @@ FormatTrack:				;				[8B93]
 
 	MoveB	FdcHSEL, FdcFormatData+1
 	MoveB	FdcNumber, FdcFormatData+2
-	LoadB	FdcFormatData+3, 9	; sectors / track
-	LoadB	FdcFormatData+4, $54	; gap length
+	LoadB	FdcFormatData+3, DD_SECTORS_PER_TRACK	; sectors / track
+	LoadB	FdcFormatData+4, $54	; gap length, see datasheet
 	LoadB	FdcFormatData+5, 0
 
 	ldy	#0
@@ -2335,10 +2334,10 @@ A_8EC3:					;				[8EC3]
 	sei
 	jsr	RdDataRamDxxx		;				[01A0]
 
-	cmp	#0
+	cmp	#FE_EMPTY		; empty file entry? (note: it's 0)
 	beq	A_8F46			;				[8F46]
 
-	cmp	#$E5
+	cmp	#FE_DELETED		; deleted file entry?
 	beq	J_8F1A			;				[8F1A]
 
 	ldx	#$07
@@ -2347,8 +2346,8 @@ A_8ED3:					;				[8ED3]
 	jsr	RdDataRamDxxx		;				[01A0]
 
 	iny
-	cmp	#$20
-	beq	A_8EED			;				[8EED]
+	cmp	#' '
+	beq	A_8EED			; skip padding spaces?		[8EED]
 
 	sta	Z_FD			;				[FD]
 
@@ -2379,7 +2378,7 @@ A_8EF7:					;				[8EF7]
 	jsr	RdDataRamDxxx		;				[01A0]
 
 	iny
-	cmp	#$20
+	cmp	#' '			; skip padding spaces?
 	beq	A_8F0F			;				[8F0F]
 
 	sta	Z_FD			;				[FD]
@@ -2407,7 +2406,7 @@ A_8F0F:					;				[8F0F]
 	jsr	OutByteChan		;				[FFD2]
 J_8F1A:					;				[8F1A]
 	lda	DirPointer		; XXX? AddVB $20, DirPointer + LDA DirPointer+1?
-	addv	$20			; next directory entry
+	addv	FILE_ENTRY_SIZE		; next directory entry
 	sta	DirPointer		;				[FB]
 
 	lda	DirPointer+1		;				[FC]
@@ -2417,20 +2416,20 @@ J_8F1A:					;				[8F1A]
 	cmp	EndofDir		;				[0335]
 	bne	A_8EC3			;				[8EC3]
 
-	AddVB	1, Z_FF
-	cmp	#$0E
-	bcs	A_8F46			;				[8F46]
+	AddVB	1, Z_FF			; XXX inc? Z_FF has sector number?
+	cmp	#2*DD_NUM_ROOTDIR_SECTORS ; whole directory read? (7 sectors but this counts pages, we could also count file entries up to DD_ROOT_ENTRIES)
+	bcs	A_8F46			; yes				[8F46]
 
 	sei
 	jsr	ReadDirectory		;				[8E0F]
 
-	LoadB	VICCTR1, $1B		; screen on
+	LoadB	VICCTR1, $1B		; screen on (why?)
 
 	jsr	StopWatchdog		;				[8DBD]
 
-	jmp	J_8EBA			;				[8EBA]
+	jmp	J_8EBA			; 				[8EBA]
 
-A_8F46:					;				[8F46]
+A_8F46:
 	jsr	ShowBytesFree		;				[916A]
 
 	pla
@@ -2441,9 +2440,12 @@ A_8F46:					;				[8F46]
 	rts
 
 
+; scan directory for available directory entry for a new file
+; in: FdcFileName
+; out: C=1 error (file exists or otherwise), C=0 ok and FdcFileName copied to that file entry
 FindBlank:				;				[8F4F]
-	LoadB	NumDirSectors, 7
-	LoadB	SectorL, 7		; XXX optimization, directory starts at sector 7
+	LoadB	NumDirSectors, DD_NUM_ROOTDIR_SECTORS
+	LoadB	SectorL, DD_SECT_ROOT	; XXX optimization, directory starts at sector 7
 	sta	DirSector
 	LoadB	SectorH, 0
 
@@ -2468,25 +2470,25 @@ A_8F62:					;				[8F62]
 	MoveB	StartofDir, DirPointer+1
 A_8F8B:					;				[8F8B]
 	ldx	#0
-	ldy	#0
+	ldy	#FE_OFFS_NAME
 :	jsr	RdDataRamDxxx		;				[01A0]
 	iny
-	cmp	#0
+	cmp	#FE_EMPTY
 	beq	A_8FD3			;				[8FD3]
-	cmp	#$E5
+	cmp	#FE_DELETED
 	beq	A_8FD3			;				[8FD3]
-	cmp	FdcFileName,X		;				[036C]
+	cmp	FdcFileName,X		; ????				[036C]
 	bne	A_8FA7			;				[8FA7]
 	inx
-	cpx	#$0A
+	cpx	#FE_OFFS_NAME_END-1	; XXX bug, should be without -1 because we count up
 	bne	:-
 
-	sec
+	sec				; C=1 and ErrorCode=0 if file exists?
 	rts
 
 A_8FA7:					;				[8FA7]
 	lda	DirPointer		; next directory entry, use AddVW $20, DirPointer + CmpB DirPointer, EndofDir (also above) XXX
-	addv	$20
+	addv	FILE_ENTRY_SIZE
 	sta	DirPointer		;				[FB]
 
 	lda	DirPointer+1		;				[FC]
@@ -2504,26 +2506,26 @@ A_8FA7:					;				[8FA7]
 	jsr	SetupSector		;				[8899]
 
 	dec	NumDirSectors		;				[0364]
-	bpl	A_8F62			;				[8F62]
+	bpl	A_8F62			; read next directory sector	[8F62]
 
 	LoadB	ErrorCode, ERR_NO_MORE_DIRECTORY_SPACE
 
 	clc
 	rts
 
-A_8FD3:					;				[8FD3]
-	ldy	#$1F
+A_8FD3:					; found empty entry		[8FD3]
+	ldy	#FILE_ENTRY_SIZE-1	; clear whole file entry
 	lda	#0
 :	jsr	WrDataRamDxxx		;				[01AF]
 	dey
 	bpl	:-
 
-	ldy	#$0A
+	ldy	#FE_OFFS_NAME_END-1	; copy filename from FdcFileName there
 :	lda	FdcFileName,Y		;				[036C]
 	jsr	WrDataRamDxxx		;				[01AF]
 	dey
 	bpl	:-
-	clc
+	clc				; no error
 	rts
 
 
@@ -2553,10 +2555,12 @@ FindFile:				;				[8FEA]
 
 
 ;**  Search for a file
+; in: FdcFileName
+; out: C=0 file found, C=1 file not found, and another error can be in ErrorCode
 Search:					;				[9011]
-	LoadB	NumDirSectors, 6
+	LoadB	NumDirSectors, DD_NUM_ROOTDIR_SECTORS-1	; why not 7?
 
-	LoadB	SectorL, 7		; directory starts at sector 7
+	LoadB	SectorL, DD_SECT_ROOT	; directory starts at sector 7
 	sta	DirSector		;				[0369]
 	LoadB	SectorH, 0
 
@@ -2585,22 +2589,21 @@ A_9044:					;				[9044]
 	MoveB	StartofDir, DirPointer+1 ; normally $D0
 ; note: (DirPointer) most probably points to $D000
 
-	ldy	#0
+	ldy	#FE_OFFS_NAME
 A_904F:					;				[904F]
 	ldx	#0
 	jsr	RdDataRamDxxx		;				[01A0]
 
-	cmp	#0
+	cmp	#FE_EMPTY		; skip if empty but why check twice? XXX
 	beq	A_90A0			;				[90A0]
 A_9058:					;				[9058]
 	jsr	RdDataRamDxxx		;				[01A0]
 
 	iny
 
-	cmp	#0			; end of the name in RAM found?
+	cmp	#FE_EMPTY		; empty file entry?
 	beq	A_9079			; yes, ->			[9079]
-
-	cmp	#$E5			; ???
+	cmp	#FE_DELETED		; or deleted file?
 	beq	A_9079			;				[9079]
 
 	cmp	FdcFileName,X		; same as wanted name?		[036C]
@@ -2613,7 +2616,7 @@ A_9058:					;				[9058]
 
 A_9072:					;				[9072]
 	inx
-	cpx	#11			; eleven characters checked?
+	cpx	#FE_OFFS_NAME_END	; eleven characters checked?
 	bne	A_9058			; no, -> more			[9058]
 
 ; Name has been found
@@ -2653,6 +2656,9 @@ A_90A0:
 
 
 ;**  Copy the file name to two places
+; Strip spaces? Reverse of PadOut?
+; in: (AddrFileName), LengthFileName
+; out: (AddrFileName), uses FdcFileName as a work area
 StripSP:				;				[90A7]
 ; note: StripSP is the name according the manual but what does it mean then?
 	ldy	#0
@@ -2694,7 +2700,8 @@ A_90C3:					;				[90C3]
 A_90CD:					;				[90CD]
 	rts
 
-
+; in (AddrFileName), LengthFileName in 'xx.zz'
+; out: FdcFileName in 'xx       zz ' normalized for directory entry
 PadOut:					;				[90CE]
 	ldy	#0
 A_90D0:					;				[90D0]
@@ -2725,7 +2732,7 @@ A_90E9:					;				[90E9]
 	cmp	#0			; end of the name found?
 	bne	A_90E9			; no, -> next character		[90E9]
 
-	cpy	#10			; tenth character or more?
+	cpy	#FE_OFFS_NAME_END-1	; tenth character or more?
 	bcs	A_9101			; yes, -> error			[9101]
 
 ; Fill up with spaces
@@ -2735,7 +2742,7 @@ A_90F6:					;				[90F6]
 	sta	FdcFileName,Y		;				[036C]
 
 	iny
-	cpy	#11			; ten chars done?
+	cpy	#FE_OFFS_NAME_END	; ten chars done?
 	bne	A_90F6			; no, -> more			[90F6]
 
 	rts
@@ -2750,64 +2757,62 @@ A_9107:					;				[9107]
 	tya
 	pha				; save Y
 
-	ldx	#8
+	ldx	#FE_OFFS_EXT
 :	iny
 	lda	(AddrFileName),Y	;				[BB]
 	sta	FdcFileName,X		;				[036C]
 	inx
-	cpx	#11
+	cpx	#FE_OFFS_NAME_END
 	bne	:-
 
 	pla
 	tay				; restore Y
-	cpy	#8
+	cpy	#FE_OFFS_EXT
 	beq	:++
 
 ; Fill up with spaces
 	lda	#' '
 :	sta	FdcFileName,Y		;				[036C]
 	iny
-	cpy	#8
+	cpy	#FE_OFFS_EXT
 	bne	:-
 :	rts
 
 
+; print 2 spaces and file size (in bytes)
 SaveRloc:				;				[9127]
-	lda	#$20
+	lda	#' '
 	jsr	OutByteChan		;				[FFD2]
 
-	lda	#$20
+	lda	#' '			; XXX seems unneeded, $FFD2 saves everything
 	jsr	OutByteChan		;				[FFD2]
 
-	ldy	#$1C
+	ldy	#FE_OFFS_SIZE
 	ldx	#0
-	sei
+	sei				; XXX SEI but where is CLI?
 	jsr	RdDataRamDxxx		;				[01A0]
-
 	iny
 	sta	TapeBuffer+34		;				[035E]
-
 	jsr	RdDataRamDxxx		;				[01A0]
-
 	iny
 	sta	TapeBuffer+35		;				[035F]
-
 	LoadB	TapeBuffer+36, 0
 
+	; pass TapeBuffer+34/35/36, convert to 5 digits in NumDirSectors
 	jsr	BN2DEC			;				[920E]
 
-	ldy	#$04
+	ldy	#$04			; XXX why not 5? it would be identical to ShowBytesFree
 	lda	#'0'
-:	cmp	NumDirSectors,Y		;				[0364]
+:	cmp	NumDirSectors,Y		; skip leading zeros		[0364]
 	bne	:+			;				[915C]
 	dey
 	bpl	:-			;				[9150]
-	jsr	OutByteChan		; JMP instead of JSR+RTS	[FFD2]
+	jsr	OutByteChan		; XXX JMP instead of JSR+RTS, print final 0
 	rts
 
-:	tya
+:	tya				; XXX TYA+PHA, PLA+TAY, no need to preserve for $FFD2
 	pha
-	lda	NumDirSectors,Y		;				[0364]
+	lda	NumDirSectors,Y		; print actual digits		[0364]
 	jsr	OutByteChan		;				[FFD2]
 	pla
 	tay
@@ -2849,7 +2854,7 @@ A_919F:					;				[919F]
 	cmp	#2
 	bne	A_9180			;				[9180]
 
-	CmpBI	TapeBuffer+26, $CB
+	CmpBI	TapeBuffer+26, $CB	; XXX what is $CB?
 	bne	A_9180			;				[9180]
 
 	asl	TapeBuffer+35		;				[035F]
@@ -2879,16 +2884,16 @@ A_91DD:					;				[91DD]
 A_91DE:					;				[91DE]
 	ldy	#5
 	lda	#'0'
-:	cmp	NumDirSectors,Y		;				[0364]
+:	cmp	NumDirSectors,Y		; XXX same as above: skip leading zeros	[0364]
 	bne	:+
 	dey
 	bpl	:-
-	jsr	OutByteChan		; JMP instead of JSR+RTS XXX	[FFD2]
+	jsr	OutByteChan		; print final 0, JMP instead of JSR+RTS XXX	[FFD2]
 	rts
 
-:	tya
+:	tya				; XXX no need for TYA+PHA, PLA+TAY
 	pha
-	lda	NumDirSectors,Y		;				[0364]
+	lda	NumDirSectors,Y		; print digits			[0364]
 	jsr	OutByteChan		;				[FFD2]
 	pla
 	tay
@@ -2901,20 +2906,23 @@ TotalBytesFreeTxt:
 .asciiz "TOTAL BYTES FREE "
 
 
+; convert 24-bit number to ASCII
+; in: TapeBuffer+34/35/36 (lo,hi,bank)
+; out: NumDirSectors (5 digits) with leading zeros
 BN2DEC:					;				[920E]
 	ldy	#5			; start with 100000
 @loop:	ldx	#0
 :	lda	TapeBuffer+34		;				[035E]
 	sec
-	sbc	D_925A,Y		;				[925A]
+	sbc	TblDecimalL,Y		;				[925A]
 	sta	TapeBuffer+34		;				[035E]
 
 	lda	TapeBuffer+35		;				[035F]
-	sbc	D_9260,Y		;				[9260]
+	sbc	TblDecimalH,Y		;				[9260]
 	sta	TapeBuffer+35		;				[035F]
 
 	lda	TapeBuffer+36		;				[0360]
-	sbc	D_9266,Y		;				[9266]
+	sbc	TblDecimalB,Y		;				[9266]
 	bcc	:+
 
 	sta	TapeBuffer+36		;				[0360]
@@ -2924,11 +2932,11 @@ BN2DEC:					;				[920E]
 ; Oops, we subtracted to much. add it again
 :	lda	TapeBuffer+34		;				[035E]
 	clc
-	adc	D_925A,Y		;				[925A]
+	adc	TblDecimalL,Y		;				[925A]
 	sta	TapeBuffer+34		;				[035E]
 
 	lda	TapeBuffer+35		;				[035F]
-	adc	D_9260,Y		;				[9260]
+	adc	TblDecimalH,Y		;				[9260]
 	sta	TapeBuffer+35		;				[035F]
 
 	txa
@@ -2943,14 +2951,11 @@ BN2DEC:					;				[920E]
 	sta	NumDirSectors,Y		;				[0364]
 	rts
 
+.define TblDecimal 0, 10, 100, 1000, 10000, 100000
+TblDecimalL:	.lobytes TblDecimal
+TblDecimalH:	.hibytes TblDecimal
+TblDecimalB:	.bankbytes TblDecimal
 
-;** The hexadecimal values of 0, 10, 100, 1000, 10000 and 100000 in three bytes
-D_925A:					;				[925A]
-.byte $00, $0A, $64, $E8, $10, $A0
-D_9260:					;				[9260]
-.byte $00, $00, $00, $03, $27, $86
-D_9266:					;				[9266]
-.byte $00, $00, $00, $00, $00, $01
 
 
 ;**  Show an error message
@@ -2972,7 +2977,7 @@ ShowError:				;				[926C]
 	beq	@end			; yes, -> exit			[9292]
 	tya
 	pha
-; Note: saving Y is not needed, OUTBYTECHAN does save Y
+; XXX Note: saving Y is not needed, OUTBYTECHAN does save Y
 	lda	(DirPointer),Y		;				[FB]
 	jsr	OutByteChan		;				[FFD2]
 	pla
@@ -3009,55 +3014,43 @@ BootExe:
 
 .define TblErrorMsg	Msg00, Msg01, Msg02, Msg03, Msg04, Msg05, Msg06, Msg07, Msg08, Msg09, Msg0A, Msg0B, Msg0C, Msg0D, Msg0E, Msg0F, Msg10, Msg11 
 
-TblErrorMsgL:				;				[92DC]
-.lobytes TblErrorMsg
-
-TblErrorMsgH:				;				[92EE]
-.hibytes TblErrorMsg
+TblErrorMsgL:	.lobytes TblErrorMsg
+TblErrorMsgH:	.hibytes TblErrorMsg
  
-Msg00:
-.asciiz "OK"
-Msg01:
-.asciiz "DISK IS WRITE PROTECTED"
-Msg02:
-.asciiz "DISK IS UNUSABLE"
-Msg03:
-.asciiz "DISK IS NOT FORMATTED"
-Msg04:
-.asciiz "FILE IS CORRUPT"
-Msg05:
-.asciiz "FORMATING DISK"
-Msg06:
-.asciiz "RENAMING FILE"
-Msg07:
-.asciiz "SCRATCHING FILE"
-Msg08:
-.asciiz "ERROR DURING WRITE"
-Msg09:
-.asciiz "ERROR DURING READ"
-Msg0A:
-.asciiz "DISK MAY BE DAMAGED"
-Msg0B:
-.asciiz "FILE NOT FOUND"
-Msg0C:
-.asciiz "NO FILE EXT SPECIFIED"
-Msg0D:
-.asciiz "FILE TO LARGE"
-Msg0E:
-.asciiz "NO MORE DIRECTORY SPACE"
-Msg0F:
-.asciiz "DISK FOUND TO BE UNRELIABLE"
-Msg10:
-.asciiz "NAME TO LONG" ; XXX typo!
-Msg11:
-.asciiz "NO NAME SPECIFIED"
+Msg00:		.asciiz "OK"
+Msg01:		.asciiz "DISK IS WRITE PROTECTED"
+Msg02:		.asciiz "DISK IS UNUSABLE"
+Msg03:		.asciiz "DISK IS NOT FORMATTED"
+Msg04:		.asciiz "FILE IS CORRUPT"
+Msg05:		.asciiz "FORMATING DISK"
+Msg06:		.asciiz "RENAMING FILE"
+Msg07:		.asciiz "SCRATCHING FILE"
+Msg08:		.asciiz "ERROR DURING WRITE"
+Msg09:		.asciiz "ERROR DURING READ"
+Msg0A:		.asciiz "DISK MAY BE DAMAGED"
+Msg0B:		.asciiz "FILE NOT FOUND"
+Msg0C:		.asciiz "NO FILE EXT SPECIFIED"
+Msg0D:		.asciiz "FILE TO LARGE" ; XXX typo!
+Msg0E:		.asciiz "NO MORE DIRECTORY SPACE"
+Msg0F:		.asciiz "DISK FOUND TO BE UNRELIABLE"
+Msg10:		.asciiz "NAME TO LONG" ; XXX typo!
+Msg11:		.asciiz "NO NAME SPECIFIED"
  
-D_943E:					;				[943E]
-; volume label? BIOS Parameter Block? (see FormatDisk)
-.byte $EB, $28, $90, $43, $36, $34, $20, $50	; .(.C64 P  $943E
-.byte $4E, $43, $49, $00, $02, $02, $01, $00	; NCI.....  $9446
-.byte $02, $70, $00, $A0, $05, $F9, $03, $00	; .p......  $944E
-.byte $09, $00, $02, $00, $00, $00, $00, $00	; ........  $9456
+BIOSParameterBlock:			;  (see FormatDisk)
+	.byte $EB, $28, $90			; x86 jump? but there is no x86 code there
+	.byte "C64 PNCI"			; OEM name
+	.word DD_SECTOR_SIZE			; bytes per sector
+	.byte $02				; sectors per cluster
+	.word $0001				; reserved sectors
+	.byte $02				; number of FATs
+	.word DD_ROOT_ENTRIES			; number of entries in root directory
+	.word DD_TOTAL_SECTORS			; total sectors
+	.byte DD_MEDIA_TYPE
+	.word DD_FAT_SIZE			; sectors per FAT
+	.word DD_SECTORS_PER_TRACK		; sectors per track
+	.word DD_HEADS				; number of heads
+	.word 0					; hidden sectors
+	.word 0					; reserved
 
 ; unused
 .byte $00, $00, $00, $00			; ....  $945E
