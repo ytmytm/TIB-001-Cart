@@ -11,25 +11,30 @@ LD = ld65
 ASFLAGS = -t none -I inc -I . -DDEVNUM=$(DEVNUM)
 LDFLAGS = 
 
+BUILD_DIR = build
+
 SOURCES = TIB001.s
 
 OBJS = $(SOURCES:.s=.o)
-
-BUILD_DIR = build
+PREFIXED_OBJS = $(addprefix $(BUILD_DIR)/, $(OBJS))
 
 FIRMWARE_ROM = $(BUILD_DIR)/tib001.bin
 REFERENCE_ROM = ../firmware/rom-8000-9FFFp.bin
 
-$(FIRMWARE_ROM): $(OBJS) rom.cfg
+$(FIRMWARE_ROM): $(PREFIXED_OBJS) rom.cfg
 	-mkdir -p $(BUILD_DIR)
-	$(LD) $(LDFLAGS) -C rom.cfg $(OBJS) -o $@
+	$(LD) $(LDFLAGS) -C rom.cfg $(PREFIXED_OBJS) -o $@
+
+$(BUILD_DIR)/%.o: %.s
+	@mkdir -p `dirname $@`
+	$(AS) $(ASFLAGS) $< -o $@
 
 rom: $(FIRMWARE_ROM)
 
 all: rom
 
 clean:
-	rm -rf $(BUILD_DIR) $(OBJS)
+	rm -rf $(BUILD_DIR)
 
 regress: rom
 	diff $(FIRMWARE_ROM) $(REFERENCE_ROM)
