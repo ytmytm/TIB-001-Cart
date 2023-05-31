@@ -1,12 +1,9 @@
 
 # TODO
 
-- disassemble these essential utilities:
-	- format
-	- dispasc (display text files)
-	- diskcopy (3.5 to 3.5 backup)
-	- v-max (I don't even know what it does)
+- look at manual and MULT.ASC and update labels - TapeBuffer+?? seems to overlap with named labels; data load from MULT.ASC looks easy to follow
 - keep load address in first 2 bytes of the file, where it belongs
+- correct and reassemble utilities, this time with jump table
 - fail fast if there is no FDD or no disk in FDD
 - own BASIC startup message
 - display directory using tokenized BASIC to avoid own number/text routines
@@ -19,6 +16,7 @@
 
 - use constants for BIOS Parameter Block and file entries
 - replace some bit testing jumps by GEOS macros
+- disassembled utilities use direct jumps to ROM, without using JUMPTABLE
 
 # Optimizations
 
