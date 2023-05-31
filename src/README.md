@@ -14,6 +14,7 @@
 
 # Source code
 
+- split ROM into multiple files with clear exports/imports (like reassembled GEOS) and several segments
 - use constants for BIOS Parameter Block and file entries
 - replace some bit testing jumps by GEOS macros
 - disassembled utilities use direct jumps to ROM, without using JUMPTABLE
