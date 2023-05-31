@@ -1,0 +1,39 @@
+
+GLOBAL {
+    OUTPUTNAME "format.s";
+    INPUTNAME "../../firmware/utils/FORMAT.EXE";
+    STARTADDR $0800;
+    PAGELENGTH 0;	# no paging
+    CPU "6502";
+};
+
+RANGE { START $0895; END $0960; TYPE TextTable; COMMENT "Startup messages"; };
+RANGE { START $0961; END $0971; TYPE ByteTable; NAME "FileNameBuf"; COMMENT "Buffer to store file name"; };
+LABEL { NAME "PromptTxt";	ADDR $0895; };
+LABEL { NAME "StartupTxt";	ADDR $08AE; };
+
+# DD-001 firmware
+LABEL { NAME "StartofDir";	ADDR $0334; SIZE 1; COMMENT "page number where directory buffer starts (need 2 pages for a sector)"; };
+LABEL { NAME "EndofDir";	ADDR $0335; SIZE 1; COMMENT "page number where directory buffer ends(?)"; };
+LABEL { NAME "CART_COLDSTART";	ADDR $8000; SIZE 2; COMMENT "cartridge cold start vector"; };
+LABEL { NAME "FormatDisk";	ADDR $89DB; COMMENT "direct call to FormatDisk instead of jump table _FormatDisk $800F"; };
+
+# C64 Kernal
+LABEL { NAME "KERNAL_SETNAM";	ADDR $FFBD; COMMENT "Set file name"; };
+LABEL { NAME "KERNAL_CHRIN";	ADDR $FFCF; COMMENT "Get a character from the input channel"; };
+LABEL { NAME "KERNAL_CHROUT";	ADDR $FFD2; COMMENT "Output a character"; };
+LABEL { NAME "KERNAL_GETIN";	ADDR $FFE4; COMMENT "Get a character"; };
+
+# C64 memory map
+LABEL { NAME "P6510";	ADDR $01;	SIZE 1; COMMENT "DR onboard I/O port of 6510"; };
+LABEL { NAME "MSGFLG";	ADDR $9D;	SIZE 1; COMMENT "Kernal message control (bit 7=show control, bit 6=show error); $80=direct mode, $00=program mode"; };
+LABEL { NAME "NDX";	ADDR $C6;	SIZE 1; COMMENT "Number of characters in keyboard queue"; };
+LABEL { NAME "FNLEN";	ADDR $B7;	SIZE 1; COMMENT "Length of current filename, set by SETNAM"; };
+LABEL { NAME "FNADR";	ADDR $BB;	SIZE 2; COMMENT "Pointer to current filename, set by SETNAM"; };
+
+LABEL { NAME "COLOR";	ADDR $0286;	SIZE 1; COMMENT "foreground text color"; };
+
+LABEL { NAME "VICCTR1";	ADDR $D011;	SIZE 1; COMMENT "control register 1"; };
+LABEL { NAME "VICLINE";	ADDR $D012;	SIZE 1; COMMENT "raster line"; };
+LABEL { NAME "VICBOCL";	ADDR $D020;	SIZE 1; COMMENT "border color"; };
+LABEL { NAME "VICBAC0"; ADDR $D021;	SIZE 1; COMMENT "backgrouund color 0"; };

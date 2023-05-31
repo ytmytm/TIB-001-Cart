@@ -1,0 +1,78 @@
+
+GLOBAL {
+    OUTPUTNAME "diskcopy.s";
+    INPUTNAME "../../firmware/utils/DISKCOPY.EXE";
+    STARTADDR $0800;
+    PAGELENGTH 0;	# no paging
+    CPU "6502";
+};
+
+RANGE { START $09E4; END $09F3; TYPE ByteTable; };
+RANGE { START $09F4; END $0C00; TYPE TextTable; COMMENT "messages"; };
+LABEL { NAME "CopyLoop";	ADDR $084B; };
+LABEL { NAME "WriteChunk";	ADDR $08AD; };
+LABEL { NAME "ReadChunk";	ADDR $08E5; };
+LABEL { NAME "InsertSourceDisk";ADDR $092E; };
+LABEL { NAME "PrintNewLine";	ADDR $094D; };
+LABEL { NAME "InsertTargetDisk";ADDR $0957; };
+LABEL { NAME "PrintNewLine2";	ADDR $0977; COMMENT "they could have used PrintNewLine"; };
+LABEL { NAME "CopyCompleted";	ADDR $0981; };
+LABEL { NAME "PrintNewLine3";	ADDR $09A9; COMMENT "they could have used PrintNewLine"; };
+LABEL { NAME "KeyboardScan";	ADDR $09B3; };
+LABEL { NAME "TblBitClear";	ADDR $09E4; };
+LABEL { NAME "TblBitSet";	ADDR $09EC; };
+LABEL { NAME "StartupTxt";	ADDR $09F4; };
+LABEL { NAME "SourceDiskTxt";	ADDR $0A8A; };
+LABEL { NAME "TargetDiskTxt";	ADDR $0AB2; };
+LABEL { NAME "CompletedTxt";	ADDR $0ADF; };
+LABEL { NAME "tempY";		ADDR $0AFD; SIZE 1; COMMENT "Y reg storage during keyboard scan"; };
+
+# DD-001 firmware
+LABEL { NAME "NumOfSectors";	ADDR $F7; SIZE 1; };
+LABEL { NAME "SectorL";		ADDR $F8; SIZE 1; };
+LABEL { NAME "SectorH";		ADDR $F9; SIZE 1; };
+LABEL { NAME "DirPointer";	ADDR $FB; SIZE 2; };
+LABEL { NAME "StartofDir";	ADDR $0334; SIZE 1; COMMENT "page number where directory buffer starts (need 2 pages for a sector)"; };
+LABEL { NAME "EndofDir";	ADDR $0335; SIZE 1; COMMENT "page number where directory buffer ends(?)"; };
+LABEL { NAME "TapeBuffer";	ADDR $033C; SIZE $BF; };
+# DD-001 ROM
+LABEL { NAME "CART_COLDSTART";	ADDR $8000; SIZE 2; COMMENT "cartridge cold start vector"; };
+LABEL { NAME "WaitRasterLine";	ADDR $8851; COMMENT "direct call to WaitRasterLine, not exposed in jump table"; };
+LABEL { NAME "ReadSectors";	ADDR $885E; COMMENT "direct call to ReadSectors instead of jump table _ReadSectors $801B"; };
+LABEL { NAME "SetupSector";	ADDR $8899; COMMENT "direct call to SetupSector instead of jump table _SetupSector $8030"; };
+LABEL { NAME "Recalibrate";	ADDR $88F7; COMMENT "direct call to Recalibrate instead of jump table _Recalibrate $8036"; };
+LABEL { NAME "Specify";		ADDR $891A; COMMENT "direct call to Specify instead of jump table _Specify $8033"; };
+LABEL { NAME "ReadStatus";	ADDR $8962; COMMENT "direct call to ReadStatus instead of jump table _ReadStatus $8021"; };
+LABEL { NAME "SeekTrack";	ADDR $898A; COMMENT "direct call to SeekTrack instead of jump table _SeekTrack $8057"; };
+LABEL { NAME "Wait4DataReady";	ADDR $89C8; COMMENT "direct call to Wait4DataReady, not exposed in jump table"; };
+LABEL { NAME "FormatDisk";	ADDR $89DB; COMMENT "direct call to FormatDisk instead of jump table _FormatDisk $800F"; };
+LABEL { NAME "WriteSector";	ADDR $8BEE; COMMENT "direct call to WriteSector instead of jump table _WriteSector $801E"; };
+LABEL { NAME "InitStackProg";	ADDR $8D5A; COMMENT "direct call to InitStackProg instead of jump table _InitStackProg $802D"; };
+LABEL { NAME "SetWatchdog";	ADDR $8D90; COMMENT "direct call to SetWatchdog instead of jump table _SetWatchdog $8018"; };
+LABEL { NAME "StopWatchdog";	ADDR $8DBD; COMMENT "direct call to StopWatchdog instead of jump table _StopWatchdog $807E"; };
+# DD-001 I/O
+LABEL { NAME "StatusRegister";	ADDR $DE80; SIZE 1; COMMENT "floppy controller status register"; };
+LABEL { NAME "DataRegister";	ADDR $DE81; SIZE 1; COMMENT "floppy controller data register"; };
+LABEL { NAME "ResetFDC";	ADDR $DF80; SIZE 1; COMMENT "write here to reset floppy controller (any write to $DFxx)"; };
+LABEL { NAME "ResetFDC00";	ADDR $DF00; SIZE 1; COMMENT "write here to reset floppy controller (any write to $DFxx)"; };
+
+
+# C64 Kernal
+LABEL { NAME "KERNAL_SETNAM";	ADDR $FFBD; COMMENT "Set file name"; };
+LABEL { NAME "KERNAL_CHRIN";	ADDR $FFCF; COMMENT "Get a character from the input channel"; };
+LABEL { NAME "KERNAL_CHROUT";	ADDR $FFD2; COMMENT "Output a character"; };
+LABEL { NAME "KERNAL_GETIN";	ADDR $FFE4; COMMENT "Get a character"; };
+
+# C64 memory map
+LABEL { NAME "P6510";	ADDR $01;	SIZE 1; COMMENT "DR onboard I/O port of 6510"; };
+LABEL { NAME "MSGFLG";	ADDR $9D;	SIZE 1; COMMENT "Kernal message control (bit 7=show control, bit 6=show error); $80=direct mode, $00=program mode"; };
+LABEL { NAME "NDX";	ADDR $C6;	SIZE 1; COMMENT "Number of characters in keyboard queue"; };
+LABEL { NAME "FNLEN";	ADDR $B7;	SIZE 1; COMMENT "Length of current filename, set by SETNAM"; };
+LABEL { NAME "FNADR";	ADDR $BB;	SIZE 2; COMMENT "Pointer to current filename, set by SETNAM"; };
+
+LABEL { NAME "COLOR";	ADDR $0286;	SIZE 1; COMMENT "foreground text color"; };
+
+LABEL { NAME "VICCTR1";	ADDR $D011;	SIZE 1; COMMENT "control register 1"; };
+LABEL { NAME "VICLINE";	ADDR $D012;	SIZE 1; COMMENT "raster line"; };
+LABEL { NAME "VICBOCL";	ADDR $D020;	SIZE 1; COMMENT "border color"; };
+LABEL { NAME "VICBAC0"; ADDR $D021;	SIZE 1; COMMENT "backgrouund color 0"; };
