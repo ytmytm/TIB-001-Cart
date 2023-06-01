@@ -2,7 +2,7 @@
 ;	Disassembly of the ROM of the TIB-001 FDC cartridge
 ;
 
-; - a lot of loading DirPointer with (0, StartofDir), move that to a subroutine
+; - a lot of loading Pointer with (0, StartofDir), move that to a subroutine
 ; - check status register consistently BIT+BPL instead of LDA+AND#$80+BNE
 
 ; My notes/ideas regarding this disassembly
@@ -293,7 +293,7 @@ Rename:					;				[81C0]
 	sta	FdcFileName,Y		;				[036C]
 	iny
 	cpy	#FE_OFFS_NAME_END
-	bne	:-			; XXX should jump to the next instruction, A is $20
+	bne	:-			; XXX should loop back to 'sta' because A is still $20
 	jmp	@cont			; XXX beq will work here
 
 @err_longname:
@@ -323,8 +323,8 @@ Rename:					;				[81C0]
 
 @cont:	jsr	WaitRasterLine		;				[8851]
 
-	PushB	DirPointer
-	PushB	DirPointer+1
+	PushB	Pointer
+	PushB	Pointer+1
 	PushB	DirSector
 
 	jsr	Search			;				[9011]
@@ -334,8 +334,8 @@ Rename:					;				[81C0]
 
 	jsr	WaitRasterLine		;				[8851]
 
-	LoadB	DirPointer, 0
-	MoveB	StartofDir, DirPointer+1
+	LoadB	Pointer, 0
+	MoveB	StartofDir, Pointer+1
 
 	LoadB	NumOfSectors, 1
 	MoveB	DirSector, SectorL
@@ -346,8 +346,8 @@ Rename:					;				[81C0]
 	jsr	ReadSectors		;				[885E]
 	jsr	SetWatchdog		;				[8D90]
 
-	PopB	DirPointer+1
-	PopB	DirPointer
+	PopB	Pointer+1
+	PopB	Pointer
 
 	ldy	#0
 :	lda	FdcFileName,Y		;				[036C]
@@ -524,16 +524,16 @@ Scratch:				;				[8355]
 	jsr	WrDataRamDxxx		;				[01AF]
 ; Note: MS-DOS saves the first character
 
-	PushB	DirPointer
-	PushB	DirPointer+1
+	PushB	Pointer
+	PushB	Pointer+1
 
 	jsr	WaitRasterLine		;				[8851]
 	jsr	WriteDirectory		;				[850F]
 	jsr	GetFATs			;				[8813]
 	jsr	WaitRasterLine		;				[8851]
 
-	PopB	DirPointer+1
-	PopB	DirPointer
+	PopB	Pointer+1
+	PopB	Pointer
 
 	jsr	ClearFATs		;				[8650]
 	jsr	WriteFATs		;				[860C]
@@ -602,11 +602,11 @@ __NewSave:
 
 @overwrite:
 	jsr	StopWatchdog		;				[8DBD]
-	PushB	DirPointer
-	PushB	DirPointer+1
+	PushB	Pointer
+	PushB	Pointer+1
 	jsr	ClearFATs		;				[8650]
-	PopB	DirPointer+1
-	PopB	DirPointer
+	PopB	Pointer+1
+	PopB	Pointer
 	jmp	@dosave			;				[8418]
 
 @newfile:
@@ -622,14 +622,14 @@ __NewSave:
 @dosave:
 	jsr	StopWatchdog		;				[8DBD]
 
-	PushB	DirPointer+1
-	PushB	DirPointer
+	PushB	Pointer+1
+	PushB	Pointer
 
 	ldx	#0
 	jsr	FindFAT			;				[85A8]
 
-	PopB	DirPointer
-	PopB	DirPointer+1
+	PopB	Pointer
+	PopB	Pointer+1
 
 	ldy	#FE_OFFS_LAST_WRITE_TIME
 	lda	#$79			; write time (1)
@@ -681,10 +681,10 @@ J_847D:					;				[847D]
 	jsr	WaitRasterLine		;				[8851]
 
 	ldx	TapeBuffer+43		; zp index to load address	[0367]
-	lda	$00,X			; copy load address to DirPointer
-	sta	DirPointer		;				[FB]
+	lda	$00,X			; copy load address to Pointer
+	sta	Pointer		;				[FB]
 	lda	$01,X			;				[01]
-	sta	DirPointer+1		;				[FC]
+	sta	Pointer+1		;				[FC]
 
 @loop:	jsr	CalcFirst		;				[883A]
 
@@ -706,8 +706,8 @@ J_847D:					;				[847D]
 	dec	NumDirSectors		; are we done?			[0364]
 	beq	@end			;				[84E5]
 
-	PushB	DirPointer
-	PushB	DirPointer+1
+	PushB	Pointer
+	PushB	Pointer+1
 
 	ldx	#1
 	jsr	FindNextFAT		;				[85B2]
@@ -719,8 +719,8 @@ J_847D:					;				[847D]
 	jmp	@enderr
 
 :	jsr	MarkFAT			; mark cluster occupied		[8534]
-	PopB	DirPointer+1
-	PopB	DirPointer
+	PopB	Pointer+1
+	PopB	Pointer
 	jmp	@loop			; save next cluster		[8493]
 
 @end:	; file was saved
@@ -750,8 +750,8 @@ WriteDirectory:				;				[850F]
 
 	LoadB	NumOfSectors, 1
 
-	MoveB	StartofDir, DirPointer+1
-	LoadB	DirPointer, 0
+	MoveB	StartofDir, Pointer+1
+	LoadB	Pointer, 0
 
 	MoveB	DirSector, SectorL
 	LoadB	SectorH, 0
@@ -780,11 +780,11 @@ MarkFAT:
 	adc	TapeBuffer+29		;				[0359]
 	sta	TapeBuffer+29		;				[0359]
 
-	MoveB	TapeBuffer+28, DirPointer
+	MoveB	TapeBuffer+28, Pointer
 
 	lda	TapeBuffer+29		;				[0359]
 	adc	EndofDir		;				[0335]
-	sta	DirPointer+1		;				[FC]
+	sta	Pointer+1		;				[FC]
 
 	pla
 	and	#1
@@ -872,8 +872,8 @@ FindNextFAT:				;				[85B2]
 WriteFATs:				;				[860C]
 	LoadB	NumOfSectors, DD_FAT_SIZE
 
-	MoveB	EndofDir, DirPointer+1
-	LoadB	DirPointer, 0
+	MoveB	EndofDir, Pointer+1
+	LoadB	Pointer, 0
 
 	LoadB	SectorL, DD_SECT_FAT1
 	LoadB	SectorH, 0
@@ -884,8 +884,8 @@ WriteFATs:				;				[860C]
 	jsr	WriteSector		;				[8BEE]
 	jsr	StopWatchdog		;				[8DBD]
 
-	MoveB	EndofDir, DirPointer+1
-	LoadB	DirPointer, 0
+	MoveB	EndofDir, Pointer+1
+	LoadB	Pointer, 0
 
 	LoadB	NumOfSectors, DD_FAT_SIZE
 
@@ -1030,7 +1030,7 @@ __LoadFileFound:
 	beq	:+			; yes(?)
 
 	MoveW_	TapeBuffer+46, ENDADDR ; no, from directory
-:	MoveW_	ENDADDR, DirPointer
+:	MoveW_	ENDADDR, Pointer
 
 @loop:
 	LoadB	NumOfSectors, 2
@@ -1042,13 +1042,13 @@ __LoadFileFound:
 
 	jsr	ReadSectors		;				[885E]
 
-	PushB	DirPointer
-	PushB	DirPointer+1
+	PushB	Pointer
+	PushB	Pointer+1
 
 	jsr	GetNextCluster		;				[87A4]
 
-	PopB	DirPointer+1
-	PopB	DirPointer
+	PopB	Pointer+1
+	PopB	Pointer
 
 	CmpBI	TapeBuffer+31, $0F	; magic FAT value for end of file?
 	beq	@done
@@ -1099,14 +1099,14 @@ GetNextCluster:				;				[87A4]
 	ror	TapeBuffer+32		;				[035C]
 	clc
 	adc	TapeBuffer+32		;				[035C]
-	sta	DirPointer		;				[FB]
+	sta	Pointer		;				[FB]
 
 	lda	TapeBuffer+33		;				[035D]
 	and	#$0F
 	adc	EndofDir		;				[0335]
 	clc
 	adc	TapeBuffer+31		;				[035B]
-	sta	DirPointer+1		;				[FC]
+	sta	Pointer+1		;				[FC]
 
 	lda	TapeBuffer+30		;				[035A]
 	and	#1
@@ -1153,8 +1153,8 @@ GetNextCluster:				;				[87A4]
 
 ; Load 3 sectors of the FAT table into RAM under the I/O from $D200 on
 GetFATs:				;				[8813]
-	LoadB	DirPointer, 0
-	MoveB	EndofDir, DirPointer+1
+	LoadB	Pointer, 0
+	MoveB	EndofDir, Pointer+1
 
 	LoadB	SectorL, 1
 	LoadB	SectorH, 0
@@ -1516,8 +1516,8 @@ FormatDiskLoop:
 	CmpBI	FdcTrack, 80		; 80 - last track?
 	bne	FormatDiskLoop
 
-	LoadB	DirPointer, 0
-	MoveB	StartofDir, DirPointer+1
+	LoadB	Pointer, 0
+	MoveB	StartofDir, Pointer+1
 
 	ldy	#0			; FAT12 identifier+BIOS Parameter Block
 :	lda	BIOSParameterBlock,Y	;				[943E]
@@ -1529,7 +1529,7 @@ FormatDiskLoop:
 	; XXX and file system name 'FAT12   '
 	; XXX and volume name (from FdcFileName) and randomize volume serial
 
-	MoveB	EndofDir, DirPointer+1
+	MoveB	EndofDir, Pointer+1
 
 	lda	#$F9			; $FFF9 - FAT#1 magic?
 	ldy	#0
@@ -1541,7 +1541,7 @@ FormatDiskLoop:
 	lda	#$FF
 	jsr	WrDataRamDxxx		;				[01AF]
 
-	LoadB	DirPointer+1, $D8	; page $D800 in RAM?
+	LoadB	Pointer+1, $D8	; page $D800 in RAM?
 
 	lda	#$F9			; $FFF9 - FAT#2 magic?
 	ldy	#0
@@ -1561,7 +1561,7 @@ FormatDiskLoop:
 	jsr	SeekTrack		;				[898A]
 	jsr	SetWatchdog		;				[8D90]
 
-	MoveB	StartofDir, DirPointer+1
+	MoveB	StartofDir, Pointer+1
 
 	jsr	WriteSector		;				[8BEE]
 	jsr	StopWatchdog		;				[8DBD]
@@ -1569,7 +1569,7 @@ FormatDiskLoop:
 	ldx	#1
 	jsr	ClearDirectory
 
-	MoveB	StartofDir, DirPointer+1
+	MoveB	StartofDir, Pointer+1
 
 	ldx	#0
 	ldy	#0
@@ -1612,15 +1612,15 @@ FormatDiskLoop:
 
 ClearDirectory:
 ; clear directory under $D000, X has count of pages
-	LoadB	DirPointer, 0
-	MoveB	StartofDir, DirPointer+1
+	LoadB	Pointer, 0
+	MoveB	StartofDir, Pointer+1
 
 	lda	#0
 	ldy	#0			; XXX tay
 :	jsr	WrDataRamDxxx		;				[01AF]
 	iny
 	bne	:-
-	inc	DirPointer+1		;				[FC]
+	inc	Pointer+1		;				[FC]
 	dex
 	bpl	:-
 	rts
@@ -1734,8 +1734,8 @@ WriteSector:				;				[8BEE]
 	beq	@next			; no, ->			[8C39]
 
 ; Error found, but we try again. But: HOW MAY TRIES ???
-@retry:	dec	DirPointer+1		;				[FC]
-	dec	DirPointer+1		;				[FC]
+@retry:	dec	Pointer+1		;				[FC]
+	dec	Pointer+1		;				[FC]
 
 	jsr	Specify			;				[891A]
 	jsr	Recalibrate		;				[88F7]
@@ -1837,8 +1837,8 @@ ReadSector:				;				[8C78]
 	cmp	#$80
 	beq	@next
 
-@retry:	dec	DirPointer+1		;				[FC]
-	dec	DirPointer+1		;				[FC]
+@retry:	dec	Pointer+1		;				[FC]
+	dec	Pointer+1		;				[FC]
 	jsr	StopWatchdog		;				[8DBD]
 	jsr	Specify			;				[891A]
 	jsr	Recalibrate		;				[88F7]
@@ -2042,8 +2042,8 @@ J_8E18:					;				[8E18]
 	ldx	#0
 	stx	SectorH			; XXX optimize			[F9]
 
-	LoadB	DirPointer, 0
-	MoveB	StartofDir, DirPointer+1
+	LoadB	Pointer, 0
+	MoveB	StartofDir, Pointer+1
 
 	jsr	SetupSector		;				[8899]
 
@@ -2092,8 +2092,8 @@ DisplayDir:				;				[8E67]
 
 
 ; ??? what has been loaded exactly at this point ???
-:	LoadB	DirPointer, 0
-	MoveB	StartofDir, DirPointer+1
+:	LoadB	Pointer, 0
+	MoveB	StartofDir, Pointer+1
 
 	ldy	#$0B
 
@@ -2136,8 +2136,8 @@ A_8E95:					;				[8E95]
 	jmp	J_8F1A			;				[8F1A]
 
 J_8EBA:					;				[8EBA]
-	LoadB	DirPointer, 0
-	MoveB	StartofDir, DirPointer+1
+	LoadB	Pointer, 0
+	MoveB	StartofDir, Pointer+1
 A_8EC3:					;				[8EC3]
 	ldy	#0
 	sei
@@ -2214,13 +2214,13 @@ A_8F0F:					;				[8F0F]
 	lda	#$0D
 	jsr	KERNAL_CHROUT		;				[FFD2]
 J_8F1A:					;				[8F1A]
-	lda	DirPointer		; XXX? AddVB $20, DirPointer + LDA DirPointer+1?
+	lda	Pointer		; XXX? AddVB $20, Pointer + LDA Pointer+1?
 	addv	FILE_ENTRY_SIZE		; next directory entry
-	sta	DirPointer		;				[FB]
+	sta	Pointer		;				[FB]
 
-	lda	DirPointer+1		;				[FC]
+	lda	Pointer+1		;				[FC]
 	adc	#0
-	sta	DirPointer+1		;				[FC]
+	sta	Pointer+1		;				[FC]
 
 	cmp	EndofDir		;				[0335]
 	bne	A_8EC3			;				[8EC3]
@@ -2260,8 +2260,8 @@ FindBlank:				;				[8F4F]
 
 	jsr	SetupSector		;				[8899]
 A_8F62:					;				[8F62]
-	LoadB	DirPointer, 0
-	MoveB	StartofDir, DirPointer+1
+	LoadB	Pointer, 0
+	MoveB	StartofDir, Pointer+1
 
 	LoadB	NumOfSectors, 1
 	asl	A			; A:=2 -> $0200 in TapeBuffer+38,9
@@ -2275,8 +2275,8 @@ A_8F62:					;				[8F62]
 	clc
 	rts
 
-@noerr:	LoadB	DirPointer, 0
-	MoveB	StartofDir, DirPointer+1
+@noerr:	LoadB	Pointer, 0
+	MoveB	StartofDir, Pointer+1
 A_8F8B:					;				[8F8B]
 	ldx	#0
 	ldy	#FE_OFFS_NAME
@@ -2296,13 +2296,13 @@ A_8F8B:					;				[8F8B]
 	rts
 
 A_8FA7:					;				[8FA7]
-	lda	DirPointer		; next directory entry, use AddVW $20, DirPointer + CmpB DirPointer, EndofDir (also above) XXX
+	lda	Pointer		; next directory entry, use AddVW $20, Pointer + CmpB Pointer, EndofDir (also above) XXX
 	addv	FILE_ENTRY_SIZE
-	sta	DirPointer		;				[FB]
+	sta	Pointer		;				[FB]
 
-	lda	DirPointer+1		;				[FC]
+	lda	Pointer+1		;				[FC]
 	adc	#0
-	sta	DirPointer+1		;				[FC]
+	sta	Pointer+1		;				[FC]
 
 	cmp	EndofDir		;				[0335]
 	bne	A_8F8B			;				[8F8B]
@@ -2375,8 +2375,8 @@ Search:					;				[9011]
 
 	jsr	SetupSector		;				[8899]
 A_9024:
-	LoadB	DirPointer, 0
-	MoveB	StartofDir, DirPointer+1 ; normally $D0
+	LoadB	Pointer, 0
+	MoveB	StartofDir, Pointer+1 ; normally $D0
 
 	LoadB	NumOfSectors, 1
 	asl	A			; A:=2 -> $0200 in TapeBuffer+38,9
@@ -2394,9 +2394,9 @@ A_9024:
 
 ; Read the directory under the $Dxxx area
 A_9044:					;				[9044]
-	LoadB	DirPointer, 0
-	MoveB	StartofDir, DirPointer+1 ; normally $D0
-; note: (DirPointer) most probably points to $D000
+	LoadB	Pointer, 0
+	MoveB	StartofDir, Pointer+1 ; normally $D0
+; note: (Pointer) most probably points to $D000
 
 	ldy	#FE_OFFS_NAME
 A_904F:					;				[904F]
@@ -2436,13 +2436,13 @@ A_9077:					;				[9077]
 A_9079:					;				[9079]
 	ldy	#0
 
-	lda	DirPointer		; next dir entry, XXX AddVB $20, DirPointer + CmpB DirPointer+1, EndofDir
+	lda	Pointer		; next dir entry, XXX AddVB $20, Pointer + CmpB Pointer+1, EndofDir
 	addv	$20
-	sta	DirPointer		;				[FB]
+	sta	Pointer		;				[FB]
 
-	lda	DirPointer+1		;				[FC]
+	lda	Pointer+1		;				[FC]
 	adc	#0
-	sta	DirPointer+1		;				[FC]
+	sta	Pointer+1		;				[FC]
 
 	cmp	EndofDir		; end of directory sector?	[0335]
 	bne	A_904F			; no, -> more			[904F]
@@ -2775,19 +2775,19 @@ ShowError:				;				[926C]
 
 :	tax
 	lda	TblErrorMsgL,X		;				[92DC]
-	sta	DirPointer		;				[FB]
+	sta	Pointer		;				[FB]
 	lda	TblErrorMsgH,X		;				[92EE]
-	sta	DirPointer+1		;				[FC]
+	sta	Pointer+1		;				[FC]
 
 	ldy	#0
 	jsr	StopWatchdog		;				[8DBD]
 
-:	lda	(DirPointer),Y		; end of message?		[FB]
+:	lda	(Pointer),Y		; end of message?		[FB]
 	beq	@end			; yes, -> exit			[9292]
 	tya
 	pha
 ; XXX Note: saving Y is not needed, KERNAL_CHROUT does save Y
-	lda	(DirPointer),Y		;				[FB]
+	lda	(Pointer),Y		;				[FB]
 	jsr	KERNAL_CHROUT		;				[FFD2]
 	pla
 	tay
@@ -2889,7 +2889,7 @@ ReadPagesFlopNextByte:
 
 	lda	DataRegister		; read byte			[DE81]
 	stx	P6510			; 64K RAM config
-	sta	(DirPointer),Y		; save byte			[FB]
+	sta	(Pointer),Y		; save byte			[FB]
 	LoadB	P6510, $37		; I/O+ROM config (XXX should rather restore config from entry point)
 	iny
 
@@ -2898,7 +2898,7 @@ L_0119:					;				[0119]
 	cpy	#0			; finished with reading?
 	bne	ReadPagesFlopNextByte	; no, -> next byte		[0108]
 
-	inc	DirPointer+1		;				[FC]
+	inc	Pointer+1		;				[FC]
 	dec	PageCounter		; more pages to be read?	[02]
 	bpl	ReadPagesFlopLoop	; yes, ->			[0106]
 
@@ -2929,12 +2929,12 @@ RdBytesSector:				;				[0139]
 	bpl	:-			; no, -> wait			[013F]
 	lda	DataRegister		; read byte			[DE81]
 	stx	P6510			; 64K RAM config
-	sta	(DirPointer),Y		; store byte			[FB]
+	sta	(Pointer),Y		; store byte			[FB]
 	LoadB	P6510, $37		; I/O+ROM config (XXX should rather restore config from entry point)
 	iny				; finished reading?
 	bne	:-			; no, -> next byte		[013F]
 ; Next page in RAM
-	inc	DirPointer+1		;				[FC]
+	inc	Pointer+1		;				[FC]
 
 ; Read next number of bytes. See L_0165.
 RdBytesSectorByte:
@@ -2943,7 +2943,7 @@ RdBytesSectorByte:
 
 	lda	DataRegister		; read byte			[DE81]
 	stx	P6510			; 64K RAM config		[01]
-	sta	(DirPointer),Y		; store byte			[FB]
+	sta	(Pointer),Y		; store byte			[FB]
 	LoadB	P6510, $37		; I/O+ROM config (XXX should rather restore config from entry point)
 	iny
 
@@ -2971,7 +2971,7 @@ WriteData:				;				[0179]
 
 :	ldx	#$30			; 64 KB of RAM visible
 	stx	P6510			;				[01]
-	lda	(DirPointer),Y		; read byte from RAM under I/O	[FB]
+	lda	(Pointer),Y		; read byte from RAM under I/O	[FB]
 	ldx	#$37
 	stx	P6510			; I/O+ROM
 :	bit	StatusRegister		; FDC ready?			[DE80]
@@ -2980,7 +2980,7 @@ WriteData:				;				[0179]
 	iny
 	bne	:--
 
-	inc	DirPointer+1		;				[FC]
+	inc	Pointer+1		;				[FC]
 	dec	PageCounter		; two pages done?		[02]
 	bpl	:--			; no, -> next 256 bytes		[017D]
 	rts
@@ -3000,7 +3000,7 @@ RdDataRamDxxx:				;				[01A0]
 	ldx	P6510			; save original value		[01]
 	sta	P6510			;				[01]
 
-	lda	(DirPointer),Y		; read data from RAM		[FB]
+	lda	(Pointer),Y		; read data from RAM		[FB]
 
 	stx	P6510			; restore original value	[01]
 
@@ -3021,7 +3021,7 @@ WrDataRamDxxx:				;				[01AF]
 	LoadB	P6510, $30		; 64K of RAM
 
 	pla
-	sta	(DirPointer),Y		;				[FB]
+	sta	(Pointer),Y		;				[FB]
 
 	stx	P6510			; restore original value	[01]
 

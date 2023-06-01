@@ -14,12 +14,12 @@ CURDEVICE	= $BA	; actual device number
 FNADR		= $BB	; pointer to string with filename
 
 ; The used RS232 variabels:
-NumOfSectors	= $F7	; number of sectors to read or write
+NumOfSectors	= $F7	; (1) TTLSEC - number of sectors to read or write
 SectorL		= $F8	; --- number of the sector that is wanted
 SectorH		= $F9	; -/
 TempStore	= $FA
 
-DirPointer	= $FB	; vector, word
+Pointer		= $FB	; (2) TO, general source/target memory pointer
 Z_FD		= $FD
 J_00FE		= $FE	; vector, unused
 Z_FF		= $FF
