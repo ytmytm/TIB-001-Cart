@@ -13,7 +13,8 @@ SECADR		= $B9	; actual secondary address
 CURDEVICE	= $BA	; actual device number
 FNADR		= $BB	; pointer to string with filename
 
-; The used RS232 variabels:
+; The used RS232 variables:
+STARTUP		= $F0	; defined in MULT.ASC but not used actually
 NumOfSectors	= $F7	; (1) TTLSEC - number of sectors to read or write
 SectorL		= $F8	; --- number of the sector that is wanted
 SectorH		= $F9	; -/
@@ -36,42 +37,51 @@ NewICKOUT	= $0336
 NewNMI		= $0338
 
 
-TapeBuffer	= $033C	; cassette buffer
-FdcST0		= $033C ; Status Register 0
-FdcST1		= $033D ; Status Register 1
-FdcST2		= $033E ; Status Register 2
-FdcC		= $033F ; Cylinder
-FdcH		= $0340 ; Head
-FdcR		= $0341 ; Record = sector
-FdcN		= $0342 ; Number of data bytes written into a sector
-FdcST3		= $0343 ; Status Register 3
-FdcPCN		= $0344	; present cylinder = track
-FdcCommand	= $0345 ; 
-FdcHSEL		= $0346	; head, shifted twice, needed for FDC commands
-FdcTrack	= $0347	; 
-FdcHead		= $0348	; 
-FdcSector	= $0349	; 
-FdcNumber	= $034A	; bytes/sector during format, 2 = 512 b/s
-FdcEOT		= $034B	; end of track
+;TapeBuffer	= $033C	; cassette buffer
+FdcST0		= $033C ; +0 (1)	Status Register 0
+FdcST1		= $033D ; +1 (1)	Status Register 1
+FdcST2		= $033E ; +2 (1)	Status Register 2
+FdcC		= $033F ; +3 (1)	Cylinder
+FdcH		= $0340 ; +4 (1)	Head
+FdcR		= $0341 ; +5 (1)	Record = sector
+FdcN		= $0342 ; +6 (1)	Number of data bytes written into a sector
+FdcST3		= $0343 ; +7 (1)	Status Register 3
+FdcPCN		= $0344	; +8 (1)	present cylinder = track
+FdcCommand	= $0345 ; +9 (1)
+FdcHSEL		= $0346	; +10 (1) head, shifted twice, needed for FDC commands
+FdcTrack	= $0347	; +11 (1)
+FdcHead		= $0348	; +12 (1)
+FdcSector	= $0349	; +13 (1)
+FdcNumber	= $034A	; +14 (1) bytes/sector during format, 2 = 512 b/s
+FdcEOT		= $034B	; +15 (1) end of track
+FdcGPL		= $034C	; +16 (1) unused; gap length? (but not for format), in docs initalized to $1b
+FdcDTL		= $034D	; +17 (1) unused
+FdcTrack2	= $034E	; +18 (1) CYLIND; = FdcTrack and $FE  ???
+FdcTEMP		= $034F	; +19 (1) unused
+TempStackPtr	= $0350	; +20 (1) TSTACK; temporary storage for the stack pointer
+ErrorCode	= $0351	; +21 (1) ERROR; error code, 0=ok, any other from Msg table
+FdcFormatData	= $0352	; +22 (4) FRED; block of data used only by the format command (4 bytes but overwrites the 5th - following SCLUSTER)
+FdcSCLUSTER	= $0356	; +26 (2)
+FdcLCLUSTER	= $0358	; +28 (2)
+FdcCLUSTER	= $035A	; +30 (2) (lots of occurences, move to zp?)
+FdcCLUSTER_2	= $035C	; +32 (2) (3 occurences)
+FdcLENGTH	= $035E	; +34 (4) file length in bytes, lowest byte first (to FS_OFFS_SIZE)
+FdcBYTESLEFT	= $0362	; +38 (2) number of bytes to transfer via stack-routine?
+FdcNBUF		= $0364	; +40 (1) number of buffers
+FdcPASS		= $0365	; +41 (1) SaveReloc stores 1 here, not used otherwise (1 occurence)
+Counter		= $0366	; +42 (1) TRYS
+FdcOFFSET	= $0367	; +43 (1) offset to zero page where load address stayed for SAVE (3 occurences)
+FdcHOWMANY	= $0368	; +44 (1) (2 occurences)
+DirSector	= $0369	; +45 (1) DIRSEC; momentary directory sector
+FdcLOADAD	= $036A	; +46 (2) load address in LOAD/SAVE, copied from offset $10 in directory entry (2 occurences)
+FdcFileName	= $036C	; +48 (30) FILEBUF; temp storage for file name
+FdcFILETEM	= $038A	; +78 (11) storage for 8.3 filename (2 occurences)
+FdcFILELEN	= $0395	; +89 (1) filename length? (2 occurences)
+FdcTEMP_1	= $0396	; +90 (1) unused
+FdcTEMP_2	= $0397	; +91 (1) unused
+FdcTEMP_3	= $0398 ; +92 (1) unused
 
-FdcTrack2	= $034E	; = FdcTrack and $FE  ???
-
-TempStackPtr	= $0350	; temporary storage for the stack pointer
-
-ErrorCode	= $0351	; $0B = file not found
-			; $10 = first part of name greater than 8 chars
-			; $11 = no file name
-
-FdcFormatData	= $0352	; block of data used by the format command
-
-NumDirSectors	= $0364	; (1) number of directory sectors
-				; also used deteming number of free bytes
-Counter		= $0366
-
-DirSector	= $0369	; (1) momentary directory sector
-FdcFileName	= $036C	; (30) temp storage for file name
-
-
+A_03F8		= $03F8 ; firmware BUG: jumps here instead of NewICKOUT vector ($0336)
 NewILOAD	= $03FC
 NewISAVE	= $03FE
 VICSCN		= $0400	; screenmemory

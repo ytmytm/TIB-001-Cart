@@ -254,7 +254,7 @@ Rename:					;				[81C0]
 	lda	#0			; ??? again?
 	clc
 
-	cpy	TapeBuffer+89		;				[0395]
+	cpy	FdcFILELEN		;				[0395]
 	bne	:+			;				[81DF]
 
 	lda	#ERR_FILE_NOT_FOUND
@@ -266,7 +266,7 @@ Rename:					;				[81C0]
 :	lda	(FNADR),Y	;				[BB]
 	iny
 	sta	FdcFileName,X		;				[036C]
-	sta	TapeBuffer+78,X		;				[038A]
+	sta	FdcFILETEM,X		;				[038A]
 	inx
 	cpx	#FE_OFFS_NAME_END
 	bne	:-
@@ -306,7 +306,7 @@ Rename:					;				[81C0]
 
 	ldx	#FE_OFFS_EXT
 :	iny
-	lda	TapeBuffer+78,Y		;				[038A]
+	lda	FdcFILETEM,Y		;				[038A]
 	sta	FdcFileName,X		;				[036C]
 	inx
 	cpx	#FE_OFFS_NAME_END
@@ -377,7 +377,8 @@ NewCkout:				;				[8295]
 	beq	__NewCkout		; yes, ->			[82A1]
 
 	pla
-	jmp	(TapeBuffer+188)	; = ($03F8)			[03F8]
+	jmp	(A_03F8)		; = ($03F8)			[03F8]
+; BUG
 ; ??? where is this vector filled ???
 ; I would expect (NewICKOUT) = ($0336)
 
@@ -480,7 +481,7 @@ RenameFilePrep:
 	tya
 	pha
 	jsr	GetlengthFName		;				[8336]
-	MoveB	FNLEN, TapeBuffer+89
+	MoveB	FNLEN, FdcFILELEN
 	PopB	FNLEN
 	rts
 
@@ -545,7 +546,7 @@ Scratch:				;				[8355]
 ;**  Routine that replaces original SAVE routine of C64
 NewSave:				;				[838A]
 	sei
-	stx	TapeBuffer+43		;				[0367]
+	stx	FdcOFFSET		;				[0367]
 
 	CmpBI	CURDEVICE, DEVNUM	; our device?
 	beq	__NewSave
@@ -556,13 +557,13 @@ __NewSave:
 	lda	ENDADDR		;				[AE]
 	sec
 	sbc	$00,X			; minus start address LB
-	sta	TapeBuffer+37		;				[0361]
+	sta	FdcLENGTH+3		;				[0361]
 
 	lda	ENDADDR+1		;				[AF]
 	sbc	$01,X			; minus start address HB
-	sta	TapeBuffer+36		;				[0360]
-	sta	NumDirSectors		; length in pages		[0364]
-; TapeBuffer+37 / TapeBuffer+36 now contains the length of the file
+	sta	FdcLENGTH+2		;				[0360]
+	sta	FdcNBUF		; length in pages		[0364]
+; FdcLENGTH+3 / FdcLENGTH+2 now contains the length of the file
 
 ; End address > start address?
 	bcs	@cont			; yes, -> OK			[83B6]
@@ -574,10 +575,10 @@ __NewSave:
 	rts
 
 ; continue with save file
-@cont:	lsr	NumDirSectors		;				[0364]
-	lsr	NumDirSectors		; length in pages/4+1				[0364]
-	inc	NumDirSectors		; number of needed clusters (2 pages in sector, 2 sectors in cluster+one more for file remainder)
-	MoveB	NumDirSectors, TapeBuffer+44
+@cont:	lsr	FdcNBUF		;				[0364]
+	lsr	FdcNBUF		; length in pages/4+1				[0364]
+	inc	FdcNBUF		; number of needed clusters (2 pages in sector, 2 sectors in cluster+one more for file remainder)
+	MoveB	FdcNBUF, FdcHOWMANY
 
 	jsr	InitStackProg		;				[8D5A]
 
@@ -646,22 +647,22 @@ __NewSave:
 	jsr	WrDataRamDxxx		;				[01AF]
 
 	iny
-	lda	TapeBuffer+30		; start cluster lo		[035A]
+	lda	FdcCLUSTER		; start cluster lo		[035A]
 	jsr	WrDataRamDxxx		;				[01AF]
 	iny
-	lda	TapeBuffer+31		; start cluster hi		[035B]
+	lda	FdcCLUSTER+1		; start cluster hi		[035B]
 	jsr	WrDataRamDxxx		;				[01AF]
 
 	iny
-	lda	TapeBuffer+37		; length lo			[0361]
+	lda	FdcLENGTH+3		; length lo			[0361]
 	jsr	WrDataRamDxxx		;				[01AF]
 	iny
-	lda	TapeBuffer+36		; length hi			[0360]
+	lda	FdcLENGTH+2		; length hi			[0360]
 	jsr	WrDataRamDxxx		;				[01AF]
 
 	iny				; XXX not needed, Y is changed below
 
-	ldx	TapeBuffer+43		; index to zp where load adress stayed	[0367]
+	ldx	FdcOFFSET		; index to zp where load adress stayed	[0367]
 	lda	$01,X			; load addr hi			[01]
 	ldy	#FE_OFFS_LOAD_ADDRESS
 	jsr	WrDataRamDxxx		; load addr hi			[01AF]
@@ -670,8 +671,8 @@ __NewSave:
 	jsr	WrDataRamDxxx		; load addr lo			[01AF]
 
 SaveReloc:					;				[8472]
-	LoadB	TapeBuffer+41, 1	; ??? this location is not used anywhere
-	MoveB	TapeBuffer+44, NumDirSectors
+	LoadB	FdcPASS, 1	; ??? this location is not used anywhere
+	MoveB	FdcHOWMANY, FdcNBUF
 
 J_847D:					;				[847D]
 	jsr	SeekTrack		;				[898A]
@@ -680,7 +681,7 @@ J_847D:					;				[847D]
 
 	jsr	WaitRasterLine		;				[8851]
 
-	ldx	TapeBuffer+43		; zp index to load address	[0367]
+	ldx	FdcOFFSET		; zp index to load address	[0367]
 	lda	$00,X			; copy load address to Pointer
 	sta	Pointer		;				[FB]
 	lda	$01,X			;				[01]
@@ -688,7 +689,7 @@ J_847D:					;				[847D]
 
 @loop:	jsr	CalcFirst		;				[883A]
 
-	MoveW_	TapeBuffer+30, TapeBuffer+28
+	MoveW_	FdcCLUSTER, FdcLCLUSTER
 
 	jsr	SetupSector		;				[8899]
 	jsr	Delay41ms		;				[89D0]
@@ -703,7 +704,7 @@ J_847D:					;				[847D]
 	lda	ErrorCode		; error found?			[0351]
 	bne	A_8506			;				[8506]
 
-	dec	NumDirSectors		; are we done?			[0364]
+	dec	FdcNBUF		; are we done?			[0364]
 	beq	@end			;				[84E5]
 
 	PushB	Pointer
@@ -764,25 +765,25 @@ WriteDirectory:				;				[850F]
 	jmp	StopWatchdog		;				[8DBD]
 
 MarkFAT:
-	MoveB	TapeBuffer+29, TempStore
+	MoveB	FdcLCLUSTER+1, TempStore
 
-	lda	TapeBuffer+28		;				[0358]
-	lsr	TapeBuffer+29		;				[0359]
-	ror	TapeBuffer+28		;				[0358]
+	lda	FdcLCLUSTER		;				[0358]
+	lsr	FdcLCLUSTER+1		;				[0359]
+	ror	FdcLCLUSTER		;				[0358]
 	pha
 
 	and	#$FE
 	clc
-	adc	TapeBuffer+28		;				[0358]
-	sta	TapeBuffer+28		;				[0358]
+	adc	FdcLCLUSTER		;				[0358]
+	sta	FdcLCLUSTER		;				[0358]
 
 	lda	TempStore		;				[FA]
-	adc	TapeBuffer+29		;				[0359]
-	sta	TapeBuffer+29		;				[0359]
+	adc	FdcLCLUSTER+1		;				[0359]
+	sta	FdcLCLUSTER+1		;				[0359]
 
-	MoveB	TapeBuffer+28, Pointer
+	MoveB	FdcLCLUSTER, Pointer
 
-	lda	TapeBuffer+29		;				[0359]
+	lda	FdcLCLUSTER+1		;				[0359]
 	adc	EndofDir		;				[0335]
 	sta	Pointer+1		;				[FC]
 
@@ -791,14 +792,14 @@ MarkFAT:
 	bne	:+
 
 	ldy	#0
-	lda	TapeBuffer+26		;				[0356]
+	lda	FdcSCLUSTER		;				[0356]
 	jsr	WrDataRamDxxx		;				[01AF]
 
 	iny
 	jsr	RdDataRamDxxx		;				[01A0]
 
 	and	#$F0
-	ora	TapeBuffer+27		;				[0357]
+	ora	FdcSCLUSTER+1		;				[0357]
 	jsr	WrDataRamDxxx		; XXX JMP <-> JSR+RTS (unless this TXS stuff matters?)
 	rts
 
@@ -808,7 +809,7 @@ MarkFAT:
 	and	#$0F
 	sta	TempStore		;				[FA]
 
-	lda	TapeBuffer+26		;				[0356]
+	lda	FdcSCLUSTER		;				[0356]
 	asl	A
 	asl	A
 	asl	A
@@ -817,53 +818,53 @@ MarkFAT:
 	jsr	WrDataRamDxxx		;				[01AF]
 
 	iny
-	lda	TapeBuffer+26		;				[0356]
-	lsr	TapeBuffer+27		;				[0357]
+	lda	FdcSCLUSTER		;				[0356]
+	lsr	FdcSCLUSTER+1		;				[0357]
 	ror	A
-	lsr	TapeBuffer+27		;				[0357]
+	lsr	FdcSCLUSTER+1		;				[0357]
 	ror	A
-	lsr	TapeBuffer+27		;				[0357]
+	lsr	FdcSCLUSTER+1		;				[0357]
 	ror	A
-	lsr	TapeBuffer+27		;				[0357]
+	lsr	FdcSCLUSTER+1		;				[0357]
 	ror	A
 	jsr	WrDataRamDxxx		;				[01AF]
 	rts
 
 FindFAT:				;				[85A8]
-	LoadB	TapeBuffer+26, 2
-	LoadB	TapeBuffer+27, 0
+	LoadB	FdcSCLUSTER, 2
+	LoadB	FdcSCLUSTER+1, 0
 
 FindNextFAT:				;				[85B2]
-	MoveW_	TapeBuffer+26, TapeBuffer+30
+	MoveW_	FdcSCLUSTER, FdcCLUSTER
 
 	jsr	GetNextCluster		;				[87A4]
 
-	lda	TapeBuffer+30		;				[035A]
-	ora	TapeBuffer+31		;				[035B]
+	lda	FdcCLUSTER		;				[035A]
+	ora	FdcCLUSTER+1		;				[035B]
 	beq	:+
 
-	AddVB	1, TapeBuffer+26	; XXX this is IncW candidate but needs LDA TapeBuffer+27 at the end
-	lda	TapeBuffer+27		;				[0357]
+	AddVB	1, FdcSCLUSTER	; XXX this is IncW candidate but needs LDA FdcSCLUSTER+1 at the end
+	lda	FdcSCLUSTER+1		;				[0357]
 	adc	#0
-	sta	TapeBuffer+27		;				[0357]
+	sta	FdcSCLUSTER+1		;				[0357]
 
 	cmp	#2
 	bne	FindNextFAT		;				[85B2]
 
-	CmpBI	TapeBuffer+26, $CA	; ???? XXX
+	CmpBI	FdcSCLUSTER, $CA	; ???? XXX
 	bne	FindNextFAT		;				[85B2]
 
 	clc
 	rts
 
-:	MoveW_	TapeBuffer+26, TapeBuffer+30
+:	MoveW_	FdcSCLUSTER, FdcCLUSTER
 	dex
 	bmi	:+			;				[860A]
 
-	AddVB	1, TapeBuffer+26	; XXX this is IncW candidate but needs LDA TapeBuffer+27 at the end
-	lda	TapeBuffer+27		;				[0357]
+	AddVB	1, FdcSCLUSTER	; XXX this is IncW candidate but needs LDA FdcSCLUSTER+1 at the end
+	lda	FdcSCLUSTER+1		;				[0357]
 	adc	#0
-	sta	TapeBuffer+27		;				[0357]
+	sta	FdcSCLUSTER+1		;				[0357]
 	jmp	FindNextFAT		;				[85B2]
 
 :	sec
@@ -902,29 +903,29 @@ ClearFATs:				;				[8650]
 	ldy	#$1A
 	jsr	RdDataRamDxxx		;				[01A0]
 
-	sta	TapeBuffer+30		;				[035A]
-	sta	TapeBuffer+28		;				[0358]
+	sta	FdcCLUSTER		;				[035A]
+	sta	FdcLCLUSTER		;				[0358]
 
 	iny
 	jsr	RdDataRamDxxx		;				[01A0]
 
-	sta	TapeBuffer+31		;				[035B]
-	sta	TapeBuffer+29		;				[0359]
+	sta	FdcCLUSTER+1		;				[035B]
+	sta	FdcLCLUSTER+1		;				[0359]
 
-	LoadW_	TapeBuffer+26, 0
+	LoadW_	FdcSCLUSTER, 0
 
 :	jsr	GetNextCluster		;				[87A4]
 	jsr	MarkFAT			;				[8534]
 
-	MoveB	TapeBuffer+30, TapeBuffer+28
-	MoveB	TapeBuffer+31, TapeBuffer+29
-	cmp	#$0F			; compare with TapeBuffer+31,+29
+	MoveB	FdcCLUSTER, FdcLCLUSTER
+	MoveB	FdcCLUSTER+1, FdcLCLUSTER+1
+	cmp	#$0F			; compare with FdcCLUSTER+1,+29
 	bne	:-
 	rts
 
 Enfile:					;				[8684]
-	MoveW_	TapeBuffer+30, TapeBuffer+28
-	LoadW_	TapeBuffer+26, $0FFF	; ??? FAT magic?
+	MoveW_	FdcCLUSTER, FdcLCLUSTER
+	LoadW_	FdcSCLUSTER, $0FFF	; ??? FAT magic?
 	jmp	MarkFAT			;				[8534]
 
 
@@ -994,42 +995,42 @@ __LoadFileFound:
 	ldy	#FE_OFFS_LOAD_ADDRESS	; load address
 	jsr	RdDataRamDxxx		;				[01A0]
 	iny
-	sta	TapeBuffer+47		;				[036B]
+	sta	FdcLOADAD+1		;				[036B]
 	jsr	RdDataRamDxxx		;				[01A0]
 	iny				; XXX not needed
-	sta	TapeBuffer+46		;				[036A]
+	sta	FdcLOADAD		;				[036A]
 
 	ldy	#FE_OFFS_START_CLUSTER	; first cluster
 	jsr	RdDataRamDxxx		;				[01A0]
 	iny
-	sta	TapeBuffer+30		;				[035A]
+	sta	FdcCLUSTER		;				[035A]
 	jsr	RdDataRamDxxx		;				[01A0]
 	iny
-	sta	TapeBuffer+31		;				[035B]
+	sta	FdcCLUSTER+1		;				[035B]
 
 	jsr	RdDataRamDxxx		; length			[01A0]
 	iny
-	sta	TapeBuffer+37		;				[0361]
+	sta	FdcLENGTH+3		;				[0361]
 	jsr	RdDataRamDxxx		;				[01A0]
 	iny
-	sta	TapeBuffer+36		;				[0360]
+	sta	FdcLENGTH+2		;				[0360]
 	jsr	RdDataRamDxxx		;				[01A0]
 	iny
-	sta	TapeBuffer+35		;				[035F]
+	sta	FdcLENGTH+1		;				[035F]
 	jsr	RdDataRamDxxx		;				[01A0]
 	iny				; XXX not needed, GetFATs calls SetupSector and destros Y
-	sta	TapeBuffer+34		;				[035E]
+	sta	FdcLENGTH		;				[035E]
 
 	jsr	GetFATs			;				[8813]
 	jsr	CalcFirst		;				[883A]
 
-	MoveB	TapeBuffer+37, TapeBuffer+38
-	MoveB	TapeBuffer+36, TapeBuffer+39
+	MoveB	FdcLENGTH+3, FdcBYTESLEFT
+	MoveB	FdcLENGTH+2, FdcBYTESLEFT+1
 
 	lda	SECADR		; load address from user?
 	beq	:+			; yes(?)
 
-	MoveW_	TapeBuffer+46, ENDADDR ; no, from directory
+	MoveW_	FdcLOADAD, ENDADDR ; no, from directory
 :	MoveW_	ENDADDR, Pointer
 
 @loop:
@@ -1050,7 +1051,7 @@ __LoadFileFound:
 	PopB	Pointer+1
 	PopB	Pointer
 
-	CmpBI	TapeBuffer+31, $0F	; magic FAT value for end of file?
+	CmpBI	FdcCLUSTER+1, $0F	; magic FAT value for end of file?
 	beq	@done
 
 	jsr	CalcFirst		;				[883A]
@@ -1058,11 +1059,11 @@ __LoadFileFound:
 
 @done:	lda	ENDADDR		;				[AE]
 	clc
-	adc	TapeBuffer+37		;				[0361]
+	adc	FdcLENGTH+3		;				[0361]
 	tax
 
 	lda	ENDADDR+1		;				[AF]
-	adc	TapeBuffer+36		;				[0360]
+	adc	FdcLENGTH+2		;				[0360]
 	tay
 
 	cli
@@ -1089,41 +1090,41 @@ __LoadFileFound:
 	rts
 
 GetNextCluster:				;				[87A4]
-	MoveB	TapeBuffer+31, TapeBuffer+33
+	MoveB	FdcCLUSTER+1, FdcCLUSTER_2+1
 
-	lda	TapeBuffer+30		;				[035A]
+	lda	FdcCLUSTER		;				[035A]
 	and	#$FE
-	sta	TapeBuffer+32		;				[035C]
+	sta	FdcCLUSTER_2		;				[035C]
 
-	lsr	TapeBuffer+33		;				[035D]
-	ror	TapeBuffer+32		;				[035C]
+	lsr	FdcCLUSTER_2+1		;				[035D]
+	ror	FdcCLUSTER_2		;				[035C]
 	clc
-	adc	TapeBuffer+32		;				[035C]
+	adc	FdcCLUSTER_2		;				[035C]
 	sta	Pointer		;				[FB]
 
-	lda	TapeBuffer+33		;				[035D]
+	lda	FdcCLUSTER_2+1		;				[035D]
 	and	#$0F
 	adc	EndofDir		;				[0335]
 	clc
-	adc	TapeBuffer+31		;				[035B]
+	adc	FdcCLUSTER+1		;				[035B]
 	sta	Pointer+1		;				[FC]
 
-	lda	TapeBuffer+30		;				[035A]
+	lda	FdcCLUSTER		;				[035A]
 	and	#1
 	bne	:+
 
 	ldy	#0
 	jsr	RdDataRamDxxx		;				[01A0]
 	iny
-	sta	TapeBuffer+30		;				[035A]
+	sta	FdcCLUSTER		;				[035A]
 	jsr	RdDataRamDxxx		;				[01A0]
 	and	#$0F
-	sta	TapeBuffer+31		;				[035B]
+	sta	FdcCLUSTER+1		;				[035B]
 	rts
 
 :	ldy	#1
 	lda	#0
-	sta	TapeBuffer+31		;				[035B]
+	sta	FdcCLUSTER+1		;				[035B]
 
 	jsr	RdDataRamDxxx		;				[01A0]
 
@@ -1133,20 +1134,20 @@ GetNextCluster:				;				[87A4]
 	lsr	A
 	lsr	A
 	lsr	A
-	sta	TapeBuffer+30		;				[035A]
+	sta	FdcCLUSTER		;				[035A]
 
 	jsr	RdDataRamDxxx		;				[01A0]
 
 	asl	A
-	rol	TapeBuffer+31		;				[035B]
+	rol	FdcCLUSTER+1		;				[035B]
 	asl	A
-	rol	TapeBuffer+31		;				[035B]
+	rol	FdcCLUSTER+1		;				[035B]
 	asl	A
-	rol	TapeBuffer+31		;				[035B]
+	rol	FdcCLUSTER+1		;				[035B]
 	asl	A
-	rol	TapeBuffer+31		;				[035B]
-	ora	TapeBuffer+30		;				[035A]
-	sta	TapeBuffer+30		;				[035A]
+	rol	FdcCLUSTER+1		;				[035B]
+	ora	FdcCLUSTER		;				[035A]
+	sta	FdcCLUSTER		;				[035A]
 
 	rts
 
@@ -1161,23 +1162,23 @@ GetFATs:				;				[8813]
 
 	jsr	SetupSector		;				[8899]
 
-	LoadB	TapeBuffer+38, 0
+	LoadB	FdcBYTESLEFT, 0
 
 	LoadB	NumOfSectors, 3
 	asl	A			; A := 6
-	sta	TapeBuffer+39		;				[0363]
+	sta	FdcBYTESLEFT+1		;				[0363]
 
 	jsr	ReadSectors		;				[885E]
 	jmp	StopWatchdog		;				[8DBD]
 
 
-; in: TapeBuffer+30/31 (cluster number?)
+; in: FdcCLUSTER/31 (cluster number?)
 ; out: SectorL/H
 ; calc: out=in*2+10
 CalcFirst:				;				[883A]
-	MoveB	TapeBuffer+31, SectorH
+	MoveB	FdcCLUSTER+1, SectorH
 
-	lda	TapeBuffer+30		;				[035A]
+	lda	FdcCLUSTER		;				[035A]
 	asl	A
 	rol	SectorH			;				[F9]
 	addv	10
@@ -1803,13 +1804,13 @@ ReadSector:				;				[8C78]
 	cpy	#9			; nine bytes written?
 	bne	:-
 
-	CmpBI	TapeBuffer+39, 2
+	CmpBI	FdcBYTESLEFT+1, 2
 	bcs	@sector			;				[8CB7]
 
 	and	#1
 	beq	@part			;				[8CB1]
 
-	MoveB	TapeBuffer+38, L_0165+1	; number of bytes to read after	first 256 bytes
+	MoveB	FdcBYTESLEFT, L_0165+1	; number of bytes to read after	first 256 bytes
 
 	ldy	#0			; start with reading 256 bytes
 
@@ -1819,7 +1820,7 @@ ReadSector:				;				[8C78]
 	jmp	@cont
 
 ; part of page
-@part:	MoveB	TapeBuffer+38, L_0119+1
+@part:	MoveB	FdcBYTESLEFT, L_0119+1
 ; whole sector
 @sector:
 	LoadB	PageCounter, 1		; read two pages, whole sector
@@ -1852,11 +1853,11 @@ ReadSector:				;				[8C78]
 @next:	jsr	SetWatchdog		;				[8D90]
 	inc	FdcEOT			;				[034B]
 	inc	FdcSector		;				[0349]
-	CmpBI	TapeBuffer+39, 2	;				[0363]
+	CmpBI	FdcBYTESLEFT+1, 2	;				[0363]
 	bcc	A_8D36			;				[8D36]
 
 	subv	2
-	sta	TapeBuffer+39		;				[0363]
+	sta	FdcBYTESLEFT+1		;				[0363]
 	dec	NumOfSectors		;				[F7]
 	beq	A_8D36			;				[8D36]
 
@@ -2053,8 +2054,8 @@ J_8E18:					;				[8E18]
 	jsr	SetWatchdog		;				[8D90]
 	jsr	WaitRasterLine		;				[8851]
 
-	LoadB	TapeBuffer+39, 2
-	LoadB	TapeBuffer+38, 0
+	LoadB	FdcBYTESLEFT+1, 2
+	LoadB	FdcBYTESLEFT, 0
 
 	jsr	ReadSector		;				[8C78]
 
@@ -2253,7 +2254,7 @@ A_8F46:
 ; in: FdcFileName
 ; out: C=1 error (file exists or otherwise), C=0 ok and FdcFileName copied to that file entry
 FindBlank:				;				[8F4F]
-	LoadB	NumDirSectors, DD_NUM_ROOTDIR_SECTORS
+	LoadB	FdcNBUF, DD_NUM_ROOTDIR_SECTORS
 	LoadB	SectorL, DD_SECT_ROOT	; XXX optimization, directory starts at sector 7
 	sta	DirSector
 	LoadB	SectorH, 0
@@ -2264,9 +2265,9 @@ A_8F62:					;				[8F62]
 	MoveB	StartofDir, Pointer+1
 
 	LoadB	NumOfSectors, 1
-	asl	A			; A:=2 -> $0200 in TapeBuffer+38,9
-	sta	TapeBuffer+39		;				[0363]
-	LoadB	TapeBuffer+38, 0
+	asl	A			; A:=2 -> $0200 in FdcBYTESLEFT,9
+	sta	FdcBYTESLEFT+1		;				[0363]
+	LoadB	FdcBYTESLEFT, 0
 
 	jsr	ReadSectors		;				[885E]
 	lda	ErrorCode		; error found?			[0351]
@@ -2314,7 +2315,7 @@ A_8FA7:					;				[8FA7]
 
 	jsr	SetupSector		;				[8899]
 
-	dec	NumDirSectors		;				[0364]
+	dec	FdcNBUF		;				[0364]
 	bpl	A_8F62			; read next directory sector	[8F62]
 
 	LoadB	ErrorCode, ERR_NO_MORE_DIRECTORY_SPACE
@@ -2367,7 +2368,7 @@ FindFile:				;				[8FEA]
 ; in: FdcFileName
 ; out: C=0 file found, C=1 file not found, and another error can be in ErrorCode
 Search:					;				[9011]
-	LoadB	NumDirSectors, DD_NUM_ROOTDIR_SECTORS-1	; why not 7?
+	LoadB	FdcNBUF, DD_NUM_ROOTDIR_SECTORS-1	; why not 7?
 
 	LoadB	SectorL, DD_SECT_ROOT	; directory starts at sector 7
 	sta	DirSector		;				[0369]
@@ -2379,9 +2380,9 @@ A_9024:
 	MoveB	StartofDir, Pointer+1 ; normally $D0
 
 	LoadB	NumOfSectors, 1
-	asl	A			; A:=2 -> $0200 in TapeBuffer+38,9
-	sta	TapeBuffer+39		;				[0363]
-	LoadB	TapeBuffer+38, 0
+	asl	A			; A:=2 -> $0200 in FdcBYTESLEFT
+	sta	FdcBYTESLEFT+1		;				[0363]
+	LoadB	FdcBYTESLEFT, 0
 
 	jsr	ReadSectors		;				[885E]
 
@@ -2455,7 +2456,7 @@ A_9079:					;				[9079]
 
 	jsr	SetupSector		;				[8899]
 
-	dec	NumDirSectors		; searched all dir sectors?	[0364]
+	dec	FdcNBUF		; searched all dir sectors?	[0364]
 	bpl	A_9024			; no, -> next one		[9024]
 A_90A0:	
 	LoadB	ErrorCode, ERR_FILE_NOT_FOUND
@@ -2601,18 +2602,18 @@ ShowSize:				;				[9127]
 	sei				; XXX SEI but where is CLI?
 	jsr	RdDataRamDxxx		;				[01A0]
 	iny
-	sta	TapeBuffer+34		;				[035E]
+	sta	FdcLENGTH		;				[035E]
 	jsr	RdDataRamDxxx		;				[01A0]
 	iny
-	sta	TapeBuffer+35		;				[035F]
-	LoadB	TapeBuffer+36, 0
+	sta	FdcLENGTH+1		;				[035F]
+	LoadB	FdcLENGTH+2, 0
 
-	; pass TapeBuffer+34/35/36, convert to 5 digits in NumDirSectors
+	; pass FdcLENGTH/35/36, convert to 5 digits in FdcNBUF
 	jsr	BN2DEC			;				[920E]
 
 	ldy	#$04			; XXX why not 5? it would be identical to ShowBytesFree
 	lda	#'0'
-:	cmp	NumDirSectors,Y		; skip leading zeros		[0364]
+:	cmp	FdcNBUF,Y		; skip leading zeros		[0364]
 	bne	:+			;				[915C]
 	dey
 	bpl	:-			;				[9150]
@@ -2621,7 +2622,7 @@ ShowSize:				;				[9127]
 
 :	tya				; XXX TYA+PHA, PLA+TAY, no need to preserve for $FFD2
 	pha
-	lda	NumDirSectors,Y		; print actual digits		[0364]
+	lda	FdcNBUF,Y		; print actual digits		[0364]
 	jsr	KERNAL_CHROUT		;				[FFD2]
 	pla
 	tay
@@ -2633,43 +2634,43 @@ ShowSize:				;				[9127]
 ShowBytesFree:				;				[916A]
 	sei
 
-	LoadW_	TapeBuffer+34, 0
-	sta	TapeBuffer+36		;				[0360]
+	LoadW_	FdcLENGTH, 0
+	sta	FdcLENGTH+2		;				[0360]
 
-	LoadB	TapeBuffer+26, 2
-	LoadB	TapeBuffer+27, 0
+	LoadB	FdcSCLUSTER, 2
+	LoadB	FdcSCLUSTER+1, 0
 A_9180:					;				[9180]
-	MoveW_	TapeBuffer+26, TapeBuffer+30
+	MoveW_	FdcSCLUSTER, FdcCLUSTER
 
 	jsr	GetNextCluster		;				[87A4]
 
-	lda	TapeBuffer+30		;				[035A]
-	ora	TapeBuffer+31		;				[035B]
+	lda	FdcCLUSTER		;				[035A]
+	ora	FdcCLUSTER+1		;				[035B]
 	bne	A_919F			;				[919F]
 
-	inc	TapeBuffer+35		;				[035F]
+	inc	FdcLENGTH+1		;				[035F]
 	bne	A_919F			;				[919F]
 
-	inc	TapeBuffer+36		;				[0360]
+	inc	FdcLENGTH+2		;				[0360]
 A_919F:					;				[919F]
-	lda	TapeBuffer+26		;				[0356]
+	lda	FdcSCLUSTER		;				[0356]
 	addv	1
-	sta	TapeBuffer+26		;				[0356]
+	sta	FdcSCLUSTER		;				[0356]
 
-	lda	TapeBuffer+27		;				[0357]
+	lda	FdcSCLUSTER+1		;				[0357]
 	adc	#0
-	sta	TapeBuffer+27		;				[0357]
+	sta	FdcSCLUSTER+1		;				[0357]
 
 	cmp	#2
 	bne	A_9180			;				[9180]
 
-	CmpBI	TapeBuffer+26, $CB	; XXX what is $CB?
+	CmpBI	FdcSCLUSTER, $CB	; XXX what is $CB?
 	bne	A_9180			;				[9180]
 
-	asl	TapeBuffer+35		;				[035F]
-	rol	TapeBuffer+36		;				[0360]
-	asl	TapeBuffer+35		;				[035F]
-	rol	TapeBuffer+36		;				[0360]
+	asl	FdcLENGTH+1		;				[035F]
+	rol	FdcLENGTH+2		;				[0360]
+	asl	FdcLENGTH+1		;				[035F]
+	rol	FdcLENGTH+2		;				[0360]
 	jsr	BN2DEC			;				[920E]
 
 	ldy	#0
@@ -2693,7 +2694,7 @@ A_91DD:					;				[91DD]
 A_91DE:					;				[91DE]
 	ldy	#5
 	lda	#'0'
-:	cmp	NumDirSectors,Y		; XXX same as above: skip leading zeros	[0364]
+:	cmp	FdcNBUF,Y		; XXX same as above: skip leading zeros	[0364]
 	bne	:+
 	dey
 	bpl	:-
@@ -2702,7 +2703,7 @@ A_91DE:					;				[91DE]
 
 :	tya				; XXX no need for TYA+PHA, PLA+TAY
 	pha
-	lda	NumDirSectors,Y		; print digits			[0364]
+	lda	FdcNBUF,Y		; print digits			[0364]
 	jsr	KERNAL_CHROUT		;				[FFD2]
 	pla
 	tay
@@ -2716,48 +2717,48 @@ TotalBytesFreeTxt:
 
 
 ; convert 24-bit number to ASCII
-; in: TapeBuffer+34/35/36 (lo,hi,bank)
-; out: NumDirSectors (5 digits) with leading zeros
+; in: FdcLENGTH/35/36 (lo,hi,bank)
+; out: FdcNBUF (5 digits) with leading zeros
 BN2DEC:					;				[920E]
 	ldy	#5			; start with 100000
 @loop:	ldx	#0
-:	lda	TapeBuffer+34		;				[035E]
+:	lda	FdcLENGTH		;				[035E]
 	sec
 	sbc	TblDecimalL,Y		;				[925A]
-	sta	TapeBuffer+34		;				[035E]
+	sta	FdcLENGTH		;				[035E]
 
-	lda	TapeBuffer+35		;				[035F]
+	lda	FdcLENGTH+1		;				[035F]
 	sbc	TblDecimalH,Y		;				[9260]
-	sta	TapeBuffer+35		;				[035F]
+	sta	FdcLENGTH+1		;				[035F]
 
-	lda	TapeBuffer+36		;				[0360]
+	lda	FdcLENGTH+2		;				[0360]
 	sbc	TblDecimalB,Y		;				[9266]
 	bcc	:+
 
-	sta	TapeBuffer+36		;				[0360]
+	sta	FdcLENGTH+2		;				[0360]
 	inx
 	bne	:-
 
 ; Oops, we subtracted to much. add it again
-:	lda	TapeBuffer+34		;				[035E]
+:	lda	FdcLENGTH		;				[035E]
 	clc
 	adc	TblDecimalL,Y		;				[925A]
-	sta	TapeBuffer+34		;				[035E]
+	sta	FdcLENGTH		;				[035E]
 
-	lda	TapeBuffer+35		;				[035F]
+	lda	FdcLENGTH+1		;				[035F]
 	adc	TblDecimalH,Y		;				[9260]
-	sta	TapeBuffer+35		;				[035F]
+	sta	FdcLENGTH+1		;				[035F]
 
 	txa
 	addv	'0'
-	sta	NumDirSectors,Y		;				[0364]
+	sta	FdcNBUF,Y		;				[0364]
 
 	dey				; next multiple of ten?
 	bne	@loop			; yes, ->			[9210]
 
-	lda	TapeBuffer+34		;				[035E]
+	lda	FdcLENGTH		;				[035E]
 	addv	'0'
-	sta	NumDirSectors,Y		;				[0364]
+	sta	FdcNBUF,Y		;				[0364]
 	rts
 
 .define TblDecimal 0, 10, 100, 1000, 10000, 100000
