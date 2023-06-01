@@ -29,11 +29,11 @@ PtrBasText	= $7A	; pointer to momentary byte in BASIC line
 STATUSIO	= $90	; Status of KERNAL after action
 FlgLoadVerify	= $93	; 0 = LOAD, 1 = VERIFY
 MSGFLG		= $9D	; flag: $80 = direct mode, 0 = program mode
-ENDADDR	= $AE	; vector, word - end of cassette / end of program
-FNLEN	= $B7	; length of filename
-SECADR	= $B9	; actual secondary address
+ENDADDR		= $AE	; vector, word - end of cassette / end of program
+FNLEN		= $B7	; length of filename
+SECADR		= $B9	; actual secondary address
 CURDEVICE	= $BA	; actual device number
-FNADR	= $BB	; pointer to string with filename
+FNADR		= $BB	; pointer to string with filename
 
 ; The used RS232 variabels:
 NumOfSectors	= $F7	; number of sectors to read or write
@@ -58,17 +58,15 @@ NewICKOUT	= $0336
 NewNMI		= $0338
 
 
-;Fdc		= $034	; 
-
 TapeBuffer	= $033C	; cassette buffer
-FdcST0		= $033C ; Status Regiser 0
-FdcST1		= $033D ; Status Regiser 1
-FdcST2		= $033E ; Status Regiser 2
+FdcST0		= $033C ; Status Register 0
+FdcST1		= $033D ; Status Register 1
+FdcST2		= $033E ; Status Register 2
 FdcC		= $033F ; Cylinder
 FdcH		= $0340 ; Head
 FdcR		= $0341 ; Record = sector
 FdcN		= $0342 ; Number of data bytes written into a sector
-FdcST3		= $0343 ; Status Regiser 3
+FdcST3		= $0343 ; Status Register 3
 FdcPCN		= $0344	; present cylinder = track
 FdcCommand	= $0345 ; 
 FdcHSEL		= $0346	; head, shifted twice, needed for FDC commands
@@ -82,18 +80,19 @@ FdcTrack2	= $034E	; = FdcTrack and $FE  ???
 
 TempStackPtr	= $0350	; temporary storage for the stack pointer
 
+ErrorCode	= $0351	; $0B = file not found
+			; $10 = first part of name greater than 8 chars
+			; $11 = no file name
+
 FdcFormatData	= $0352	; block of data used by the format command
 
 NumDirSectors	= $0364	; (1) number of directory sectors
 				; also used deteming number of free bytes
 Counter		= $0366
 
-DirSector	= $0369	; (2) momentary directory sector
-FdcFileName	= $036C	; (13?) temp storage for file name
+DirSector	= $0369	; (1) momentary directory sector
+FdcFileName	= $036C	; (30) temp storage for file name
 
-ErrorCode	= $0351	; $0B = file not found
-			; $10 = first part of name greater than 8 chars
-			; $11 = no file name
 
 NewILOAD	= $03FC
 NewISAVE	= $03FE
@@ -238,7 +237,7 @@ _InitStackProg:		jmp	InitStackProg		; [802D] -> [8D5A]
 _SetupSector:		jmp	SetupSector		; [8030] -> [8899]
 _Specify:		jmp	Specify			; [8033] -> [891A]
 _Recalibrate:		jmp	Recalibrate		; [8036] -> [88F7]
-_SetSoace:		jmp	SetSoace		; [8039] -> [834B]
+_SetSpace:		jmp	SetSpace		; [8039] -> [834B]
 _GetNextCluster:	jmp	GetNextCluster		; [803C] -> [87A4]
 _Enfile:		jmp	Enfile			; [803F] -> [8684]
 _MarkFAT:		jmp	MarkFAT			; [8042] -> [8534]
@@ -252,8 +251,8 @@ _SeekTrack:		jmp	SeekTrack		; [8057] -> [898A]
 _FindFile:		jmp	FindFile		; [805A] -> [8FEA]
 _WriteDirectory:	jmp	WriteDirectory		; [805D] -> [850F]
 _ReadDirectory:		jmp	ReadDirectory		; [8060] -> [8E0F]
-_J_8472:		jmp	J_8472			; [8063] -> [8472]
-_SaveRloc:		jmp	SaveRloc		; [8066] -> [9127]
+_SaveReloc:		jmp	SaveReloc		; [8063] -> [8472]
+_ShowSize:		jmp	ShowSize		; [8066] -> [9127]
 _ShowError:		jmp	ShowError		; [8069] -> [926C]
 _ShowBytesFree:		jmp	ShowBytesFree		; [806C] -> [916A]
 _BN2DEC:		jmp	BN2DEC			; [806F] -> [920E]
@@ -690,8 +689,7 @@ GetlengthFName:				;				[8336]
 	sta	PtrBasText		;				[7A]
 	rts
 
-; 'Soace'?
-SetSoace:				;				[834B]
+SetSpace:				;				[834B]
 	sta	StartofDir		;				[0334]
 	addv	2
 	sta	EndofDir		;				[0335]
@@ -749,7 +747,7 @@ __NewSave:
 	lda	ENDADDR+1		;				[AF]
 	sbc	$01,X			; minus start address HB
 	sta	TapeBuffer+36		;				[0360]
-	sta	NumDirSectors		;				[0364]
+	sta	NumDirSectors		; length in pages		[0364]
 ; TapeBuffer+37 / TapeBuffer+36 now contains the length of the file
 
 ; End address > start address?
@@ -763,9 +761,8 @@ __NewSave:
 
 ; continue with save file
 @cont:	lsr	NumDirSectors		;				[0364]
-	lsr	NumDirSectors		;				[0364]
-	inc	NumDirSectors		;				[0364]
-
+	lsr	NumDirSectors		; length in pages/4+1				[0364]
+	inc	NumDirSectors		; number of needed clusters (2 pages in sector, 2 sectors in cluster+one more for file remainder)
 	MoveB	NumDirSectors, TapeBuffer+44
 
 	jsr	InitStackProg		;				[8D5A]
@@ -804,7 +801,7 @@ __NewSave:
 	lda	ErrorCode		; error found?			[0351]
 	beq	@dosave			;				[8418]
 
-	jsr	ShowError		;				[926C]
+	jsr	ShowError		; XXX same code as above	[926C]
 	LoadB	VICCTR1, $1B		; screen on
 	rts
 
@@ -858,10 +855,8 @@ __NewSave:
 	lda	$00,X			;				[00]
 	jsr	WrDataRamDxxx		; load addr lo			[01AF]
 
-; jumptable has this function, why? what is it?
-; XXX 'save file'?
-J_8472:					;				[8472]
-	LoadB	TapeBuffer+41, 1
+SaveReloc:					;				[8472]
+	LoadB	TapeBuffer+41, 1	; ??? this location is not used anywhere
 	MoveB	TapeBuffer+44, NumDirSectors
 
 J_847D:					;				[847D]
@@ -1041,7 +1036,7 @@ FindNextFAT:				;				[85B2]
 	cmp	#2
 	bne	FindNextFAT		;				[85B2]
 
-	CmpBI	TapeBuffer+26, $CA
+	CmpBI	TapeBuffer+26, $CA	; ???? XXX
 	bne	FindNextFAT		;				[85B2]
 
 	clc
@@ -1182,7 +1177,7 @@ __NewLoad:
 
 ; File found
 __LoadFileFound:
-	ldy	#$10			; load address?
+	ldy	#FE_OFFS_LOAD_ADDRESS	; load address
 	jsr	RdDataRamDxxx		;				[01A0]
 	iny
 	sta	TapeBuffer+47		;				[036B]
@@ -1190,7 +1185,7 @@ __LoadFileFound:
 	iny				; XXX not needed
 	sta	TapeBuffer+46		;				[036A]
 
-	ldy	#$1A			; first cluster?
+	ldy	#FE_OFFS_START_CLUSTER	; first cluster
 	jsr	RdDataRamDxxx		;				[01A0]
 	iny
 	sta	TapeBuffer+30		;				[035A]
@@ -1198,7 +1193,7 @@ __LoadFileFound:
 	iny
 	sta	TapeBuffer+31		;				[035B]
 
-	jsr	RdDataRamDxxx		; length?			[01A0]
+	jsr	RdDataRamDxxx		; length			[01A0]
 	iny
 	sta	TapeBuffer+37		;				[0361]
 	jsr	RdDataRamDxxx		;				[01A0]
@@ -2400,7 +2395,7 @@ A_8F0F:					;				[8F0F]
 	dex
 	bpl	A_8EF7			;				[8EF7]
 
-	jsr	SaveRloc		;				[9127]
+	jsr	ShowSize		;				[9127]
 
 	lda	#$0D
 	jsr	KERNAL_CHROUT		;				[FFD2]
@@ -2780,7 +2775,7 @@ A_9107:					;				[9107]
 
 
 ; print 2 spaces and file size (in bytes)
-SaveRloc:				;				[9127]
+ShowSize:				;				[9127]
 	lda	#' '
 	jsr	KERNAL_CHROUT		;				[FFD2]
 
