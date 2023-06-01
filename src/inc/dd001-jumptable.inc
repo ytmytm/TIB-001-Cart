@@ -1,0 +1,45 @@
+
+; DD-001 jump table
+
+_NewLoad	=	$8009
+_NewSave	=	$800C
+_FormatDisk	=	$800F
+_DisplayDir	=	$8012
+_ReadSector	=	$8015
+_SetWatchdog	=	$8018
+_ReadSectors	=	$801B
+_WriteSector	=	$801E
+_ReadStatus	=	$8021
+_Scratch	=	$8024
+_Rename		=	$8027
+_FormatTrack	=	$802A
+_InitStackProg	=	$802D
+_SetupSector	=	$8030
+_Specify	=	$8033
+_Recalibrate	=	$8036
+_SetSpace	=	$8039
+_GetNextCluster	=	$803C
+_Enfile		=	$803F
+_MarkFAT	=	$8042
+_FindFAT	=	$8045
+_FindNextFAT	=	$8048
+_WriteFATs	=	$804B
+_ClearFATs	=	$804E
+_CalcFirst	=	$8051
+_GetFATs	=	$8054
+_SeekTrack	=	$8057
+_FindFile	=	$805A
+_WriteDirectory	=	$805D
+_ReadDirectory	=	$8060
+_SaveReloc	=	$8063
+_ShowSize	=	$8066
+_ShowError	=	$8069
+_ShowBytesFree	=	$806C
+_BN2DEC		=	$806F
+_StripSP	=	$8072
+_Search		=	$8075
+_FindBlank	=	$8078
+_PadOut		=	$807B
+_StopWatchdog	=	$807E
+_RdDataRamDxxx	=	$8081
+__Spare		=	$8084	; don't use! (but it could become _WrDataRamDxxx
