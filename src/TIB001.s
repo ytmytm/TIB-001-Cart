@@ -1,6 +1,8 @@
 ;
 ;	Disassembly of the ROM of the TIB-001 FDC cartridge
-;
+
+; (started by unknown person - thank you very much!)
+; continued by Maciej 'YTM/Elysium' Witkowiak, 2023
 
 ; - a lot of loading Pointer with (0, StartofDir), move that to a subroutine
 ; - check status register consistently BIT+BPL instead of LDA+AND#$80+BNE
@@ -2010,8 +2012,8 @@ J_8DCB:					;				[8DCB]
 ; XXX NMI is called from watchdog timer (CIA2)
 CartNMI:				;				[8DE7]
 	pha
-	PushB	P6510
-	LoadB	P6510, $37
+	PushB	CPU_PORT
+	LoadB	CPU_PORT, $37
 
 	lda	CIA2IRQ			; XXX what is bit 7 and 1?
 	bpl	:+
@@ -2028,7 +2030,7 @@ CartNMI:				;				[8DE7]
 
 :	jsr	NewRoutines		;				[80C0]
 
-	PopB	P6510
+	PopB	CPU_PORT
 	pla
 	jmp	J_8DCB			;				[8DCB]
 
@@ -2889,9 +2891,9 @@ ReadPagesFlopNextByte:
 	bpl	:-
 
 	lda	DataRegister		; read byte			[DE81]
-	stx	P6510			; 64K RAM config
+	stx	CPU_PORT			; 64K RAM config
 	sta	(Pointer),Y		; save byte			[FB]
-	LoadB	P6510, $37		; I/O+ROM config (XXX should rather restore config from entry point)
+	LoadB	CPU_PORT, $37		; I/O+ROM config (XXX should rather restore config from entry point)
 	iny
 
 ; "#0" in the next line can be changed by the program
@@ -2929,9 +2931,9 @@ RdBytesSector:				;				[0139]
 :	bit	StatusRegister		; FDC ready?			[DE80]
 	bpl	:-			; no, -> wait			[013F]
 	lda	DataRegister		; read byte			[DE81]
-	stx	P6510			; 64K RAM config
+	stx	CPU_PORT			; 64K RAM config
 	sta	(Pointer),Y		; store byte			[FB]
-	LoadB	P6510, $37		; I/O+ROM config (XXX should rather restore config from entry point)
+	LoadB	CPU_PORT, $37		; I/O+ROM config (XXX should rather restore config from entry point)
 	iny				; finished reading?
 	bne	:-			; no, -> next byte		[013F]
 ; Next page in RAM
@@ -2943,9 +2945,9 @@ RdBytesSectorByte:
 	bpl	:-			; no, -> wait			[0154]
 
 	lda	DataRegister		; read byte			[DE81]
-	stx	P6510			; 64K RAM config		[01]
+	stx	CPU_PORT			; 64K RAM config		[01]
 	sta	(Pointer),Y		; store byte			[FB]
-	LoadB	P6510, $37		; I/O+ROM config (XXX should rather restore config from entry point)
+	LoadB	CPU_PORT, $37		; I/O+ROM config (XXX should rather restore config from entry point)
 	iny
 
 ; "#0" in the next line can be changed by the program
@@ -2971,10 +2973,10 @@ WriteData:				;				[0179]
 	stx	TempStackPtr		;				[0350]
 
 :	ldx	#$30			; 64 KB of RAM visible
-	stx	P6510			;				[01]
+	stx	CPU_PORT			;				[01]
 	lda	(Pointer),Y		; read byte from RAM under I/O	[FB]
 	ldx	#$37
-	stx	P6510			; I/O+ROM
+	stx	CPU_PORT			; I/O+ROM
 :	bit	StatusRegister		; FDC ready?			[DE80]
 	bpl	:-			; no, -> wait			[0187]
 	sta	DataRegister		;				[DE81]
@@ -2987,8 +2989,9 @@ WriteData:				;				[0179]
 	rts
 
 ; unused!
+; indirect jump to routine in RAM, but $01 is not preserved in any way, interrupts are not disabled
 StackPage153:				;				[0199]
-	LoadB	P6510, $35		; I/O+RAM only
+	LoadB	CPU_PORT, $35		; I/O+RAM only
 	jmp	(J_00FE)		;				[00FE]
 
 
@@ -2998,12 +3001,12 @@ RdDataRamDxxx:				;				[01A0]
 	lda	#$30			; 64 KB of RAM visible
 	stx	TempStore		; save X			[FA]
 
-	ldx	P6510			; save original value		[01]
-	sta	P6510			;				[01]
+	ldx	CPU_PORT			; save original value		[01]
+	sta	CPU_PORT			;				[01]
 
 	lda	(Pointer),Y		; read data from RAM		[FB]
 
-	stx	P6510			; restore original value	[01]
+	stx	CPU_PORT			; restore original value	[01]
 
 	ldx	TempStore		; restore X			[FA]
 	rts
@@ -3017,14 +3020,14 @@ WrDataRamDxxx:				;				[01AF]
 
 	stx	TempStore		; save X; XXX txa+pha?
 
-	ldx	P6510			; save original value		[01]
+	ldx	CPU_PORT			; save original value		[01]
 
-	LoadB	P6510, $30		; 64K of RAM
+	LoadB	CPU_PORT, $30		; 64K of RAM
 
 	pla
 	sta	(Pointer),Y		;				[FB]
 
-	stx	P6510			; restore original value	[01]
+	stx	CPU_PORT			; restore original value	[01]
 
 	ldx	TempStore		; restore X			[FA]
 	rts

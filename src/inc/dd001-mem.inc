@@ -1,7 +1,7 @@
 
 ; DD-001 memory locations
 
-P6510		= $01	; DR onboard I/O port of 6510
+CPU_PORT	= $01	; onboard I/O port of 6510
 PageCounter	= $02
 PtrBasText	= $7A	; pointer to momentary byte in BASIC line
 STATUSIO	= $90	; Status of KERNAL after action
