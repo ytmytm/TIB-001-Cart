@@ -4,7 +4,7 @@
 # DD-001 device number
 DEVNUM ?= 9
 
-# buld part
+# build part
 
 AS = ca65
 LD = ld65
@@ -15,13 +15,15 @@ BUILD_DIR = build
 
 SOURCES = TIB001.s
 
+INC = inc/dd001-mem.inc inc/dd001-sym.inc inc/fat12.inc inc/geosmac.inc
+
 OBJS = $(SOURCES:.s=.o)
 PREFIXED_OBJS = $(addprefix $(BUILD_DIR)/, $(OBJS))
 
 FIRMWARE_ROM = $(BUILD_DIR)/tib001.bin
 REFERENCE_ROM = ../firmware/rom-8000-9FFFp.bin
 
-$(FIRMWARE_ROM): $(PREFIXED_OBJS) rom.cfg
+$(FIRMWARE_ROM): $(PREFIXED_OBJS) $(INC) rom.cfg
 	-mkdir -p $(BUILD_DIR)
 	$(LD) $(LDFLAGS) -C rom.cfg $(PREFIXED_OBJS) -o $@
 
