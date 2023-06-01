@@ -1,7 +1,7 @@
 
 # TODO
 
-- look at manual and MULT.ASC and update labels - TapeBuffer+?? seems to overlap with named labels; data load from MULT.ASC looks easy to follow
+- disassemble utilities using dd001-mem.inc locations
 - keep load address in first 2 bytes of the file, where it belongs
 - correct and reassemble utilities, this time with jump table
 - fail fast if there is no FDD or no disk in FDD
