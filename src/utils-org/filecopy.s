@@ -1,5 +1,5 @@
 ; da65 V2.19 - Git dcdf7ade0
-; Created:    2023-06-01 00:28:06
+; Created:    2023-06-01 22:55:20
 ; Input file: ../../firmware/utils/FILECOPY.EXE
 ; Page:       1
 
@@ -7,28 +7,38 @@
         .setcpu "6502"
 
 P6510           := $0001                        ; DR onboard I/O port of 6510
+BASICPRG        := $002B                        ; Basic program start address ($0801)
+MSGFLG          := $0090                        ; Kernal I/O status (0=ok, bit 7=device not present, bit 6=end of file
 MSGFLG          := $009D                        ; Kernal message control (bit 7=show control, bit 6=show error); $80=direct mode, $00=program mode
+ENDADDR         := $00AE                        ; End address for LOAD/SAVE/VERIFY
 FNLEN           := $00B7                        ; Length of current filename, set by SETNAM
+SECADR          := $00B9                        ; Current secondary address
+CURDEVICE       := $00BA                        ; Current device number
 FNADR           := $00BB                        ; Pointer to current filename, set by SETNAM
+STARTADDR       := $00C1                        ; Start address for LOAD/SAVE/VERIFY
+STARTADDR0      := $00C3                        ; Start address for LODA/SAVE/VEFIFY with secondary address SECADR=0
 NDX             := $00C6                        ; Number of characters in keyboard queue
+RVS             := $00C7                        ; Print reverse characters (0=no)
 NumOfSectors    := $00F7
 SectorL         := $00F8
 SectorH         := $00F9
 DirPointer      := $00FB
+Z_FD            := $00FD                        ; $FD location, free to use
 Z_FF            := $00FF
-RdDataRamDxxx   := $01A0                        ; read data from 64K RAM (under I/O), after InitStackProg
-WrDataRamDxxx   := $01AF                        ; read data from 64K RAM (under I/O), after InitStackProg
+RdDataRamDxxx   := $01A0                        ; direct call to RdDataRamDxxx instead of jump table $8081; read data from 64K RAM (under I/O), after InitStackProg
+WrDataRamDxxx   := $01AF                        ; (would that be spare call at jump table $8084?); read data from 64K RAM (under I/O), after InitStackProg
 COLOR           := $0286                        ; foreground text color
 StartofDir      := $0334                        ; page number where directory buffer starts (need 2 pages for a sector)
 EndofDir        := $0335                        ; page number where directory buffer ends(?)
 TapeBuffer      := $033C
 L0604           := $0604
 L0680           := $0680
+FilenameBuffer  := $1089
 CART_COLDSTART  := $8000                        ; cartridge cold start vector
-L8472           := $8472
-L85A8           := $85A8
-L8650           := $8650
-L86BC           := $86BC
+J_8472          := $8472                        ; direct call to J_8472 instead of jump table _J_8472 $8063
+FindFAT         := $85A8                        ; direct call to FindFAT instead of jump table _FindFAT $8045
+ShowError       := $8650                        ; direct call to ClearFATs instead of jump table _ClearFATs $804E
+NewLoad         := $86BC                        ; direct call to NewLoad instead of jump table _NewLoad $8009
 GetNextCluster  := $87A4                        ; direct call to GetNextCluster instead of jump table _GetNextCluster $803C
 GetFATs         := $8813                        ; direct call to GetFATs instead of jump table _GetFATs $8054
 CalcFirst       := $883A                        ; direct call to CalcFirst instead of jump table _CalcFirst $8051
@@ -46,11 +56,11 @@ InitStackProg   := $8D5A                        ; direct call to InitStackProg i
 SetWatchdog     := $8D90                        ; direct call to SetWatchdog instead of jump table _SetWatchdog $8018
 StopWatchdog    := $8DBD                        ; direct call to StopWatchdog instead of jump table _StopWatchdog $807E
 ReadDirectory   := $8E0F                        ; direct call to ReadDirectory instead of jump table _ReadDirectory $8060
-L8F4F           := $8F4F
+FindBlank       := $8F4F                        ; direct call to FindBlank instead of jump table _NewLoad $8078
 FindFile        := $8FEA                        ; direct call to FindFile instead of jump table _FindFile $805A
 SaveRloc        := $9127                        ; direct call to SaveRloc instead of jump table _SaveRloc $8066
 ShowBytesFree   := $916A                        ; direct call to ShowBytesFree instead of jump table _ShowBytesFree $806C
-L920E           := $920E
+BN2DEC          := $920E                        ; direct call to BN2DEC instead of jump table _BN2DEC $806F
 ShowError       := $926C                        ; direct call to ShowError instead of jump table _ShowError $8069
 LC100           := $C100
 LC19E           := $C19E
@@ -145,7 +155,7 @@ L085C:  cmp     VICLINE
         bne     L085C
         ldy     #$00
 L0863:  jsr     KERNAL_CHRIN
-        sta     $1089,y
+        sta     FilenameBuffer,y
         cmp     #$0D
         beq     L0874
         iny
@@ -156,7 +166,7 @@ L0874:  jsr     KERNAL_GETIN
         lda     #$0D
         jsr     KERNAL_CHROUT
         lda     L106C
-        sta     $BA
+        sta     CURDEVICE
         sei
         lda     #$0B
         sta     VICCTR1
@@ -165,7 +175,7 @@ L0874:  jsr     KERNAL_GETIN
         lda     #$10
         sta     FNADR+1
         jsr     InitStackProg
-        lda     $1089
+        lda     FilenameBuffer
         cmp     #$24
         beq     L08F1
         cmp     #$2A
@@ -174,12 +184,12 @@ L0874:  jsr     KERNAL_GETIN
 
 L08A0:  lda     #$0F
         sta     $B8
-        sta     $B9
+        sta     SECADR
         ldx     #$00
         ldy     #$11
         lda     #$00
-        sta     $B9
-        lda     $BA
+        sta     SECADR
+        lda     CURDEVICE
         cmp     #$09
         beq     L08F7
         cmp     #$08
@@ -214,22 +224,22 @@ L08E8:  lda     #$81
 L08F1:  jsr     L09CB
         jmp     L083F
 
-L08F7:  jsr     L86BC
+L08F7:  jsr     NewLoad
         lda     TapeBuffer+21
         bne     L08E8
         lda     TapeBuffer+46
-        sta     $C7
+        sta     RVS
         lda     TapeBuffer+47
         sta     NDX
 L0909:  lda     NDX
         sta     TapeBuffer+47
-        lda     $C7
+        lda     RVS
         sta     TapeBuffer+46
         lda     #$00
         sta     NDX
-        sta     $C7
-        stx     $AE
-        sty     $AF
+        sta     RVS
+        stx     ENDADDR
+        sty     ENDADDR+1
         lda     #$1B
         sta     VICCTR1
         lda     #$81
@@ -241,16 +251,16 @@ L0909:  lda     NDX
         lda     TapeBuffer+46
         sta     NDX
         lda     TapeBuffer+47
-        sta     $C7
+        sta     RVS
         lda     #$11
-        sta     $2C
+        sta     BASICPRG+1
         lda     #$00
-        sta     $2B
+        sta     BASICPRG
         lda     L106D
-        sta     $BA
+        sta     CURDEVICE
         lda     #$2B
-        ldx     $AE
-        ldy     $AF
+        ldx     ENDADDR
+        ldy     ENDADDR+1
         sei
         jsr     L0ABE
         cli
@@ -301,7 +311,7 @@ L09AA:  cmp     VICLINE
         bne     L09AA
         ldy     #$00
 L09B1:  jsr     KERNAL_CHRIN
-        sta     $1089,y
+        sta     FilenameBuffer,y
         cmp     #$0D
         beq     L09C2
         iny
@@ -343,16 +353,16 @@ L09F2:  lda     #$00
         ldy     #$00
 L0A07:  sei
         jsr     RdDataRamDxxx
-        sta     $FD
+        sta     Z_FD
         tya
         pha
-        lda     $FD
+        lda     Z_FD
         cmp     #$60
         bcc     L0A18
         sec
         sbc     #$20
 L0A18:  jsr     KERNAL_CHROUT
-        lda     $FD
+        lda     Z_FD
         pla
         tay
         iny
@@ -379,14 +389,14 @@ L0A45:  sei
         iny
         cmp     #$20
         beq     L0A5F
-        sta     $FD
+        sta     Z_FD
         txa
         pha
         tya
         pha
-        lda     $FD
+        lda     Z_FD
         jsr     KERNAL_CHROUT
-        lda     $FD
+        lda     Z_FD
         pla
         tay
         pla
@@ -401,12 +411,12 @@ L0A69:  sei
         iny
         cmp     #$20
         beq     L0A81
-        sta     $FD
+        sta     Z_FD
         txa
         pha
         tya
         pha
-        lda     $FD
+        lda     Z_FD
         jsr     KERNAL_CHROUT
         pla
         tay
@@ -443,20 +453,20 @@ L0A8C:  lda     DirPointer
 L0ABA:  jsr     ShowBytesFree
         rts
 
-L0ABE:  stx     $AE
-        sty     $AF
+L0ABE:  stx     ENDADDR
+        sty     ENDADDR+1
         tax
         lda     $00,x
-        sta     $C1
+        sta     STARTADDR
         lda     P6510,x
-        sta     $C2
+        sta     STARTADDR+1
         lda     NDX
         sta     $AC
-        lda     $C7
+        lda     RVS
         sta     $AD
         sei
         stx     TapeBuffer+43
-        lda     $BA
+        lda     CURDEVICE
         cmp     #$09
         beq     L0AF4
         cmp     #$08
@@ -472,11 +482,11 @@ L0ABE:  stx     $AE
 
 L0AF1:  jmp     L0F04
 
-L0AF4:  lda     $AE
+L0AF4:  lda     ENDADDR
         sec
         sbc     $00,x
         sta     TapeBuffer+37
-        lda     $AF
+        lda     ENDADDR+1
         sbc     P6510,x
         sta     TapeBuffer+36
         sta     TapeBuffer+40
@@ -516,14 +526,14 @@ L0B4A:  lda     #$7F
         pha
         lda     DirPointer+1
         pha
-        jsr     L8650
+        jsr     ShowError
         pla
         sta     DirPointer+1
         pla
         sta     DirPointer
         jmp     L0B72
 
-L0B61:  jsr     L8F4F
+L0B61:  jsr     FindBlank
         lda     TapeBuffer+21
         beq     L0B72
         jsr     ShowError
@@ -538,7 +548,7 @@ L0B72:  lda     #$7F
         lda     DirPointer
         pha
         ldx     #$00
-        jsr     L85A8
+        jsr     FindFAT
         pla
         sta     DirPointer
         pla
@@ -569,16 +579,16 @@ L0B72:  lda     #$7F
         jsr     WrDataRamDxxx
         iny
         ldx     TapeBuffer+43
-        lda     $C7
+        lda     RVS
         ldy     #$10
         jsr     WrDataRamDxxx
         iny
         lda     NDX
         jsr     WrDataRamDxxx
-        jmp     L8472
+        jmp     J_8472
 
-L0BD1:  stx     $C3
-        sty     $C4
+L0BD1:  stx     STARTADDR0
+        sty     STARTADDR0+1
         sta     $93
         lda     #$7F
         sta     CIA1IRQ
@@ -591,7 +601,7 @@ L0BD1:  stx     $C3
         bne     L0BF0
         jmp     L0BF8
 
-L0BF0:  jsr     L0D8F
+L0BF0:  jsr     DriveCodeEND_
         lda     #$1B
         sta     VICCTR1
 L0BF8:  rts
@@ -609,17 +619,17 @@ L0BF8:  rts
         ldy     #$0C
         jsr     KERNAL_SETNAM
         jsr     KERNAL_OPEN
-        lda     $90
+        lda     MSGFLG
         and     #$80
         bne     L0BF8
         ldx     #$01
         jsr     KERNAL_CHKIN
         jsr     KERNAL_CHRIN
-        lda     $90
+        lda     MSGFLG
         and     #$40
         bne     L0BF8
         jsr     KERNAL_CHRIN
-        lda     $90
+        lda     MSGFLG
         and     #$40
         bne     L0BF8
 L0C35:  jsr     KERNAL_CHRIN
@@ -631,7 +641,7 @@ L0C35:  jsr     KERNAL_CHRIN
         sta     TapeBuffer+91
         jsr     KERNAL_CHRIN
         sta     TapeBuffer+92
-        jsr     L920E
+        jsr     BN2DEC
         ldy     #$04
         ldx     #$00
         stx     TapeBuffer+19
@@ -671,7 +681,10 @@ L0C94:  lda     #$01
         lda     #$0D
         rts
 
-        bit     $30
+CBMDirectoryName:
+        .byte   "$0"
+; 1541 turbo code
+DriveCode_:
         lda     #$03
         sta     $31
 L0CA5:  jsr     LF50A
@@ -793,27 +806,29 @@ L0D7D:  lda     $03
 
 L0D8C:  jmp     LC19E
 
-L0D8F:  jsr     LF32F
-        ldx     $B9
+; 1541 turbo code end
+DriveCodeEND_:
+        jsr     LF32F
+        ldx     SECADR
         stx     $02
         lda     #$60
-        sta     $B9
+        sta     SECADR
         jsr     LF34A
-        lda     $BA
+        lda     CURDEVICE
         jsr     LED09
-        lda     $B9
+        lda     SECADR
         jsr     LEDC7
         jsr     LEE13
-        lda     $BA
+        lda     CURDEVICE
         jsr     LF291
-        lda     $90
+        lda     MSGFLG
         lsr     a
         lsr     a
         bcc     L0DBE
         rts
 
-L0DB6:  eor     $572D
-        eor     $452D
+DOSCommand:
+        .byte   "M-WM-E"
         .byte   $C7
         .byte   $06
 L0DBE:  jsr     LF5D2
@@ -825,12 +840,12 @@ L0DBE:  jsr     LF5D2
         sta     $05
         lda     #$06
         sta     $06
-L0DD1:  lda     $BA
+L0DD1:  lda     CURDEVICE
         jsr     LED0C
         lda     #$6F
         jsr     LEDB9
         ldy     #$00
-L0DDD:  lda     L0DB6,y
+L0DDD:  lda     DOSCommand,y
         jsr     LEDDD
         iny
         cpy     #$03
@@ -863,12 +878,12 @@ L0E11:  clc
 L0E1C:  ldx     $06
         cpx     #$07
         bcc     L0DD1
-        lda     $BA
+        lda     CURDEVICE
         jsr     LED0C
         lda     #$6F
         jsr     LEDB9
         ldy     #$03
-L0E2E:  lda     L0DB6,y
+L0E2E:  lda     DOSCommand,y
         jsr     LEDDD
         iny
         cpy     #$08
@@ -890,7 +905,7 @@ L0E4C:  jsr     L0EB2
 L0E5B:  jsr     L0EB2
         jsr     L0EF6
         bne     L0E65
-        inc     $AF
+        inc     ENDADDR+1
 L0E65:  inx
         bne     L0E5B
         ldx     #$02
@@ -907,32 +922,32 @@ L0E78:  tax
 L0E7B:  jsr     L0EB2
         jsr     L0EF6
         bne     L0E85
-        inc     $AF
+        inc     ENDADDR+1
 L0E85:  dex
         bne     L0E7B
         tya
         clc
-        adc     $AE
-        sta     $AE
+        adc     ENDADDR
+        sta     ENDADDR
         tax
-        lda     $AF
+        lda     ENDADDR+1
         adc     #$00
-        sta     $AF
+        sta     ENDADDR+1
         tay
         rts
 
 L0E97:  jsr     L0EB2
-        sta     $AE
+        sta     ENDADDR
         sta     NDX
         jsr     L0EB2
-        sta     $AF
-        sta     $C7
+        sta     ENDADDR+1
+        sta     RVS
         lda     $02
         bne     L0EB1
-        lda     $C3
-        sta     $AE
-        lda     $C4
-        sta     $AF
+        lda     STARTADDR0
+        sta     ENDADDR
+        lda     STARTADDR0+1
+        sta     ENDADDR+1
 L0EB1:  rts
 
 L0EB2:  lda     #$0B
@@ -974,7 +989,7 @@ L0EF6:  pha
         lda     #$30
         sta     P6510
         pla
-        sta     ($AE),y
+        sta     (ENDADDR),y
         lda     #$37
         sta     P6510
         iny
@@ -988,21 +1003,21 @@ L0F04:  lda     #$7F
         and     #$6F
         sta     VICCTR1
         lda     #$61
-        sta     $B9
+        sta     SECADR
         ldy     FNLEN
         bne     L0F20
         rts
 
 L0F20:  lda     #$00
-        sta     $90
-        lda     $BA
+        sta     MSGFLG
+        lda     CURDEVICE
         ora     #$20
         jsr     LED11
         jsr     LF3E6
-        lda     $BA
+        lda     CURDEVICE
         ora     #$20
         jsr     LED11
-        lda     $B9
+        lda     SECADR
         jsr     LEDB9
         ldy     #$00
         lda     $AC
@@ -1041,9 +1056,9 @@ L0F80:  jsr     LFCDB
 L0F85:  lda     TapeBuffer+90
         sta     VICCTR1
         jsr     LEDFE
-        bit     $B9
+        bit     SECADR
         bmi     L0F9C
-        lda     $BA
+        lda     CURDEVICE
         ora     #$20
         jsr     LED11
         jsr     LF64B

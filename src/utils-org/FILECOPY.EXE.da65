@@ -15,9 +15,16 @@ GLOBAL {
 
 
 RANGE { START $0FA2; END $2000; TYPE TextTable; COMMENT "messages"; };
+RANGE { START $0C9F; END $0CA0; TYPE TextTable; };
+RANGE { START $0DB6; END $0DBB; TYPE TextTable; };
 LABEL { NAME "StartupTxt";	ADDR $0FD6; };
 LABEL { NAME "PromptTxt";	ADDR $0FA2; };
 LABEL { NAME "PromptNewTxt";	ADDR $0FBE; };
+LABEL { NAME "FilenameBuffer";  ADDR $1089; };
+LABEL { NAME "CBMDirectoryName";	ADDR $0C9F; };
+LABEL { NAME "DriveCode_";	ADDR $0CA1; COMMENT "1541 turbo code"; };
+LABEL { NAME "DriveCodeEND_";	ADDR $0D8F; COMMENT "1541 turbo code end"; };
+LABEL { NAME "DOSCommand";	ADDR $0DB6; };
 
 # DD-001 firmware
 LABEL { NAME "NumOfSectors";	ADDR $F7; SIZE 1; };
@@ -55,6 +62,17 @@ LABEL { NAME "SaveRloc";	ADDR $9127; COMMENT "direct call to SaveRloc instead of
 LABEL { NAME "ShowBytesFree";	ADDR $916A; COMMENT "direct call to ShowBytesFree instead of jump table _ShowBytesFree $806C"; };
 LABEL { NAME "ShowError";	ADDR $926C; COMMENT "direct call to ShowError instead of jump table _ShowError $8069"; };
 
+
+LABEL { NAME "J_8472";		ADDR $8472; COMMENT "direct call to J_8472 instead of jump table _J_8472 $8063"; };
+LABEL { NAME "FindFAT";		ADDR $85A8; COMMENT "direct call to FindFAT instead of jump table _FindFAT $8045"; };
+LABEL { NAME "ShowError";	ADDR $8650; COMMENT "direct call to ClearFATs instead of jump table _ClearFATs $804E"; };
+LABEL { NAME "NewLoad";		ADDR $86BC; COMMENT "direct call to NewLoad instead of jump table _NewLoad $8009"; };
+
+
+LABEL { NAME "FindBlank";	ADDR $8F4F; COMMENT "direct call to FindBlank instead of jump table _NewLoad $8078"; };
+LABEL { NAME "BN2DEC";		ADDR $920E; COMMENT "direct call to BN2DEC instead of jump table _BN2DEC $806F"; };
+
+
 # DD-001 I/O
 LABEL { NAME "StatusRegister";	ADDR $DE80; SIZE 1; COMMENT "floppy controller status register"; };
 LABEL { NAME "DataRegister";	ADDR $DE81; SIZE 1; COMMENT "floppy controller data register"; };
@@ -77,10 +95,19 @@ LABEL { NAME "KERNAL_GETIN";	ADDR $FFE4; COMMENT "Get a character"; };
 
 # C64 memory map
 LABEL { NAME "P6510";	ADDR $01;	SIZE 1; COMMENT "DR onboard I/O port of 6510"; };
+LABEL { NAME "BASICPRG";	ADDR $2B;	SIZE 2;	COMMENT "Basic program start address ($0801)"; };
 LABEL { NAME "MSGFLG";	ADDR $9D;	SIZE 1; COMMENT "Kernal message control (bit 7=show control, bit 6=show error); $80=direct mode, $00=program mode"; };
+LABEL { NAME "MSGFLG";	ADDR $90;	SIZE 1; COMMENT "Kernal I/O status (0=ok, bit 7=device not present, bit 6=end of file"; };
+LABEL { NAME "STARTADDR";	ADDR $C1;	SIZE 2;	COMMENT "Start address for LOAD/SAVE/VERIFY"; };
+LABEL { NAME "STARTADDR0";	ADDR $C3;	SIZE 2; COMMENT "Start address for LODA/SAVE/VEFIFY with secondary address SECADR=0"; };
 LABEL { NAME "NDX";	ADDR $C6;	SIZE 1; COMMENT "Number of characters in keyboard queue"; };
+LABEl { NAME "RVS";	ADDR $C7;	SIZE 1; COMMENT "Print reverse characters (0=no)"; };
+LABEL { NAME "ENDADDR";	ADDR $AE;	SIZE 2; COMMENT "End address for LOAD/SAVE/VERIFY"; };
 LABEL { NAME "FNLEN";	ADDR $B7;	SIZE 1; COMMENT "Length of current filename, set by SETNAM"; };
+LABEL { NAME "SECADR";	ADDR $B9;	SIZE 1;	COMMENT "Current secondary address"; };
+LABEL { NAME "CURDEVICE";	ADDR $BA;	SIZE 1; COMMENT "Current device number"; };
 LABEL { NAME "FNADR";	ADDR $BB;	SIZE 2; COMMENT "Pointer to current filename, set by SETNAM"; };
+LABEL { NAME "Z_FD";	ADDR $FD;	SIZE 1; COMMENT "$FD location, free to use"; };
 
 LABEL { NAME "COLOR";	ADDR $0286;	SIZE 1; COMMENT "foreground text color"; };
 

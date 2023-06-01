@@ -26,13 +26,13 @@
 P6510		= $01	; DR onboard I/O port of 6510
 PageCounter	= $02
 PtrBasText	= $7A	; pointer to momentary byte in BASIC line
-StatusIO	= $90	; Status of KERNAL after action
+STATUSIO	= $90	; Status of KERNAL after action
 FlgLoadVerify	= $93	; 0 = LOAD, 1 = VERIFY
 MSGFLG		= $9D	; flag: $80 = direct mode, 0 = program mode
-EndAddrBuf	= $AE	; vector, word - end of cassette / end of program
+ENDADDR	= $AE	; vector, word - end of cassette / end of program
 FNLEN	= $B7	; length of filename
-SecondAddress	= $B9	; actual secondary address
-DeviceNumber	= $BA	; actual device number
+SECADR	= $B9	; actual secondary address
+CURDEVICE	= $BA	; actual device number
 FNADR	= $BB	; pointer to string with filename
 
 ; The used RS232 variabels:
@@ -318,7 +318,7 @@ CartInit:				;				[8087]
 	lda	ErrorCode		; error found?			[0351]
 	bne	@checkerr		;				[8094]
 ; no error, run BOOT.EXE from its load address ($1000)
-	jmp	(EndAddrBuf)		;				[00AE]
+	jmp	(ENDADDR)		;				[00AE]
 
 
 ;**  Initialize the C64 - part 2
@@ -560,7 +560,7 @@ Rename:					;				[81C0]
 NewCkout:				;				[8295]
 	pha
 
-	CmpBI	DeviceNumber, DEVNUM	; our DD drive?
+	CmpBI	CURDEVICE, DEVNUM	; our DD drive?
 	beq	__NewCkout		; yes, ->			[82A1]
 
 	pla
@@ -735,18 +735,18 @@ NewSave:				;				[838A]
 	sei
 	stx	TapeBuffer+43		;				[0367]
 
-	CmpBI	DeviceNumber, DEVNUM	; our device?
+	CmpBI	CURDEVICE, DEVNUM	; our device?
 	beq	__NewSave
 
 	jmp	(NewISAVE)		;				[03FE]
 
 __NewSave:
-	lda	EndAddrBuf		;				[AE]
+	lda	ENDADDR		;				[AE]
 	sec
 	sbc	$00,X			; minus start address LB
 	sta	TapeBuffer+37		;				[0361]
 
-	lda	EndAddrBuf+1		;				[AF]
+	lda	ENDADDR+1		;				[AF]
 	sbc	$01,X			; minus start address HB
 	sta	TapeBuffer+36		;				[0360]
 	sta	NumDirSectors		;				[0364]
@@ -928,7 +928,7 @@ J_847D:					;				[847D]
 	LoadB	VICCTR1, $1B		; screen on
 
 	cli
-	LoadB	StatusIO, 0
+	LoadB	STATUSIO, 0
 	clc
 	rts
 
@@ -1124,10 +1124,10 @@ Enfile:					;				[8684]
 LoadBootExe2:				;				[869D]
 	sei
 
-	stx	EndAddrBuf		;				[AE]
-	sty	EndAddrBuf+1		;				[AF]
+	stx	ENDADDR		;				[AE]
+	sty	ENDADDR+1		;				[AF]
 
-	LoadB	SecondAddress, $FF
+	LoadB	SECADR, $FF
 
 	jsr	InitStackProg		;				[8D5A]
 
@@ -1137,7 +1137,7 @@ LoadBootExe2:				;				[869D]
 	bcs	__LoadFileFound		; always ->			[86EB]
 
 :	sec
-	LoadB	SecondAddress, 0
+	LoadB	SECADR, 0
 	sta	FlgLoadVerify		;				[93]
 	rts
 
@@ -1148,12 +1148,12 @@ LoadBootExe2:				;				[869D]
 NewLoad:				;				[86BC]
 	sei
 
-	stx	EndAddrBuf		;				[AE]
-	sty	EndAddrBuf+1		;				[AF]
+	stx	ENDADDR		;				[AE]
+	sty	ENDADDR+1		;				[AF]
 
 	pha
 
-	CmpBI	DeviceNumber, DEVNUM	; our device number?
+	CmpBI	CURDEVICE, DEVNUM	; our device number?
 	beq	__NewLoad
 
 	pla
@@ -1217,11 +1217,11 @@ __LoadFileFound:
 	MoveB	TapeBuffer+37, TapeBuffer+38
 	MoveB	TapeBuffer+36, TapeBuffer+39
 
-	lda	SecondAddress		; load address from user?
+	lda	SECADR		; load address from user?
 	beq	:+			; yes(?)
 
-	MoveW_	TapeBuffer+46, EndAddrBuf ; no, from directory
-:	MoveW_	EndAddrBuf, DirPointer
+	MoveW_	TapeBuffer+46, ENDADDR ; no, from directory
+:	MoveW_	ENDADDR, DirPointer
 
 @loop:
 	LoadB	NumOfSectors, 2
@@ -1247,18 +1247,18 @@ __LoadFileFound:
 	jsr	CalcFirst		;				[883A]
 	jmp	@loop
 
-@done:	lda	EndAddrBuf		;				[AE]
+@done:	lda	ENDADDR		;				[AE]
 	clc
 	adc	TapeBuffer+37		;				[0361]
 	tax
 
-	lda	EndAddrBuf+1		;				[AF]
+	lda	ENDADDR+1		;				[AF]
 	adc	TapeBuffer+36		;				[0360]
 	tay
 
 	cli
 
-	LoadB	StatusIO, 0
+	LoadB	STATUSIO, 0
 
 	pla
 	and	#$7F			; XXX why?
