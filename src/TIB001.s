@@ -1193,7 +1193,7 @@ CalcFirst:				;				[883A]
 	rts
 
 
-;**  Wait for rasterline $1FF
+;**  Turn off the screen and Wait for rasterline $1FF
 WaitRasterLine:				;				[8851]
 	LoadB	VICCTR1, $0b		; screen off
 :	CmpBI	VICLINE, $FF
@@ -1983,17 +1983,15 @@ StopWatchdog:				;				[8DBD]
 	sta	CIA2CRB
 	rts
 
-J_8DCB:					;				[8DCB]
+CartNMICont:
 	pha
 	txa
 	pha
 	tya
 	pha
-
 	jsr	IncrClock22		;				[F6BC]
 	jsr	KERNAL_STOP		;				[FFE1]
-	beq	:+
-
+	beq	:+			; run/stop? do the RUN/STOP+RESTORE routine
 	pla
 	tay
 	pla
@@ -2013,26 +2011,23 @@ J_8DCB:					;				[8DCB]
 CartNMI:				;				[8DE7]
 	pha
 	PushB	CPU_PORT
-	LoadB	CPU_PORT, $37
+	LoadB	CPU_PORT, $37		; ROM+I/O
 
 	lda	CIA2IRQ			; XXX what is bit 7 and 1?
 	bpl	:+
-	and	#%00000010
+	and	#%00000010		; bit 2 meaning? timeout on operation?
 	beq	:+
 
 	inc	ErrorCode		; XXX ??? why			[0351]
 	ldx	TempStackPtr		; XXX ??? why 			[0350]
-	txs
-
+	txs				; ? abort current operation and return to caller (before TempStackPtr was saved?)
 	lda	ResetFDC		; reset the FDC			[DF80]
-
 	jmp	StopWatchdog		;				[8DBD]
 
 :	jsr	NewRoutines		;				[80C0]
-
 	PopB	CPU_PORT
 	pla
-	jmp	J_8DCB			;				[8DCB]
+	jmp	CartNMICont		; NMI routine continued  there (could be moved below)	[8DCB]
 
 
 
