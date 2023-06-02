@@ -24,7 +24,7 @@ KERNAL_GETIN    := $FFE4                        ; Get a character
 	.segment "CODE"
 
 	LoadB	StartofDir, $C0		; buffer?
-        LoadB	EndofDir, $C2		; buffer?
+	LoadB	EndofDir, $C2		; buffer?
 	LoadB	COLOR, 1		; white text
 	LoadB	VICBOCL, 6		; blue border
 	LoadB	MSGFLG, $80		; Kernal messages on(?) (direct mode)
