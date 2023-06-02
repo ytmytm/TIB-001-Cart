@@ -40,7 +40,7 @@ DataBufferLength = $0400		; 2 sectors = 4 pages
         beq     :+
         jsr     KERNAL_CHROUT
         iny
-        jmp     :-
+        jmp     :-			; XXX BNE to avoid infinite loop
 :
 
 DoMainLoop:
