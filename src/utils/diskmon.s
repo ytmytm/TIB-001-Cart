@@ -1,140 +1,14 @@
-; da65 V2.19 - Git dcdf7ade0
-; Created:    2023-06-02 10:43:53
-; Input file: ../../firmware/utils/DISKMON.EXE
-; Page:       1
 
+.include "dd001-romv1.1-direct-jumptable.inc"
+.include "dd001-mem.inc"
+.include "dd001-sym.inc"
+.include "fat12.inc"
+.include "geosmac.inc"
 
-        .setcpu "6502"
-
-CPU_PORT        := $0001
-PageCounter     := $0002
-BASICPRG        := $002B                        ; Basic program start address ($0801)
-PtrBasText      := $007A
-STATUSIO        := $0090
-FlgLoadVerify   := $0093
-MSGFLG          := $009D
-ENDADDR         := $00AE                        ; End address for LOAD/SAVE/VERIFY
-FNLEN           := $00B7
-SECADR          := $00B9
-CURDEVICE       := $00BA
-FNADR           := $00BB
-STARTADDR       := $00C1                        ; Start address for LOAD/SAVE/VERIFY
-STARTADDR0      := $00C3                        ; Start address for LODA/SAVE/VEFIFY with secondary address SECADR=0
-NDX             := $00C6                        ; Number of characters in keyboard queue
-RVS             := $00C7                        ; Print reverse characters (0=no)
-STARTUP         := $00F0
-NumOfSectors    := $00F7
-SectorL         := $00F8
-SectorH         := $00F9
-TempStore       := $00FA
-Pointer         := $00FB
-J_00FE          := $00FE
-Z_FF            := $00FF
-RdDataRamDxxx   := $01A0                        ; direct call to RdDataRamDxxx instead of jump table $8081; read data from 64K RAM (under I/O), after InitStackProg
-WrDataRamDxxx   := $01AF                        ; (would that be spare call at jump table $8084?); read data from 64K RAM (under I/O), after InitStackProg
 COLOR           := $0286                        ; foreground text color
-NmiVector       := $0318
-ICKOUT          := $0320
-ILOAD           := $0330
-ISAVE           := $0332
-StartofDir      := $0334                        ; page number where directory buffer starts (need 2 pages for a sector)
-EndofDir        := $0335                        ; page number where directory buffer ends(?)
-NewICKOUT       := $0336
-NewNMI          := $0338
-FdcST0          := $033C
-FdcST1          := $033D
-FdcST2          := $033E
-FdcC            := $033F
-FdcH            := $0340
-FdcR            := $0341
-FdcN            := $0342
-FdcST3          := $0343
-FdcPCN          := $0344
-FdcCommand      := $0345
-FdcHSEL         := $0346
-FdcTrack        := $0347
-FdcHead         := $0348
-FdcSector       := $0349
-FdcNumber       := $034A
-FdcEOT          := $034B
-FdcGPL          := $034C
-FdcDTL          := $034D
-FdcTrack2       := $034E
-FdcTEMP         := $034F
-TempStackPtr    := $0350
-ErrorCode       := $0351
-FdcFormatData   := $0352
-FdcSCLUSTER     := $0356
-FdcLCLUSTER     := $0358
-FdcCLUSTER      := $035A
-FdcCLUSTER_2    := $035C
-FdcLENGTH       := $035E
-FdcBYTESLEFT    := $0362
-FdcNBUF         := $0364
-FdcPASS         := $0365
-Counter         := $0366
-FdcOFFSET       := $0367
-FdcHOWMANY      := $0368
-DirSector       := $0369
-FdcLOADAD       := $036A
-FdcFileName     := $036C
-FdcFILETEM      := $038A
-FdcFILELEN      := $0395
-FdcTEMP_1       := $0396
-FdcTEMP_2       := $0397
-FdcTEMP_3       := $0398
-A_03F8          := $03F8
-NewILOAD        := $03FC
-NewISAVE        := $03FE
-VICSCN          := $0400
+LASTSHIFT	:= $028E			; last pattern of CTRL/SHIFT/C=
 CART_COLDSTART  := $8000                        ; cartridge cold start vector
-SaveReloc       := $8472                        ; direct call to SaveReloc instead of jump table _SaveReloc $8063
-FindFAT         := $85A8                        ; direct call to FindFAT instead of jump table _FindFAT $8045
-ClearFATs       := $8650                        ; direct call to ClearFATs instead of jump table _ClearFATs $804E
-NewLoad         := $86BC                        ; direct call to NewLoad instead of jump table _NewLoad $8009
-GetNextCluster  := $87A4                        ; direct call to GetNextCluster instead of jump table _GetNextCluster $803C
-GetFATs         := $8813                        ; direct call to GetFATs instead of jump table _GetFATs $8054
-CalcFirst       := $883A                        ; direct call to CalcFirst instead of jump table _CalcFirst $8051
-WaitRasterLine  := $8851                        ; direct call to WaitRasterLine, not exposed in jump table
-ReadSectors     := $885E                        ; direct call to ReadSectors instead of jump table _ReadSectors $801B
-SetupSector     := $8899                        ; direct call to SetupSector instead of jump table _SetupSector $8030
-Recalibrate     := $88F7                        ; direct call to Recalibrate instead of jump table _Recalibrate $8036
-Specify         := $891A                        ; direct call to Specify instead of jump table _Specify $8033
-ReadStatus      := $8962                        ; direct call to ReadStatus instead of jump table _ReadStatus $8021
-SeekTrack       := $898A                        ; direct call to SeekTrack instead of jump table _SeekTrack $8057
-Wait4DataReady  := $89C8                        ; direct call to Wait4DataReady, not exposed in jump table
-FormatDisk      := $89DB                        ; direct call to FormatDisk instead of jump table _FormatDisk $800F
-WriteSector     := $8BEE                        ; direct call to WriteSector instead of jump table _WriteSector $801E
-InitStackProg   := $8D5A                        ; direct call to InitStackProg instead of jump table _InitStackProg $802D
-SetWatchdog     := $8D90                        ; direct call to SetWatchdog instead of jump table _SetWatchdog $8018
-StopWatchdog    := $8DBD                        ; direct call to StopWatchdog instead of jump table _StopWatchdog $807E
-ReadDirectory   := $8E0F                        ; direct call to ReadDirectory instead of jump table _ReadDirectory $8060
-FindBlank       := $8F4F                        ; direct call to FindBlank instead of jump table _NewLoad $8078
-FindFile        := $8FEA                        ; direct call to FindFile instead of jump table _FindFile $805A
-ShowSize        := $9127                        ; direct call to ShowSize instead of jump table _ShowSize $8066
-ShowBytesFree   := $916A                        ; direct call to ShowBytesFree instead of jump table _ShowBytesFree $806C
-BN2DEC          := $920E                        ; direct call to BN2DEC instead of jump table _BN2DEC $806F
-ShowError       := $926C                        ; direct call to ShowError instead of jump table _ShowError $8069
-BasicCold       := $A000
-BasicNMI        := $A002
-VICCTR1         := $D011                        ; control register 1
-VICLINE         := $D012                        ; raster line
 VICBOCL         := $D020                        ; border color
-VICBAC0         := $D021                        ; background color 0
-ColourRAM       := $D800
-CIA1DRB         := $DC01
-CIA1IRQ         := $DC0D                        ; CIA#1 IRQ register
-CIA2IRQ         := $DD0D                        ; CIA#2 NMI register
-StatusRegister  := $DE80                        ; floppy controller status register
-DataRegister    := $DE81                        ; floppy controller data register
-ResetFDC00      := $DF00                        ; write here to reset floppy controller (any write to $DFxx)
-ResetFDC        := $DF80                        ; write here to reset floppy controller (any write to $DFxx)
-InitScreenKeyb  := $E518
-IncrClock22     := $F6BC
-SetVectorsIO2   := $FD15
-TestRAM2        := $FD50
-InitSidCIAIrq2  := $FDA3
-InitialiseVIC2  := $FF5B
 KERNAL_SETLFS   := $FFBA                        ; Set logical file
 KERNAL_SETNAM   := $FFBD                        ; Set file name
 KERNAL_OPEN     := $FFC0                        ; Open file
@@ -142,144 +16,156 @@ KERNAL_CLOSE    := $FFC3                        ; Close file
 KERNAL_CHKIN    := $FFC6                        ; Open channel for input
 KERNAL_CLRCHN   := $FFCC                        ; Clear I/O channels
 KERNAL_CHRIN    := $FFCF                        ; Get a character from the input channel
-KERNAL_CHROUT   := $FFD2                        ; Output a character
+;KERNAL_CHROUT   := $FFD2                        ; Output a character
 KERNAL_LOAD     := $FFD5                        ; Load file
-KERNAL_STOP     := $FFE1                        ; Check if key pressed (RUN/STOP)
+;KERNAL_STOP     := $FFE1                        ; Check if key pressed (RUN/STOP)
 KERNAL_GETIN    := $FFE4                        ; Get a character
-NmiVectorRAM    := $FFFA
-        lda     #$01
-        sta     COLOR
-        sta     $028E
-        lda     #$06
-        sta     VICBOCL
-        lda     #$80
-        sta     MSGFLG
-        lda     #$37
-        sta     CPU_PORT
-        lda     #$1B
-        sta     VICCTR1
-        lda     #$93
+
+; somewhere above the program code, don't have to be page alligned
+DataBuffer = $4000
+DataBufferLength = $0400		; 2 sectors = 4 pages
+
+	.segment "CODE"
+
+	LoadB	COLOR, 1		; white text
+        sta     LASTSHIFT		; why?
+
+	LoadB	VICBOCL, 6		; blue border
+	LoadB	MSGFLG, $80		; Kernal messages on(?) (direct mode)
+	LoadB	CPU_PORT, $37		; ROM+I/O
+	LoadB	VICCTR1, $1B		; screen on
+
+        lda     #$93			; clear screen
         jsr     KERNAL_CHROUT
         cli
-        ldy     #$00
-L1022:  lda     StartupTxt,y
-        beq     L102D
+        ldy     #0
+:	lda     StartupTxt,y		; print startup message
+        beq     :+
         jsr     KERNAL_CHROUT
         iny
-        bne     L1022
-L102D:  lda     #$0D
+	bne	:-
+;102D
+:	lda     #13			; new line (XXX could be embedded in StartupTxt)
         jsr     KERNAL_CHROUT
-L1032:  ldx     #$19
-L1034:  lda     $D9,x
+
+;1032
+MainLoop:
+	ldx     #25			; 25 rows of text
+:	lda     $D9,x			; something with logical screen organization?
         ora     #$80
         sta     $D9,x
         dex
-        bpl     L1034
-        lda     #$FF
-L103F:  cmp     VICLINE
-        bne     L103F
-        lda     #$3E
+        bpl     :-
+
+	lda     #$FF
+:	cmp     VICLINE			; wait for raster (why?)
+        bne     :-
+
+        lda     #'>'			; prompt
         jsr     KERNAL_CHROUT
-        ldy     #$00
-L104B:  jsr     KERNAL_CHRIN
-        sta     L1427,y
+
+        ldy     #0
+:	jsr     KERNAL_CHRIN		; read user input
+        sta     InputBuffer,y
         iny
-        sty     L141C
-        cmp     #$0D
-        bne     L104B
-        ldy     #$00
-L105B:  lda     L1427,y
+        sty     InputBufLen
+        cmp     #13			; return?
+        bne     :-			; no
+
+        ldy     #0
+:	lda     InputBuffer,y		; scan user input
         iny
-        cmp     #$3E
-        beq     L105B
-        cmp     #$52
-        bne     L106A
-        jmp     L119C
+        cmp     #'>'			; skip over '>' prompt
+        beq     :-
+        cmp     #'R'			; R command?
+        bne     :+
+        jmp     DoRead			; yes
 
-L106A:  cmp     #$4D
-        beq     L10ED
-        cmp     #$58
-        bne     L1075
-        jmp     (CART_COLDSTART)
+:	cmp     #'M'			; M command?
+        beq     DoMCommand		; yes
 
-L1075:  cmp     #$3A
-        bne     L107C
-        jmp     L1214
+        cmp     #'X'			; X command?
+        bne     :+
+        jmp     (CART_COLDSTART)	; yes
 
-L107C:  cmp     #$57
-        beq     L10C6
-        cmp     #$43
-        beq     L10CC
-        cmp     #$2B
-        beq     L108F
-        cmp     #$2D
-        beq     L10A8
-        jmp     L11F1
+:	cmp     #':'			; : command
+        bne     :+
+        jmp     DoColon			; yes
 
-L108F:  lda     L1421
-        clc
-        adc     #$01
-        sta     L1421
-        lda     L1422
+:	cmp     #'W'			; W command?
+        beq     GoDoWrite		; yes
+
+        cmp     #'C'			; C command?
+        beq     GoDoCCommand		; yes
+
+        cmp     #'+'			; + command?
+        beq     DoPlus			; yes
+
+        cmp     #'-'			; - commmand?
+        beq     DoMinus			; yes
+
+        jmp     MainLoopEnd
+
+DoPlus:
+	AddVB	1, LocalSectorL
+        lda     LocalSectorH
         adc     #$00
-        sta     L1422
-        lda     #$0D
+        sta     LocalSectorH
+        lda     #13			; new line
         jsr     KERNAL_CHROUT
-        jmp     L1032
+        jmp     MainLoop
 
-L10A8:  lda     L1421
-        sec
-        sbc     #$01
-        bcs     L10B3
-        jmp     L11F1
-
-L10B3:  sta     L1421
-        lda     L1422
+DoMinus:
+	lda     LocalSectorL			; not the simplest way of doing it
+        subv	1
+        bcs     :+
+        jmp     MainLoopEnd
+:	sta     LocalSectorL
+        lda     LocalSectorH
         sbc     #$00
-        sta     L1422
-        lda     #$0D
+        sta     LocalSectorH
+        lda     #13			; new line, could reuse code above
         jsr     KERNAL_CHROUT
-        jmp     L1032
+        jmp     MainLoop
 
-L10C6:  jsr     L12AD
-        jmp     L1032
+GoDoWrite:				; yet another way of doing it, each command called differently
+	jsr     DoWrite
+        jmp     MainLoop
 
-L10CC:  jsr     L130C
+GoDoCCommand:
+	jsr     L130C
         lda     L141D
-        beq     L10D7
-        jmp     L11F1
+        beq     :+
+        jmp     MainLoopEnd
 
-L10D7:  jsr     InitStackProg
+:	jsr     InitStackProg
         sei
-        lda     L1421
-        sta     FdcCLUSTER
-        lda     L1422
-        sta     FdcCLUSTER+1
+	MoveB	LocalSectorL, FdcCLUSTER
+	MoveB	LocalSectorH, FdcCLUSTER+1
         jsr     CalcFirst
         jmp     L11B2
 
-L10ED:  lda     #$00
-        sta     Pointer
-        lda     #$40
-        sta     Pointer+1
-        lda     #$07
-        sta     L141F
-        ldy     #$00
-        lda     #$3F
-        sta     FdcNBUF
-        lda     #$0D
+DoMCommand:
+	LoadB	Pointer, <DataBuffer
+	LoadB	Pointer+1, >DataBuffer
+	LoadB	L141F, 8-1			; 8 bytes in a row
+        ldy     #0
+	LoadB	FdcNBUF, $3F			; 64 rows * 8 = 256 bytes
+        lda     #13				; new line
         jsr     KERNAL_CHROUT
-L1106:  lda     #$3E
+
+; display address
+@wholerowloop:
+	lda     #'>'
         jsr     KERNAL_CHROUT
-        lda     #$3A
+        lda     #':'
         jsr     KERNAL_CHROUT
-        lda     #$30
+        lda     #'0'				; first addres digit is 0
         jsr     KERNAL_CHROUT
         lda     Pointer+1
-        sec
-        sbc     #$10
+	subv	$10				; why? it's on $40-$41 so convert that to $30-$31='0'-'1'
         jsr     KERNAL_CHROUT
-        tya
+        tya					; hex digit 3
         and     #$F0
         lsr     a
         lsr     a
@@ -288,14 +174,18 @@ L1106:  lda     #$3E
         tax
         lda     HexDigits,x
         jsr     KERNAL_CHROUT
-        tya
+        tya					; hex digit 4
         and     #$0F
         tax
         lda     HexDigits,x
         jsr     KERNAL_CHROUT
-        lda     #$20
+
+        lda     #' '
         jsr     KERNAL_CHROUT
-L113A:  lda     (Pointer),y
+
+; display 8 hex bytes
+@rowloop:
+	lda     (Pointer),y
         and     #$F0
         lsr     a
         lsr     a
@@ -310,225 +200,225 @@ L113A:  lda     (Pointer),y
         tax
         lda     HexDigits,x
         jsr     KERNAL_CHROUT
-        lda     #$20
+
+        lda     #' '
         jsr     KERNAL_CHROUT
+
         dec     L141F
-        bpl     L113A
-        lda     #$07
-        sta     L141F
+        bpl     @rowloop
+
+	LoadB	L141F, 8-1		; reset byte counter in a line
         tya
-        sec
-        sbc     #$08
+	subv	8			; rewind Y counter too
         tay
-L1169:  lda     (Pointer),y
+
+; display 8 ascii values if possible
+@rowloop2:
+	lda     (Pointer),y
         iny
         and     #$7F
-        cmp     #$30
-        bcs     L1174
-        lda     #$2E
-L1174:  jsr     KERNAL_CHROUT
+        cmp     #'0'
+        bcs     :+
+        lda     #'.'
+:	jsr     KERNAL_CHROUT
         dec     L141F
-        bpl     L1169
-        lda     #$07
-        sta     L141F
-        lda     #$0D
+        bpl     @rowloop2
+
+	LoadB	L141F, 8-1		; reset byte counter in a line again
+        lda     #13
         jsr     KERNAL_CHROUT
-        cpy     #$00
-        bne     L118C
+        cpy     #0
+        bne     :+
         inc     Pointer+1
-L118C:  dec     FdcNBUF
-        bmi     L1199
-        jsr     KERNAL_STOP
-        beq     L1199
-        jmp     L1106
+:	dec     FdcNBUF			; end of sector?
+        bmi     @end
+        jsr     KERNAL_STOP		; RUN/STOP?
+        beq     @end			; yes
+        jmp     @wholerowloop
 
-L1199:  jmp     L1032
+@end:	jmp     MainLoop
 
-L119C:  jsr     L130C
+DoRead:
+	jsr     L130C
         lda     L141D
-        bne     L11F1
+        bne     MainLoopEnd		; abort
+
         sei
         jsr     InitStackProg
-        lda     L1421
-        sta     SectorL
-        lda     L1422
-        sta     SectorH
+	MoveB	LocalSectorL, SectorL
+	MoveB	LocalSectorH, SectorH
 L11B2:  jsr     SetupSector
-        lda     SectorH
-        cmp     #$05
-        bcc     L11C4
-        lda     SectorL
-        cmp     #$A0
-        bcc     L11C4
-        jmp     L11F1
 
-L11C4:  lda     #$00
-        sta     Pointer
-        lda     #$40
-        sta     Pointer+1
-        lda     #$01
-        sta     NumOfSectors
-        asl     a
-        sta     FdcBYTESLEFT+1
-        lda     #$00
-        sta     FdcBYTESLEFT
+	CmpBI	SectorH, >DD_TOTAL_SECTORS	; end of disk?
+        bcc     :+				; no
+	CmpBI	SectorL, <DD_TOTAL_SECTORS
+        bcc     :+				; no
+        jmp     MainLoopEnd		; abort
+
+; now we can read SectorL/SectorH into DataBuffer, 1 sector, 512 bytes
+: 	LoadB	Pointer, <DataBuffer
+	LoadB	Pointer+1, >DataBuffer
+	LoadB	NumOfSectors, 1
+        asl     a			; *2=2
+        sta     FdcBYTESLEFT+1		; to high byte - $0200 bytes, one sector
+	LoadB	FdcBYTESLEFT, 0
         jsr     ReadSectors
-        lda     #$1B
-        sta     VICCTR1
+	LoadB	VICCTR1, $1B		; screen on
         lda     ErrorCode
-        beq     L11E9
+        beq     :+
         jsr     ShowError
-L11E9:  lda     #$0D
+:	lda     #13
         jsr     KERNAL_CHROUT
-        jmp     L1032
+        jmp     MainLoop
 
-L11F1:  lda     #$3F
+MainLoopEnd:
+	lda     #'?'			; unknown command or wrong parameters
         jsr     KERNAL_CHROUT
-        lda     #$0D
+        lda     #13
         jsr     KERNAL_CHROUT
-        jmp     L1032
+        jmp     MainLoop
 
-L11FE:  lda     #$0A
-        stx     $5000
-        sty     $5001
+WrongAddr:
+	lda     #$0A			; CTRL+J, linefeed?
+        stx     $5000			; ??? this is never read
+        sty     $5001			; ???
         jsr     KERNAL_CHROUT
-L1209:  lda     #$1D
+:	lda     #$1D			; CRSR-RIGHT X-times?
         jsr     KERNAL_CHROUT
         dex
-        bpl     L1209
-        jmp     L11F1
+        bpl     :-
+        jmp     MainLoopEnd
 
-L1214:  lda     #$07
-        sta     L141E
-        lda     L1427,y
+;1214
+DoColon:
+	LoadB	L141E, 7		; read 8 bytes
+
+        lda     InputBuffer,y
         iny
-        cmp     #$30
-        bne     L11FE
-        lda     L1427,y
+        cmp     #'0'
+        bne     WrongAddr		; address must start with 0
+        lda     InputBuffer,y
         iny
         sec
-        sbc     #$30
-        cmp     #$02
-        bcs     L11FE
-        sta     L1422
+        sbc     #'0'
+        cmp     #2
+        bcs     WrongAddr		; then no larger than 2
+        sta     LocalSectorH
+
         tya
         tax
-        jsr     L1276
-        bcs     L11FE
-        lda     L1421
-        sta     Pointer
-        lda     L1422
-        clc
-        adc     #$40
+        jsr     GetHexByte
+        bcs     WrongAddr
+
+	MoveB	LocalSectorL, Pointer
+        lda     LocalSectorH
+	addv	>DataBuffer
         sta     Pointer+1
-        ldy     #$00
-L1245:  lda     L1427,x
+
+        ldy     #0
+@rowloop:
+	lda     InputBuffer,x
         inx
-        cmp     #$20
-        beq     L1250
-L124D:  jmp     L1032
+        cmp     #' '
+        beq     :+
+@exit:  jmp     MainLoop
 
-L1250:  lda     L1427,x
-        cmp     #$2E
-        beq     L124D
-        jsr     L1276
-        bcc     L125F
-        jmp     L11FE
+:	lda     InputBuffer,x
+        cmp     #'.'
+        beq     @exit
+        jsr     GetHexByte
+        bcc     :+
+        jmp     WrongAddr
 
-L125F:  lda     L1421
+:	lda     LocalSectorL
         sta     (Pointer),y
         iny
-        bne     L1269
+        bne     :+
         inc     Pointer+1
-L1269:  dec     L141E
-        bpl     L1245
-        lda     #$0D
-        jsr     KERNAL_CHROUT
-        jmp     L1032
+:	dec     L141E			; next byte in a row
+        bpl     @rowloop
 
-L1276:  jsr     L1291
-        bcc     L127C
+        lda     #13
+        jsr     KERNAL_CHROUT		; new line
+        jmp     MainLoop
+
+GetHexByte:	; C=0 ok, C=1 wrong characters, byte in LocalSectorL
+	jsr     GetHexDigit
+        bcc     :+
         rts
 
-L127C:  asl     a
+:	asl     a
         asl     a
         asl     a
         asl     a
-        sta     L1421
-        jsr     L1291
-        bcc     L1289
+        sta     LocalSectorL
+        jsr     GetHexDigit
+        bcc     :+
         rts
 
-L1289:  ora     L1421
-        sta     L1421
+:	ora     LocalSectorL
+        sta     LocalSectorL
         clc
         rts
 
-L1291:  lda     L1427,x
+GetHexDigit:
+	lda     InputBuffer,x
         inx
         sec
-        sbc     #$30
-        bcc     L12AB
+        sbc     #'0'
+        bcc     @err
         cmp     #$0A
-        bcc     L12A9
+        bcc     @ok
         cmp     #$11
-        bcc     L12AB
+        bcc     @err
         cmp     #$17
-        bcs     L12AB
+        bcs     @err
         sec
         sbc     #$07
-L12A9:  clc
+@ok:	clc
         rts
 
-L12AB:  sec
+@err:	sec
         rts
 
-L12AD:  jsr     L130C
+DoWrite:
+	jsr     L130C
         lda     L141D
-        beq     L12B8
-        jmp     L11F1
+        beq     :+
+        jmp     MainLoopEnd
 
-L12B8:  sei
-        lda     #$0B
-        sta     VICCTR1
+:	sei
+	LoadB	VICCTR1, $0b		; screen off
         jsr     InitStackProg
-        lda     L1421
-        sta     SectorL
-        lda     L1422
-        sta     SectorH
-        cmp     #$05
-        bcc     L12DF
-        lda     SectorL
-        cmp     #$A0
-        bcc     L12DF
+	MoveB	LocalSectorL, SectorL
+	MoveB	LocalSectorH, SectorH
+        cmp     #>DD_TOTAL_SECTORS	; end of disk?
+        bcc     :+			; no
+	CmpBI	SectorL, <DD_TOTAL_SECTORS
+        bcc     :+			; no
+        pla				; why???
         pla
-        pla
-        lda     #$1B
-        sta     VICCTR1
-        jmp     L11F1
+	LoadB	VICCTR1, $1B		; screen on
+        jmp     MainLoopEnd		; abort end
 
-L12DF:  jsr     SetupSector
-        lda     #$01
-        sta     NumOfSectors
-        lda     #$40
-        sta     Pointer+1
-        lda     #$00
-        sta     Pointer
+:	jsr     SetupSector
+	LoadB	NumOfSectors, 1
+	LoadW	Pointer, DataBuffer
         jsr     SeekTrack
         jsr     SetWatchdog
         jsr     WriteSector
         jsr     StopWatchdog
-        lda     #$1B
-        sta     VICCTR1
+	LoadB	VICCTR1, $1B		; screen on
         lda     ErrorCode
-        beq     L1307
+        beq     :+
         jsr     ShowError
-L1307:  lda     #$0D
+:	lda     #13			; new line
         jmp     KERNAL_CHROUT
 
+; read bytes from input buffer?
 L130C:  ldx     #$00
         stx     L141D
-L1311:  lda     L1427,y
+L1311:  lda     InputBuffer,y
         iny
         cmp     #$20
         beq     L1341
@@ -546,6 +436,7 @@ L1311:  lda     L1427,y
         cpx     #$04
         bcs     L1370
         bcc     L1341
+
 L1334:  sec
         sbc     #$07
         bcc     L1370
@@ -553,67 +444,61 @@ L1334:  sec
         bcs     L1370
         sta     L1423,x
         inx
-L1341:  cpy     L141C
+L1341:  cpy     InputBufLen
         bne     L1311
         cpx     #$00
-        beq     L136F
+        beq     :+
         dex
-        lda     #$00
-        sta     L1422
+	LoadB	LocalSectorH, 0
         lda     L1423,x
-        sta     L1421
+        sta     LocalSectorL
         dex
-        bmi     L136F
-        lda     L1423,x
-        asl     a
-        asl     a
-        asl     a
-        asl     a
-        ora     L1421
-        sta     L1421
-        dex
-        bmi     L136F
-        lda     L1423,x
-        sta     L1422
-L136F:  rts
+        bmi     :+
 
-L1370:  lda     #$3F
-        sta     L141D
+        lda     L1423,x
+        asl     a
+        asl     a
+        asl     a
+        asl     a
+        ora     LocalSectorL
+        sta     LocalSectorL
+        dex
+        bmi     :+
+        lda     L1423,x
+        sta     LocalSectorH
+:	rts
+
+L1370:  LoadB	L141D, $3F
         rts
+
+; XXX having brief info about commands here would be nice
+; XXX does it display current sector number somewhere?
 
 StartupTxt:
         .byte   "DISKMON  IS COPYRIGHT TIB.PLC A"
-
-
-
         .byte   "ND NO    PART OF THIS PROGRAM M"
-
-
-
         .byte   "AY BE RESOLD BY   THE USER WITH"
-
-
-
         .byte   "OUT PERMISION OF TIB.PLC   X   "
-
-
-
         .byte   "     = ABORT TO MAIN MENU"
-
-
-
         .byte   $00
+
 HexDigits:
         .byte   "0123456789ABCDEF"
 
-L141C:  .byte   $00
+InputBufLen:  .byte   $00
+
 L141D:  .byte   $00
 L141E:  .byte   $00
 L141F:  .byte   $00,$00
-L1421:  .byte   $00
-L1422:  .byte   $00
+
+LocalSectorL:  .byte   $00
+LocalSectorH:  .byte   $00
+
 L1423:  .byte   $00,$00,$00,$00
-L1427:  .byte   $00,$00,$00,$00,$00,$00,$00,$00
+
+InputBuffer:
+; junk bytes follow
+	.byte   $00,$00,$00,$00,$00,$00,$00,$00
         .byte   $00,$00,$00,$00,$00,$00,$00,$00
         .byte   $00,$00,$00,$00,$00,$00,$00,$00
         .byte   $00,$00,$00,$00,$00,$00,$00,$00
@@ -649,3 +534,4 @@ L1427:  .byte   $00,$00,$00,$00,$00,$00,$00,$00
         .byte   $00,$00,$00,$00,$00,$00,$00,$00
         .byte   $00,$00,$00,$00,$00,$00,$00,$00
         .byte   $00,$00,$00,$00,$00,$00,$00,$00
+
