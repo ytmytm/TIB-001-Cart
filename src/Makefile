@@ -31,15 +31,54 @@ $(BUILD_DIR)/%.o: %.s
 	@mkdir -p `dirname $@`
 	$(AS) $(ASFLAGS) $< -o $@
 
+# reference utilities
+$(BUILD_DIR)/diskmon.o: utils/diskmon.s
+	$(AS) $(ASFLAGS) $< -o $@
+
+$(BUILD_DIR)/diskmon.exe: $(BUILD_DIR)/diskmon.o utils/cfg1000.cfg
+	$(LD) $(LDFLAGS) -C utils/cfg1000.cfg $(BUILD_DIR)/diskmon.o -o $@
+
+$(BUILD_DIR)/diskcopy.o: utils/diskcopy.s
+	$(AS) $(ASFLAGS) $< -o $@
+
+$(BUILD_DIR)/diskcopy.exe: $(BUILD_DIR)/diskcopy.o utils/cfg0800.cfg
+	$(LD) $(LDFLAGS) -C utils/cfg0800.cfg $(BUILD_DIR)/diskcopy.o -o $@
+
+$(BUILD_DIR)/dispasc.o: utils/dispasc.s
+	$(AS) $(ASFLAGS) $< -o $@
+
+$(BUILD_DIR)/dispasc.exe: $(BUILD_DIR)/dispasc.o utils/cfg1000.cfg
+	$(LD) $(LDFLAGS) -C utils/cfg1000.cfg $(BUILD_DIR)/dispasc.o -o $@
+
+$(BUILD_DIR)/disphex.o: utils/disphex.s
+	$(AS) $(ASFLAGS) $< -o $@
+
+$(BUILD_DIR)/disphex.exe: $(BUILD_DIR)/disphex.o utils/cfg1000.cfg
+	$(LD) $(LDFLAGS) -C utils/cfg1000.cfg $(BUILD_DIR)/disphex.o -o $@
+
+$(BUILD_DIR)/format.o: utils/format.s
+	$(AS) $(ASFLAGS) $< -o $@
+
+$(BUILD_DIR)/format.exe: $(BUILD_DIR)/format.o utils/cfg0800.cfg
+	$(LD) $(LDFLAGS) -C utils/cfg0800.cfg $(BUILD_DIR)/format.o -o $@
+
+
+utils: $(BUILD_DIR)/format.exe $(BUILD_DIR)/dispasc.exe $(BUILD_DIR)/disphex.exe $(BUILD_DIR)/diskmon.exe $(BUILD_DIR)/diskcopy.exe
+
 rom: $(FIRMWARE_ROM)
 
-all: rom
+all: rom utils
 
 clean:
 	rm -rf $(BUILD_DIR)
 
-regress: rom
+regress: rom utils
 	diff $(FIRMWARE_ROM) $(REFERENCE_ROM)
+	diff $(BUILD_DIR)/format.exe ../firmware/utils/FORMAT.EXE
+	diff $(BUILD_DIR)/dispasc.exe ../firmware/utils/DISKASC.EXE
+	diff $(BUILD_DIR)/disphex.exe ../firmware/utils/DISKHEX.EXE
+	diff $(BUILD_DIR)/diskmon.exe ../firmware/utils/DISKMON.EXE
+	diff $(BUILD_DIR)/diskcopy.exe ../firmware/utils/DISKCOPY.EXE
 
 # a must!
 love:

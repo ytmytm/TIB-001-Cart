@@ -1,5 +1,5 @@
 ; da65 V2.19 - Git dcdf7ade0
-; Created:    2023-06-02 10:21:28
+; Created:    2023-06-02 10:43:49
 ; Input file: ../../firmware/utils/DISKASC.EXE
 ; Page:       1
 
@@ -90,7 +90,7 @@ VICSCN          := $0400
 CART_COLDSTART  := $8000                        ; cartridge cold start vector
 SaveReloc       := $8472                        ; direct call to SaveReloc instead of jump table _SaveReloc $8063
 FindFAT         := $85A8                        ; direct call to FindFAT instead of jump table _FindFAT $8045
-ShowError       := $8650                        ; direct call to ClearFATs instead of jump table _ClearFATs $804E
+ClearFATs       := $8650                        ; direct call to ClearFATs instead of jump table _ClearFATs $804E
 NewLoad         := $86BC                        ; direct call to NewLoad instead of jump table _NewLoad $8009
 GetNextCluster  := $87A4                        ; direct call to GetNextCluster instead of jump table _GetNextCluster $803C
 GetFATs         := $8813                        ; direct call to GetFATs instead of jump table _GetFATs $8054
