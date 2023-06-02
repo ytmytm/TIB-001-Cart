@@ -5,7 +5,6 @@
 .include "fat12.inc"
 .include "geosmac.inc"
 
-NDX             := $00C6                        ; Number of characters in keyboard queue
 COLOR           := $0286                        ; foreground text color
 CART_COLDSTART  := $8000                        ; cartridge cold start vector
 VICBOCL         := $D020                        ; border color
@@ -60,8 +59,6 @@ DoMainLoop:
 :	lda     #$FF
 :	cmp     VICLINE			; wait for raster (why?)
         bne     :-
-
-
 
         ldy     #0
 @input:	jsr     KERNAL_CHRIN
@@ -125,7 +122,8 @@ DoMainLoop:
 	MoveB	FdcLENGTH+2, FdcBYTESLEFT+1
 
 ; read and display data cluster by cluster
-:	LoadW	Pointer, DataBuffer
+ReadFileClusters:
+	LoadW	Pointer, DataBuffer
         sei
 	LoadB	VICCTR1, $0B		; screen off
         jsr     SetupSector
@@ -138,7 +136,7 @@ DoMainLoop:
 	CmpBI	FdcCLUSTER+1, $0F	; magic value for end of file?
         beq     :+
         jsr     CalcFirst
-        jmp     :-
+        jmp     ReadFileClusters
 :	jmp     DoMainLoop
 
 	; print data from a single cluster, return on RUN/STOP or CTRL+Z character
