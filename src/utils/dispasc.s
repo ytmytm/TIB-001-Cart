@@ -21,6 +21,10 @@ KERNAL_LOAD     := $FFD5                        ; Load file
 ;KERNAL_STOP     := $FFE1                        ; Check if key pressed (RUN/STOP)
 KERNAL_GETIN    := $FFE4                        ; Get a character
 
+; somewhere above the program code, don't have to be page alligned
+DataBuffer = $4000
+DataBufferLength = $0400		; 2 sectors = 4 pages
+
 	.segment "CODE"
 
 	LoadB	COLOR, 1		; white text
@@ -58,7 +62,6 @@ DoMainLoop:
         bne     :-
 
 
-FileNameBuf = $1306
 
         ldy     #0
 @input:	jsr     KERNAL_CHRIN
@@ -121,9 +124,6 @@ FileNameBuf = $1306
 	MoveB	FdcLENGTH+3, FdcBYTESLEFT	; reverse byte order again
 	MoveB	FdcLENGTH+2, FdcBYTESLEFT+1
 
-DataBuffer = $4000
-DataBufferLength = $0400		; 2 sectors = 4 pages
-
 ; read and display data cluster by cluster
 :	LoadW	Pointer, DataBuffer
         sei
@@ -133,7 +133,7 @@ DataBufferLength = $0400		; 2 sectors = 4 pages
 	LoadB	NumOfSectors, 2		; 2 sectors = whole cluster (use define here?)?
 	LoadB	FdcBYTESLEFT+1, 4	; 2 sectors = 4 pages
         jsr     ReadSectors
-        jsr     L1113
+        jsr     DoDisplayTextData
         jsr     GetNextCluster
 	CmpBI	FdcCLUSTER+1, $0F	; magic value for end of file?
         beq     :+
@@ -141,38 +141,43 @@ DataBufferLength = $0400		; 2 sectors = 4 pages
         jmp     :-
 :	jmp     DoMainLoop
 
-L1113:  LoadB	VICCTR1, $1B		; screen on
+	; print data from a single cluster, return on RUN/STOP or CTRL+Z character
+DoDisplayTextData:
+	LoadB	VICCTR1, $1B		; screen on
 	ldy	#<DataBuffer		; it's 0, resets Y counter too
-        sty     Pointer
+	sty	Pointer
 	LoadB	Pointer+1, >DataBuffer	; why reload? ReadSectors changes that?
-        ldx     #$1F
+
+        ldx     #$1F			; what's that for? from disphex? unused
         stx     L12FE
         stx     L12FF
-L1128:  lda     (Pointer),y
+
+@loop:	lda     (Pointer),y
         iny
-        bne     L1136
+        bne     :+
         inc     Pointer+1
         ldx     Pointer+1
         cpx     #>(DataBuffer+DataBufferLength)
-        bne     L1136
+        bne     :+
         rts
 
-L1136:  cmp     #$1A
-        beq     L1145
+:	cmp     #$1A			; CTRL+Z, DOS END-OF-FILE character
+        beq     @end			; yes -> finish
         jsr     KERNAL_CHROUT
-        jsr     KERNAL_STOP
-        beq     L1145
-        jmp     L1128
+        jsr     KERNAL_STOP		; check for RUN/STOP
+        beq     @end			; yes -> finish
+        jmp     @loop			; back to loop XXX can be BNE
 
-L1145:  pla
+@end:	pla
         pla
         jmp     DoMainLoop
 
+	; XXX DisplayDir from ROM does exactly that
 DoDirectory:
 	jsr     InitStackProg
 	LoadB	Z_FF, DD_SECT_ROOT	; start of root dir
         jsr     ReadDirectory
-	LoadB	CIA2IRQ, $7F
+	LoadB	CIA2IRQ, $7F		; StopWatchdog?
         jsr     GetFATs
 	LoadB	CIA2IRQ, $7F
 	LoadB	VICCTR1, $1B		; screen on
@@ -190,44 +195,47 @@ DoDirectory:
         cmp     #FE_ATTR_VOLUME_ID
         bne     L11A7
 
-        ldy     #FE_OFFS_NAME		; this part displays volume name
-L1182:  sei
+; this part displays volume name, 8 characters without extension
+        ldy     #FE_OFFS_NAME
+:	sei
         jsr     RdDataRamDxxx
         sta     $FD
         tya
         pha
         lda     $FD
         cmp     #$60			; ascii small letters?
-        bcc     L1193
+        bcc     :+
 	subv	$20			; convert to petscii
-L1193:  jsr     KERNAL_CHROUT
+:	jsr     KERNAL_CHROUT
         lda     $FD			; XXX not needed
         pla
         tay
         iny
         cpy     #FE_OFFS_NAME_END
-        bne     L1182
+        bne     :--
         lda     #13			; new line
         jsr     KERNAL_CHROUT
         jmp     L1207
 
-; this part displays files
-L11A7:	LoadB	Pointer, 0		; it's the same code as above
+; this part displays file entries
+L11A7:	LoadB	Pointer, 0		; it's the same code as above, only without ASCII conversion
 	MoveB	StartofDir, Pointer+1
 
 L11B0:  ldy     #FE_OFFS_NAME
         sei
         jsr     RdDataRamDxxx
         cmp     #FE_EMPTY
-        beq     L1235
+        beq     L1235			; end of directory
         cmp     #FE_DELETED
-        beq     L1207
+        beq     L1207			; skip over this entry
+
+	; print file name
         ldx     #FE_OFFS_EXT-1		; only the filename part
-L11C0:  sei
+:	sei
         jsr     RdDataRamDxxx
         iny
         cmp     #' '			; skip over spaces
-        beq     L11DA
+        beq     :+
         sta     $FD			; this storing/restoring is not needed for KERNAL_CHROUT
         txa
         pha
@@ -240,17 +248,18 @@ L11C0:  sei
         tay
         pla
         tax
-L11DA:  dex
-        bpl     L11C0			; until 8 characters?
-
+:	dex
+        bpl     :--			; until 8 characters?
+	; print dot
         lda     #'.'			; extension dot
         jsr     KERNAL_CHROUT
+	; print extension
         ldx     #3-1			; 3 characters
-L11E4:  sei
+:	sei
         jsr     RdDataRamDxxx
         iny
         cmp     #' '			; skip over spaces
-        beq     L11FC
+        beq     :+
         sta     $FD			; this storing/restoring is not needed for KERNAL_CHROUT
         txa
         pha
@@ -262,8 +271,8 @@ L11E4:  sei
         tay
         pla
         tax
-L11FC:  dex
-        bpl     L11E4			; until 8 characters?
+:	dex
+        bpl	:--			; until 3 characters?
 
         jsr     ShowSize		; print out file size in bytes
 
@@ -276,7 +285,7 @@ L1207:  lda     Pointer			; XXX AddVB+LDA Pointer+1
         lda     Pointer+1
         adc     #$00
         sta     Pointer+1
-        cmp     EndofDir		; last page of Directory (2 pages=1 sector)
+        cmp     EndofDir		; last page of Directory (2 pages=1 sector)?
         bne     L11B0			; no, keep displaying files
 
 	AddVB	1, Z_FF			; count directory sectors
@@ -286,7 +295,7 @@ L1207:  lda     Pointer			; XXX AddVB+LDA Pointer+1
         jsr     ReadDirectory		; read next directory sector
 
 	LoadB	VICCTR1, $1B		; screen on
-	LoadB	CIA2IRQ, $7F
+	LoadB	CIA2IRQ, $7F		; StopWatchdog
         jmp     L11A7
 
 L1235:  jsr     ShowBytesFree		; JMP
@@ -310,3 +319,6 @@ PromptTxt:
         .byte   $00,$00,$00
 L12FE:  .byte   $00
 L12FF:  .byte   $00,$00
+
+; it's somewhere here
+FileNameBuf = $1306

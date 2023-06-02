@@ -2078,9 +2078,9 @@ J_8E18:					;				[8E18]
 	jmp	J_8E18			;				[8E18]
 
 
-;**  Load and display the directory
+;**  Display the directory
 DisplayDir:				;				[8E67]
-	LoadB	Z_FF, 7
+	LoadB	Z_FF, DD_SECT_ROOT	; start sector of root dir
 
 	jsr	ReadDirectory		;				[8E0F]
 	jsr	StopWatchdog		;				[8DBD]
@@ -2093,159 +2093,125 @@ DisplayDir:				;				[8E67]
 	clc
 	rts
 
-
-; ??? what has been loaded exactly at this point ???
-:	LoadB	Pointer, 0
+:	LoadB	Pointer, 0		; setup pointer to StartofDir page (under I/O)
 	MoveB	StartofDir, Pointer+1
 
-	ldy	#$0B
-
+	ldy	#FE_OFFS_ATTR
 	sei
-
 	jsr	RdDataRamDxxx		;				[01A0]
-
-	cmp	#$08
+	cmp	#FE_ATTR_VOLUME_ID	; is that entry volume id?
 	bne	J_8EBA			;				[8EBA]
 
-	ldy	#0
-A_8E95:					;				[8E95]
-	sei
+; this part displays volume name, without extension, with ASCII to PETSCII conversion
+	ldy	#FE_OFFS_NAME
+:	sei
 	jsr	RdDataRamDxxx		;				[01A0]
-
-	sta	Z_FD			;				[FD]
-
-	tya
+	sta	Z_FD			; XXX this store/restore is not needed for KERNAL_CHROUT
+	tya				; ditto
 	pha
-
-; Convert to upper case, if needed
 	CmpBI	Z_FD, $60		; < 'a' ?
 	bcc	:+			; yes, ->			[8EA6]
-	subv	$20
+	subv	$20			; convert to PETSCII
 :	jsr	KERNAL_CHROUT		;				[FFD2]
+	lda	Z_FD			; XXX not needed
+	pla				; ditto
+	tay
+	iny
+	cpy	#FE_OFFS_NAME_END
+	bne	:--
 
+	lda	#13			; new line
+	jsr	KERNAL_CHROUT		;				[FFD2]
+	jmp	J_8F1A			;				[8F1A]
+
+; this part displays file entries
+J_8EBA:					;				[8EBA]
+	LoadB	Pointer, 0		; almost the same code as above
+	MoveB	StartofDir, Pointer+1
+A_8EC3:					;				[8EC3]
+	ldy	#FE_OFFS_NAME
+	sei
+	jsr	RdDataRamDxxx		;				[01A0]
+	cmp	#FE_EMPTY		; empty file entry? (note: it's 0)
+	beq	A_8F46			; end of directory
+	cmp	#FE_DELETED		; deleted file entry?
+	beq	J_8F1A			; skip over it
+
+	ldx	#FE_OFFS_EXT-1		; only the filename part
+:	sei
+	jsr	RdDataRamDxxx		;				[01A0]
+	iny
+	cmp	#' '			; skip over padding spaces
+	beq	:+
+	sta	Z_FD			; XXX this store/restore is totally not needed
+	txa
+	pha
+	tya
+	pha
 	lda	Z_FD			;				[FD]
-; ??? why ???, see next instruction
-
+	jsr	KERNAL_CHROUT		;				[FFD2]
+	lda	Z_FD			; ditto
 	pla
 	tay
+	pla
+	tax
+:	dex
+	bpl	:--			; all 8 characters?
+; display extension dot
+	lda	#'.'
+	jsr	KERNAL_CHROUT		;				[FFD2]
 
+	ldx	#3-1			; only extension part
+:	sei
+	jsr	RdDataRamDxxx		;				[01A0]
 	iny
-	cpy	#$0B
-	bne	A_8E95			;				[8E95]
+	cmp	#' '			; skip over padding spaces
+	beq	:+
+	sta	Z_FD			; XXX this store/restore is totally not needed
+	txa
+	pha
+	tya
+	pha
+	lda	Z_FD			;				[FD]
+	jsr	KERNAL_CHROUT		;				[FFD2]
+	pla				; ditto
+	tay
+	pla
+	tax
+:	dex
+	bpl	:--			; all 3 characters?
+; display file size
+	jsr	ShowSize		;				[9127]
 
 	lda	#13			; new line
 	jsr	KERNAL_CHROUT		;				[FFD2]
 
-	jmp	J_8F1A			;				[8F1A]
-
-J_8EBA:					;				[8EBA]
-	LoadB	Pointer, 0
-	MoveB	StartofDir, Pointer+1
-A_8EC3:					;				[8EC3]
-	ldy	#0
-	sei
-	jsr	RdDataRamDxxx		;				[01A0]
-
-	cmp	#FE_EMPTY		; empty file entry? (note: it's 0)
-	beq	A_8F46			;				[8F46]
-
-	cmp	#FE_DELETED		; deleted file entry?
-	beq	J_8F1A			;				[8F1A]
-
-	ldx	#$07
-A_8ED3:					;				[8ED3]
-	sei
-	jsr	RdDataRamDxxx		;				[01A0]
-
-	iny
-	cmp	#' '
-	beq	A_8EED			; skip padding spaces?		[8EED]
-
-	sta	Z_FD			;				[FD]
-
-	txa
-	pha
-
-	tya
-	pha
-
-	lda	Z_FD			;				[FD]
-	jsr	KERNAL_CHROUT		;				[FFD2]
-
-	lda	Z_FD			;				[FD]
-	pla
-	tay
-	pla
-	tax
-A_8EED:					;				[8EED]
-	dex
-	bpl	A_8ED3			;				[8ED3]
-
-	lda	#$2E
-	jsr	KERNAL_CHROUT		;				[FFD2]
-
-	ldx	#2
-A_8EF7:					;				[8EF7]
-	sei
-	jsr	RdDataRamDxxx		;				[01A0]
-
-	iny
-	cmp	#' '			; skip padding spaces?
-	beq	A_8F0F			;				[8F0F]
-
-	sta	Z_FD			;				[FD]
-
-	txa
-	pha
-
-	tya
-	pha
-
-	lda	Z_FD			;				[FD]
-	jsr	KERNAL_CHROUT		;				[FFD2]
-
-	pla
-	tay
-	pla
-	tax
-A_8F0F:					;				[8F0F]
-	dex
-	bpl	A_8EF7			;				[8EF7]
-
-	jsr	ShowSize		;				[9127]
-
-	lda	#$0D
-	jsr	KERNAL_CHROUT		;				[FFD2]
+; next file entry
 J_8F1A:					;				[8F1A]
 	lda	Pointer		; XXX? AddVB $20, Pointer + LDA Pointer+1?
 	addv	FILE_ENTRY_SIZE		; next directory entry
 	sta	Pointer		;				[FB]
-
 	lda	Pointer+1		;				[FC]
 	adc	#0
 	sta	Pointer+1		;				[FC]
+	cmp	EndofDir		; last page of directory buffer?
+	bne	A_8EC3			; no, keep displaying files
 
-	cmp	EndofDir		;				[0335]
-	bne	A_8EC3			;				[8EC3]
-
-	AddVB	1, Z_FF			; XXX inc? Z_FF has sector number?
-	cmp	#2*DD_NUM_ROOTDIR_SECTORS ; whole directory read? (7 sectors but this counts pages, we could also count file entries up to DD_ROOT_ENTRIES)
-	bcs	A_8F46			; yes				[8F46]
+	AddVB	1, Z_FF			; XXX inc+lda? Z_FF has sector number
+	cmp	#DD_SECT_ROOT+DD_NUM_ROOTDIR_SECTORS ; whole directory read? (7 sectors but this counts pages, we could also count file entries up to DD_ROOT_ENTRIES)
+	bcs	A_8F46			; yes -> end			[8F46]
 
 	sei
 	jsr	ReadDirectory		;				[8E0F]
-
 	LoadB	VICCTR1, $1B		; screen on (why?)
-
 	jsr	StopWatchdog		;				[8DBD]
-
 	jmp	J_8EBA			; 				[8EBA]
 
 A_8F46:
 	jsr	ShowBytesFree		;				[916A]
 
-	pla
-	pla
+	pla				; ???? there should be nothing on stack except return addres now
+	pla				; BUG
 	pla
 	pla
 	pla
