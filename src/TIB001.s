@@ -6,6 +6,9 @@
 
 ; - a lot of loading Pointer with (0, StartofDir), move that to a subroutine
 ; - check status register consistently BIT+BPL instead of LDA+AND#$80+BNE
+; - DisplayDir seems to be broken at the end (too may plas)
+; - CHKOUT for N,S,R commands seems to be broken
+; - unused code (hex digit print) might be used by tools had they expose it
 
 ; My notes/ideas regarding this disassembly
 ; - only a 3,5" 720 KB DD FDD can be used, not a 5.25" 360 KB one
@@ -372,6 +375,7 @@ Rename:					;				[81C0]
 
 ;**  New routine for opening a channel for output
 ; XXX seems unused/unfinished (unless used only from tools somehow)
+; XXX manual says to use it for commands OPEN15,9,15,"N:DISK"
 NewCkout:				;				[8295]
 	pha
 
@@ -399,7 +403,7 @@ __NewCkout:
 	ldy	#0
 	lda	(PtrBasText),Y		;				[7A]
 	cmp	#'"'			; quote found?
-	bne	@end
+	bne	@end			; no -> exit, must start with quote
 	iny
 
 ; Save current Y
@@ -412,7 +416,7 @@ __NewCkout:
 	cpy	#$21			; 33 or more characters?
 	bcs	@toolong		; yes, -> exit			[82D8]
 	cmp	#'"'			; quote found?
-	bne	:-
+	bne	:-			; must end with quote within 33 characters
 
 ; Restore original Y
 	pla
@@ -2004,16 +2008,13 @@ CartNMICont:
 	jmp	(BasicNMI)		;				[A002]
 
 
-; Oficially here starts the NMI routine of the cartridge. Now the weird fact:
-; the NMI input of the expansion port is not connected. But during the 
-; initialisation of the C64 the routine is set as first NMI routine for the it.
-; XXX NMI is called from watchdog timer (CIA2)
+; NMI routine is used by the watchdog timer from CIA2, it's not connected to the cartridge
 CartNMI:				;				[8DE7]
 	pha
 	PushB	CPU_PORT
 	LoadB	CPU_PORT, $37		; ROM+I/O
 
-	lda	CIA2IRQ			; XXX what is bit 7 and 1?
+	lda	CIA2IRQ			; XXX what is bit 7 and 2?
 	bpl	:+
 	and	#%00000010		; bit 2 meaning? timeout on operation?
 	beq	:+
