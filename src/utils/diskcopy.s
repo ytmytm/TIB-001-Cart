@@ -1,140 +1,13 @@
-; da65 V2.19 - Git dcdf7ade0
-; Created:    2023-06-02 10:43:51
-; Input file: ../../firmware/utils/DISKCOPY.EXE
-; Page:       1
 
+.include "dd001-romv1.1-direct-jumptable.inc"
+.include "dd001-mem.inc"
+.include "dd001-sym.inc"
+.include "fat12.inc"
+.include "geosmac.inc"
 
-        .setcpu "6502"
-
-CPU_PORT        := $0001
-PageCounter     := $0002
-BASICPRG        := $002B                        ; Basic program start address ($0801)
-PtrBasText      := $007A
-STATUSIO        := $0090
-FlgLoadVerify   := $0093
-MSGFLG          := $009D
-ENDADDR         := $00AE                        ; End address for LOAD/SAVE/VERIFY
-FNLEN           := $00B7
-SECADR          := $00B9
-CURDEVICE       := $00BA
-FNADR           := $00BB
-STARTADDR       := $00C1                        ; Start address for LOAD/SAVE/VERIFY
-STARTADDR0      := $00C3                        ; Start address for LODA/SAVE/VEFIFY with secondary address SECADR=0
-NDX             := $00C6                        ; Number of characters in keyboard queue
-RVS             := $00C7                        ; Print reverse characters (0=no)
-STARTUP         := $00F0
-NumOfSectors    := $00F7
-SectorL         := $00F8
-SectorH         := $00F9
-TempStore       := $00FA
-Pointer         := $00FB
-J_00FE          := $00FE
-Z_FF            := $00FF
-RdDataRamDxxx   := $01A0                        ; direct call to RdDataRamDxxx instead of jump table $8081; read data from 64K RAM (under I/O), after InitStackProg
-WrDataRamDxxx   := $01AF                        ; (would that be spare call at jump table $8084?); read data from 64K RAM (under I/O), after InitStackProg
 COLOR           := $0286                        ; foreground text color
-NmiVector       := $0318
-ICKOUT          := $0320
-ILOAD           := $0330
-ISAVE           := $0332
-StartofDir      := $0334                        ; page number where directory buffer starts (need 2 pages for a sector)
-EndofDir        := $0335                        ; page number where directory buffer ends(?)
-NewICKOUT       := $0336
-NewNMI          := $0338
-FdcST0          := $033C
-FdcST1          := $033D
-FdcST2          := $033E
-FdcC            := $033F
-FdcH            := $0340
-FdcR            := $0341
-FdcN            := $0342
-FdcST3          := $0343
-FdcPCN          := $0344
-FdcCommand      := $0345
-FdcHSEL         := $0346
-FdcTrack        := $0347
-FdcHead         := $0348
-FdcSector       := $0349
-FdcNumber       := $034A
-FdcEOT          := $034B
-FdcGPL          := $034C
-FdcDTL          := $034D
-FdcTrack2       := $034E
-FdcTEMP         := $034F
-TempStackPtr    := $0350
-ErrorCode       := $0351
-FdcFormatData   := $0352
-FdcSCLUSTER     := $0356
-FdcLCLUSTER     := $0358
-FdcCLUSTER      := $035A
-FdcCLUSTER_2    := $035C
-FdcLENGTH       := $035E
-FdcBYTESLEFT    := $0362
-FdcNBUF         := $0364
-FdcPASS         := $0365
-Counter         := $0366
-FdcOFFSET       := $0367
-FdcHOWMANY      := $0368
-DirSector       := $0369
-FdcLOADAD       := $036A
-FdcFileName     := $036C
-FdcFILETEM      := $038A
-FdcFILELEN      := $0395
-FdcTEMP_1       := $0396
-FdcTEMP_2       := $0397
-FdcTEMP_3       := $0398
-A_03F8          := $03F8
-NewILOAD        := $03FC
-NewISAVE        := $03FE
-VICSCN          := $0400
 CART_COLDSTART  := $8000                        ; cartridge cold start vector
-SaveReloc       := $8472                        ; direct call to SaveReloc instead of jump table _SaveReloc $8063
-FindFAT         := $85A8                        ; direct call to FindFAT instead of jump table _FindFAT $8045
-ClearFats       := $8650                        ; direct call to ClearFATs instead of jump table _ClearFATs $804E
-NewLoad         := $86BC                        ; direct call to NewLoad instead of jump table _NewLoad $8009
-GetNextCluster  := $87A4                        ; direct call to GetNextCluster instead of jump table _GetNextCluster $803C
-GetFATs         := $8813                        ; direct call to GetFATs instead of jump table _GetFATs $8054
-CalcFirst       := $883A                        ; direct call to CalcFirst instead of jump table _CalcFirst $8051
-WaitRasterLine  := $8851                        ; direct call to WaitRasterLine, not exposed in jump table
-ReadSectors     := $885E                        ; direct call to ReadSectors instead of jump table _ReadSectors $801B
-SetupSector     := $8899                        ; direct call to SetupSector instead of jump table _SetupSector $8030
-Recalibrate     := $88F7                        ; direct call to Recalibrate instead of jump table _Recalibrate $8036
-Specify         := $891A                        ; direct call to Specify instead of jump table _Specify $8033
-ReadStatus      := $8962                        ; direct call to ReadStatus instead of jump table _ReadStatus $8021
-SeekTrack       := $898A                        ; direct call to SeekTrack instead of jump table _SeekTrack $8057
-Wait4DataReady  := $89C8                        ; direct call to Wait4DataReady, not exposed in jump table
-FormatDisk      := $89DB                        ; direct call to FormatDisk instead of jump table _FormatDisk $800F
-WriteSector     := $8BEE                        ; direct call to WriteSector instead of jump table _WriteSector $801E
-InitStackProg   := $8D5A                        ; direct call to InitStackProg instead of jump table _InitStackProg $802D
-SetWatchdog     := $8D90                        ; direct call to SetWatchdog instead of jump table _SetWatchdog $8018
-StopWatchdog    := $8DBD                        ; direct call to StopWatchdog instead of jump table _StopWatchdog $807E
-ReadDirectory   := $8E0F                        ; direct call to ReadDirectory instead of jump table _ReadDirectory $8060
-FindBlank       := $8F4F                        ; direct call to FindBlank instead of jump table _NewLoad $8078
-FindFile        := $8FEA                        ; direct call to FindFile instead of jump table _FindFile $805A
-ShowSize        := $9127                        ; direct call to ShowSize instead of jump table _ShowSize $8066
-ShowBytesFree   := $916A                        ; direct call to ShowBytesFree instead of jump table _ShowBytesFree $806C
-BN2DEC          := $920E                        ; direct call to BN2DEC instead of jump table _BN2DEC $806F
-ShowError       := $926C                        ; direct call to ShowError instead of jump table _ShowError $8069
-BasicCold       := $A000
-BasicNMI        := $A002
-VICCTR1         := $D011                        ; control register 1
-VICLINE         := $D012                        ; raster line
 VICBOCL         := $D020                        ; border color
-VICBAC0         := $D021                        ; background color 0
-ColourRAM       := $D800
-CIA1DRB         := $DC01
-CIA1IRQ         := $DC0D                        ; CIA#1 IRQ register
-CIA2IRQ         := $DD0D                        ; CIA#2 NMI register
-StatusRegister  := $DE80                        ; floppy controller status register
-DataRegister    := $DE81                        ; floppy controller data register
-ResetFDC00      := $DF00                        ; write here to reset floppy controller (any write to $DFxx)
-ResetFDC        := $DF80                        ; write here to reset floppy controller (any write to $DFxx)
-InitScreenKeyb  := $E518
-IncrClock22     := $F6BC
-SetVectorsIO2   := $FD15
-TestRAM2        := $FD50
-InitSidCIAIrq2  := $FDA3
-InitialiseVIC2  := $FF5B
 KERNAL_SETLFS   := $FFBA                        ; Set logical file
 KERNAL_SETNAM   := $FFBD                        ; Set file name
 KERNAL_OPEN     := $FFC0                        ; Open file
@@ -142,134 +15,130 @@ KERNAL_CLOSE    := $FFC3                        ; Close file
 KERNAL_CHKIN    := $FFC6                        ; Open channel for input
 KERNAL_CLRCHN   := $FFCC                        ; Clear I/O channels
 KERNAL_CHRIN    := $FFCF                        ; Get a character from the input channel
-KERNAL_CHROUT   := $FFD2                        ; Output a character
+;KERNAL_CHROUT   := $FFD2                        ; Output a character
 KERNAL_LOAD     := $FFD5                        ; Load file
-KERNAL_STOP     := $FFE1                        ; Check if key pressed (RUN/STOP)
+;KERNAL_STOP     := $FFE1                        ; Check if key pressed (RUN/STOP)
 KERNAL_GETIN    := $FFE4                        ; Get a character
-NmiVectorRAM    := $FFFA
+
+ResetFDC00	= $DF00				; can be changed to ResetFDC ($DF80, any address on page)
+
+DataBuffer	= $1400	; somewhere above program code, page alinged
+DataBufferLen	= $6C00 ; $1400-$8000 (could be even more $0900-$8000!)
+
+; having a display of number of swaps remaining would be nice
+; also visual indication of source (GREEN) and target (RED) as border color
+
+	.segment "CODE"
+
         ldx     #$FF
         txs
         lda     ResetFDC00
-        lda     #$01
-        sta     COLOR
-        lda     #$06
-        sta     VICBOCL
-        lda     #$80
-        sta     MSGFLG
-        lda     #$37
-        sta     CPU_PORT
-        lda     #$1B
-        sta     VICCTR1
-        lda     #$93
+
+	LoadB	COLOR, 1		; white text
+        LoadB	VICBOCL, 6		; blue border
+	LoadB	MSGFLG, $80		; Kernal messages on(?) (direct mode)
+	LoadB	CPU_PORT, $37		; ROM+I/O
+	LoadB	VICCTR1, $1B		; screen on
+
+        lda     #$93			; clear screen
         jsr     KERNAL_CHROUT
-        lda     #$0D
-        sta     L0AFC
-        lda     #$00
-        sta     L0AFA
-        sta     L0AFB
+
+	LoadB	CountDiskSwaps, 13		; disk swaps
+	LoadB	LocalSectorL, 0		; LoadW LocalSectorL, 0
+        sta     LocalSectorH
         cli
-        ldy     #$00
-L0832:  lda     StartupTxt,y
-        beq     L083E
+
+        ldy     #0
+:	lda     StartupTxt,y
+        beq     :+
         jsr     KERNAL_CHROUT
         iny
-        jmp     L0832
+        jmp     :-			; XXX BNE instead of infinite loop
 
-L083E:  lda     #$0D
+:	lda     #13			; new line
         jsr     KERNAL_CHROUT
         jsr     InitStackProg
-        lda     #$6D
-        sta     L0AFE
+
+	LoadB	LocalNumOfSectors, >DataBufferLen+1
+
 CopyLoop:
         cli
-        lda     L0AFC
-        bne     L0856
-        lda     #$24
-        sta     L0AFE
-L0856:  lda     #$1B
-        sta     VICCTR1
+        lda     CountDiskSwaps			; last run?
+        bne     :+
+	LoadB	LocalNumOfSectors, $24	; $24 sectors in last run
+
+:	LoadB	VICCTR1, $1B		; screen on
         jsr     InsertSourceDisk
-        lda     #$FF
-        sta     FdcBYTESLEFT
+	LoadB	FdcBYTESLEFT, $FF	; LoadW FdcBYTESLEFT, $FFFF
         sta     FdcBYTESLEFT+1
-        lda     #$00
-        sta     ErrorCode
+	LoadB	ErrorCode, ERR_OK
         jsr     ReadChunk
         cli
-        lda     #$1B
-        sta     VICCTR1
+	LoadB	VICCTR1, $1B		; screen on
         jsr     InsertTargetDisk
-        lda     #$00
-        sta     ErrorCode
+	LoadB	ErrorCode, ERR_OK
         jsr     WriteChunk
-        lda     L0AFA
-        clc
-        adc     #$6C
-        sta     L0AFA
-        lda     L0AFB
+
+        lda     LocalSectorL
+        addv	>DataBufferLen		; this many sectors in one chunk?
+        sta     LocalSectorL
+        lda     LocalSectorH
         adc     #$00
-        sta     L0AFB
-        dec     L0AFC
+        sta     LocalSectorH
+
+        dec     CountDiskSwaps
         bpl     CopyLoop
+
         jsr     CopyCompleted
-        lda     #$0D
-        sta     L0AFC
-        lda     #$6D
-        sta     L0AFE
-        lda     #$00
-        sta     L0AFA
-        sta     L0AFB
+
+	LoadB	CountDiskSwaps, 13
+	LoadB	LocalNumOfSectors, >DataBufferLen+1
+	LoadB	LocalSectorL, 0		; LoadW L0AFA, 0
+        sta     LocalSectorH
         jmp     CopyLoop
 
 WriteChunk:
-        lda     L0AFE
-        sta     NumOfSectors
-        lda     L0AFA
-        sta     SectorL
-        lda     L0AFB
-        sta     SectorH
+	MoveB	LocalNumOfSectors, NumOfSectors
+	MoveB	LocalSectorL, SectorL
+	MoveB	LocalSectorH, SectorH
+
         jsr     SetupSector
-        lda     #$00
-        sta     ErrorCode
+
+	LoadB	ErrorCode, ERR_OK	; zero
         sta     Pointer
-        lda     #$14
-        sta     Pointer+1
+	LoadB	Pointer+1, >DataBuffer
         jsr     SeekTrack
         jsr     SetWatchdog
         jsr     WriteSector
         jsr     StopWatchdog
         lda     ErrorCode
-        beq     L08E4
-        jsr     Specify
+        beq     :+
+        jsr     Specify			; try again
         jsr     Recalibrate
-        jmp     WriteChunk
-
-L08E4:  rts
+        jmp     WriteChunk		; there is no break process, this may be infinite loop on error
+:	rts
 
 ReadChunk:
-        lda     L0AFA
-        sta     SectorL
-        lda     L0AFB
-        sta     SectorH
-        lda     L0AFE
-        sta     NumOfSectors
+	MoveB	LocalSectorL, SectorL
+	MoveB	LocalSectorH, SectorH
+	MoveB	LocalNumOfSectors, NumOfSectors
+
         jsr     SetupSector
-        lda     #$00
-        sta     ErrorCode
+
+	LoadB	ErrorCode, ERR_OK	; zero
         sta     Pointer
-        lda     #$14
-        sta     Pointer+1
+	LoadB	Pointer+1, >DataBuffer
         jsr     SeekTrack
         jsr     ReadSectors
         jsr     StopWatchdog
         lda     ErrorCode
-        beq     L0919
+        beq     :+
         jsr     Specify
         jsr     Recalibrate
         jmp     ReadChunk
+:	rts
 
-L0919:  rts
-
+; XXX unused code
         lda     #$4A
         sta     DataRegister
         jsr     Wait4DataReady
@@ -280,79 +149,78 @@ L0919:  rts
         rts
 
 InsertSourceDisk:
-        ldy     #$00
-L0930:  lda     SourceDiskTxt,y
-        beq     L093C
+        ldy     #0
+:	lda     SourceDiskTxt,y
+        beq     :+
         jsr     KERNAL_CHROUT
         iny
-        jmp     L0930
+        jmp     :-
 
-L093C:  lda     #$01
+:	lda     #$01			; any key not from first column?
         jsr     KeyboardScan
         bcs     PrintNewLine
-        lda     #$7F
+        lda     #$7F			; RUN/STOP?
         jsr     KeyboardScan
-        bcc     L093C
+        bcc     :-
         jmp     (CART_COLDSTART)
 
 PrintNewLine:
-        lda     #$0D
+        lda     #13			; new line
         jsr     KERNAL_CHROUT
-        jsr     WaitRasterLine
+        jsr     WaitRasterLine		; why?
         sei
         rts
 
 InsertTargetDisk:
-        ldy     #$00
-L0959:  lda     TargetDiskTxt,y
-        beq     L0965
+        ldy     #0
+:	lda     TargetDiskTxt,y
+        beq     :+
         jsr     KERNAL_CHROUT
         iny
-        jmp     L0959
+        jmp     :-
 
-L0965:  lda     #$01
+:	lda     #$01			; any key not from first column?
         jsr     KeyboardScan
         bcs     PrintNewLine2
-        lda     #$7F
+        lda     #$7F			; RUN/STOP?
         jsr     KeyboardScan
-        bcc     L0965
+        bcc     :-
         sei
         jmp     (CART_COLDSTART)
 
 ; they could have used PrintNewLine
 PrintNewLine2:
-        lda     #$0D
+        lda     #13			; new line
         jsr     KERNAL_CHROUT
-        jsr     WaitRasterLine
+        jsr     WaitRasterLine		; why?
         sei
         rts
 
 CopyCompleted:
-        lda     #$1B
-        sta     VICCTR1
+	LoadB	VICCTR1, $1B		; screen on
         ldy     #$00
-L0988:  lda     CompletedTxt,y
-        beq     L0994
+:	lda     CompletedTxt,y
+        beq     :+
         jsr     KERNAL_CHROUT
         iny
-        jmp     L0988
+        jmp     :-
 
-L0994:  lda     #$01
+:	lda     #$01			; any key not from first column?
         jsr     KeyboardScan
         bcs     PrintNewLine3
-        lda     #$7F
+        lda     #$7F			; RUN/STOP?
         jsr     KeyboardScan
-        bcc     L0994
+        bcc     :-
         sei
-        ldx     #$FF
+        ldx     #$FF			; this appears only here, COLDSTART must do it anyway
         txs
         jmp     (CART_COLDSTART)
 
 ; they could have used PrintNewLine
 PrintNewLine3:
-        lda     #$0D
+        lda     #13			; new line
         jsr     KERNAL_CHROUT
-        jsr     WaitRasterLine
+        jsr     WaitRasterLine		; why?
         sei
         rts
 
@@ -390,53 +258,34 @@ TblBitSet:
         .byte   $01,$02,$04,$08,$10,$20,$40,$80
 StartupTxt:
         .byte   "DISKCOPY IS COPYRIGHT TIB.PLC A"
-
-
-
         .byte   "ND NO    PART OF THIS PROGRAM M"
-
-
-
         .byte   "AY BE RESOLD BY   THE USER WITH"
-
-
-
         .byte   "OUT PERMISION OF TIB.PLC   RUN/"
-
-
-
         .byte   "STOP = ABORT TO MAIN MENU"
-
-
-
         .byte   $00
+
 SourceDiskTxt:
         .byte   "PLACE SOURCE DISK IN DRIVE PRES"
-
-
-
         .byte   "S RETURN"
         .byte   $00
+
 TargetDiskTxt:
         .byte   "PLACE DESTINATION DISK IN DRIVE"
-
-
-
         .byte   " PRESS RETURN"
-
         .byte   $00
+
 CompletedTxt:
         .byte   "COPY COMPLETE PRESS RETURN"
-
-
-
         .byte   $00
-L0AFA:  .byte   $00
-L0AFB:  .byte   $00
-L0AFC:  .byte   $00
+
+LocalSectorL:  .byte   $00
+LocalSectorH:  .byte   $00
+CountDiskSwaps:  .byte   $00
 ; Y reg storage during keyboard scan
 tempY:  .byte   $00
-L0AFE:  .byte   $00
-        .byte   "0123456789ABCDEF"
+LocalNumOfSectors:  .byte   $00
 
+; unused junk bytes
+        .byte   "0123456789ABCDEF"
         .byte   $00,$00
+
