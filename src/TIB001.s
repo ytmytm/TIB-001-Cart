@@ -43,6 +43,9 @@ DEVNUM = 9
 ; DD-001 memory locations and defines
 .include "dd001-mem.inc"
 
+DirectoryBuffer		= $D000	; buffer ($0200, 1 sector) for directory operations (FAT operations will take EndofDir, so expect this area to be overwritten)
+FATBuffer		= $D200	; buffer ($0600, 3 sectors) for one whole FAT (set implicitly by taking EndofDir as start page)
+
 ; linker will update that
 .import __STACK0101_LAST__
 
@@ -142,8 +145,8 @@ CartInit:				;				[8087]
 ;**  Initialize the C64 - part 2
 ;    Note: not used anywhere else AFAIK, so why not one routine?
 InitC64_2:				;				[80B6]
-	LoadB	StartofDir, $D0		; ??? page number?
-	LoadB	EndofDir, $D2		; ??? page number?
+	LoadB	StartofDir, >DirectoryBuffer		; ??? start+end page number for directory sector cache, use SetSpace for that
+	LoadB	EndofDir, >(DirectoryBuffer+$0200)
 
 ; Replace some routines by new ones
 NewRoutines:				;				[80C0]
@@ -411,6 +414,7 @@ __NewCkout:
 	pha
 
 ; Check if the string between the quotes is not too long
+; XXX it does the same thing as GetlengthFName just checks for bound (could set C flag about it, no?)
 :	lda	(PtrBasText),Y		;				[7A]
 	iny
 	cpy	#$21			; 33 or more characters?
@@ -510,6 +514,7 @@ GetlengthFName:				;				[8336]
 	sta	PtrBasText		;				[7A]
 	rts
 
+; in: A - page number where directory will be loaded, need space for whole sector (2 pages)
 SetSpace:				;				[834B]
 	sta	StartofDir		;				[0334]
 	addv	2
@@ -1548,7 +1553,7 @@ FormatDiskLoop:
 	lda	#$FF
 	jsr	WrDataRamDxxx		;				[01AF]
 
-	LoadB	Pointer+1, $D8	; page $D800 in RAM?
+	LoadB	Pointer+1, >(FATBuffer+3*$0200)	; page $D800 in RAM? end of fat ($D200+3*$0200)
 
 	lda	#$F9			; $FFF9 - FAT#2 magic?
 	ldy	#0
