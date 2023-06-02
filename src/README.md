@@ -1,7 +1,6 @@
 
 # TODO
 
-- disassemble utilities using dd001-mem.inc locations
 - keep load address in first 2 bytes of the file, where it belongs
 - correct and reassemble utilities, this time with jump table
 - fail fast if there is no FDD or no disk in FDD
@@ -25,7 +24,7 @@
 - screen on is repeating a lot
 - loading vector to StartofDir repeats a lot
 - consistently use BIT/BPL for controller status, there are all variants
-- remove unused code (but check how utilities use ROM first)
+- remove unused code
 - replace screen text by ASCIIZ and $FFD2 printing (or BASIC $AB1E)
 - display SEARCHING (F5AF) or LOADING/VERYFING (F5D2)
 - actually implement VERIFY
