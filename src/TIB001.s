@@ -882,12 +882,12 @@ FindNextFAT:				;				[85B2]
 	rts
 
 WriteFATs:				;				[860C]
-	LoadB	NumOfSectors, DD_FAT_SIZE
+	LoadB	NumOfSectors, DD_FAT_SIZE	; 3 sectors
 
-	MoveB	EndofDir, Pointer+1
+	MoveB	EndofDir, Pointer+1	; FAT buffer starts right after directory buffer
 	LoadB	Pointer, 0
 
-	LoadB	SectorL, DD_SECT_FAT1
+	LoadB	SectorL, DD_SECT_FAT1	; starting on FAT1 sector
 	LoadB	SectorH, 0
 
 	jsr	SetupSector		;				[8899]
@@ -896,12 +896,12 @@ WriteFATs:				;				[860C]
 	jsr	WriteSector		;				[8BEE]
 	jsr	StopWatchdog		;				[8DBD]
 
-	MoveB	EndofDir, Pointer+1
+	MoveB	EndofDir, Pointer+1	; FAT buffer starts right after directory buffer
 	LoadB	Pointer, 0
 
-	LoadB	NumOfSectors, DD_FAT_SIZE
+	LoadB	NumOfSectors, DD_FAT_SIZE	; 3 sectors
 
-	LoadB	SectorL, DD_SECT_FAT2
+	LoadB	SectorL, DD_SECT_FAT2	; starting on FAT2 sector
 
 	jsr	SetupSector		;				[8899]
 	jsr	SeekTrack		;				[898A]
@@ -911,7 +911,7 @@ WriteFATs:				;				[860C]
 	jmp	StopWatchdog		;				[8DBD]
 
 ClearFATs:				;				[8650]
-	ldy	#$1A
+	ldy	#FE_OFFS_START_CLUSTER	; first cluster of a file
 	jsr	RdDataRamDxxx		;				[01A0]
 
 	sta	FdcCLUSTER		;				[035A]
@@ -930,7 +930,7 @@ ClearFATs:				;				[8650]
 
 	MoveB	FdcCLUSTER, FdcLCLUSTER
 	MoveB	FdcCLUSTER+1, FdcLCLUSTER+1
-	cmp	#$0F			; compare with FdcCLUSTER+1,+29
+	cmp	#$0F			; $0F=magic value for end of file? compares with FdcCLUSTER+1
 	bne	:-
 	rts
 
@@ -1166,24 +1166,24 @@ GetNextCluster:				;				[87A4]
 ; Load 3 sectors of the FAT table into RAM under the I/O from $D200 on
 GetFATs:				;				[8813]
 	LoadB	Pointer, 0
-	MoveB	EndofDir, Pointer+1
+	MoveB	EndofDir, Pointer+1	; FAT buffer starts right after directory buffer
 
-	LoadB	SectorL, 1
+	LoadB	SectorL, DD_SECT_FAT1
 	LoadB	SectorH, 0
 
 	jsr	SetupSector		;				[8899]
 
 	LoadB	FdcBYTESLEFT, 0
 
-	LoadB	NumOfSectors, 3
-	asl	A			; A := 6
-	sta	FdcBYTESLEFT+1		;				[0363]
+	LoadB	NumOfSectors, DD_FAT_SIZE	; 3 sectors
+	asl	A			; A := 3*2 = 6 pages
+	sta	FdcBYTESLEFT+1		; read this many bytes		[0363]
 
 	jsr	ReadSectors		;				[885E]
 	jmp	StopWatchdog		;				[8DBD]
 
 
-; in: FdcCLUSTER/31 (cluster number?)
+; in: FdcCLUSTER (cluster number?)
 ; out: SectorL/H
 ; calc: out=in*2+10
 CalcFirst:				;				[883A]
@@ -1529,7 +1529,7 @@ FormatDiskLoop:
 	bne	FormatDiskLoop
 
 	LoadB	Pointer, 0
-	MoveB	StartofDir, Pointer+1
+	MoveB	StartofDir, Pointer+1	; directory sector buffer
 
 	ldy	#0			; FAT12 identifier+BIOS Parameter Block
 :	lda	BIOSParameterBlock,Y	;				[943E]
@@ -1541,7 +1541,7 @@ FormatDiskLoop:
 	; XXX and file system name 'FAT12   '
 	; XXX and volume name (from FdcFileName) and randomize volume serial
 
-	MoveB	EndofDir, Pointer+1
+	MoveB	EndofDir, Pointer+1	; FAT buffer starts right after directory buffer
 
 	lda	#$F9			; $FFF9 - FAT#1 magic?
 	ldy	#0
@@ -1553,7 +1553,7 @@ FormatDiskLoop:
 	lda	#$FF
 	jsr	WrDataRamDxxx		;				[01AF]
 
-	LoadB	Pointer+1, >(FATBuffer+3*$0200)	; page $D800 in RAM? end of fat ($D200+3*$0200)
+	LoadB	Pointer+1, >(FATBuffer+3*$0200)	; page $D800 in RAM? end of fat#1, start of fat#2 ($D200+3*$0200); XXX BUG should add to EndofDir instead of fixed value
 
 	lda	#$F9			; $FFF9 - FAT#2 magic?
 	ldy	#0
@@ -1565,15 +1565,15 @@ FormatDiskLoop:
 	lda	#$FF
 	jsr	WrDataRamDxxx		;				[01AF]
 
-	LoadB	NumOfSectors, 8
-	LoadB	SectorL, 0
+	LoadB	NumOfSectors, 8		; BUG: 8 or 7? we will write first 8 sectors (boot + two fats + one more? (directory, but it's not cleared with zeros)
+	LoadB	SectorL, 0		; write staring from to boot sector
 	LoadB	SectorH, 0		; XXX optimization
 
 	jsr	SetupSector		;				[8899]
 	jsr	SeekTrack		;				[898A]
 	jsr	SetWatchdog		;				[8D90]
 
-	MoveB	StartofDir, Pointer+1
+	MoveB	StartofDir, Pointer+1	; set back to directory sector buffer (with boot sector data at the moment)
 
 	jsr	WriteSector		;				[8BEE]
 	jsr	StopWatchdog		;				[8DBD]
@@ -1581,7 +1581,7 @@ FormatDiskLoop:
 	ldx	#1
 	jsr	ClearDirectory
 
-	MoveB	StartofDir, Pointer+1
+	MoveB	StartofDir, Pointer+1	; set back to directory sector buffer, now for file entries
 
 	ldx	#0
 	ldy	#0
@@ -1600,6 +1600,7 @@ FormatDiskLoop:
 	jsr	SetWatchdog		;				[8D90]
 	jsr	WriteSector		;				[8BEE]
 	jsr	StopWatchdog		;				[8DBD]
+	;we don't have to clear out all sectors occupied by root directory because FormatTrack does this for whole disk
 
 	LoadB	VICCTR1, $1B		; screen on
 	clc
@@ -1623,9 +1624,9 @@ FormatDiskLoop:
 	jmp	FormatDiskLoop
 
 ClearDirectory:
-; clear directory under $D000, X has count of pages
+; clear directory under $D000, X has count of pages (2=only directory, 8=directory+fat, 12=directory+fat+fat2)
 	LoadB	Pointer, 0
-	MoveB	StartofDir, Pointer+1
+	MoveB	StartofDir, Pointer+1	; directory sector buffer
 
 	lda	#0
 	ldy	#0			; XXX tay
@@ -1658,17 +1659,17 @@ P_8B49:					;				[8B49]
 
 	ldx	#15			; retries
 	ldy	#0
-:	bit	StatusRegister		; FDC ready? XXX bbcf 7		[DE80]
-	bpl	:-			; no, -> wait			[8B79]
+@loop:	bit	StatusRegister		; FDC ready? XXX bbcf 7		[DE80]
+	bpl	@loop			; no, -> wait			[8B79]
 
 	CmpBI	DataRegister, 0		; XXX LDA DataRegister + BEQ is enough
 	beq	:+			;				[8B8A]
 
 	LoadB	ErrorCode, ERR_DISK_WRITE_PROTECT
 :	iny
-	bne	:--
+	bne	@loop
 	dex
-	bpl	:--
+	bpl	@loop
 	jmp	ReadStatus		;				[8962]
 
 
@@ -2642,26 +2643,22 @@ A_919F:					;				[919F]
 	rol	FdcLENGTH+2		;				[0360]
 	jsr	BN2DEC			;				[920E]
 
+; print out message (XXX why not use the same code as from ShowError?)
 	ldy	#0
-A_91CC:					;				[91CC]
-	tya				; XXX no need to preserve Y
+:	tya				; XXX no need to preserve Y
 	pha
-
 	lda	TotalBytesFreeTxt,Y
-	beq	A_91DD			;				[91DD]
-
+	beq	:+
 	jsr	KERNAL_CHROUT		;				[FFD2]
-
 	pla
 	tay
 	iny
-	bne	A_91CC			;				[91CC]
+	bne	:-
+	beq	:++			; XXX not need without PHA
+:	pla
 
-	beq	A_91DE			;				[91DE]
-A_91DD:					;				[91DD]
-	pla
-A_91DE:					;				[91DE]
-	ldy	#5
+; print out number from FdcNBUF
+:	ldy	#5
 	lda	#'0'
 :	cmp	FdcNBUF,Y		; XXX same as above: skip leading zeros	[0364]
 	bne	:+
@@ -2681,8 +2678,7 @@ A_91DE:					;				[91DE]
 	rts
 
  
-TotalBytesFreeTxt:
-.asciiz "TOTAL BYTES FREE "
+TotalBytesFreeTxt:	.asciiz "TOTAL BYTES FREE "
 
 
 ; convert 24-bit number to ASCII
@@ -2985,7 +2981,7 @@ RdDataRamDxxx:				;				[01A0]
 WrDataRamDxxx:				;				[01AF]
 	pha
 
-	stx	TempStore		; save X; XXX txa+pha?
+	stx	TempStore		; save X
 
 	ldx	CPU_PORT			; save original value		[01]
 
