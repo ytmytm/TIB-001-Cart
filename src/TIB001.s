@@ -3008,14 +3008,10 @@ WriteData:				;				[0179]
 RdDataRamDxxx:				;				[01A0]
 	lda	#$30			; 64 KB of RAM visible
 	stx	TempStore		; save X			[FA]
-
-	ldx	CPU_PORT			; save original value		[01]
-	sta	CPU_PORT			;				[01]
-
+	ldx	CPU_PORT		; save original value		[01]
+	sta	CPU_PORT		;				[01]
 	lda	(Pointer),Y		; read data from RAM		[FB]
-
-	stx	CPU_PORT			; restore original value	[01]
-
+	stx	CPU_PORT		; restore original value	[01]
 	ldx	TempStore		; restore X			[FA]
 	rts
 
@@ -3028,18 +3024,12 @@ RdDataRamDxxx:				;				[01A0]
 
 WrDataRamDxxx:				;				[01AF]
 	pha
-
 	stx	TempStore		; save X
-
-	ldx	CPU_PORT			; save original value		[01]
-
+	ldx	CPU_PORT		; save original value		[01]
 	LoadB	CPU_PORT, $30		; 64K of RAM
-
 	pla
 	sta	(Pointer),Y		;				[FB]
-
-	stx	CPU_PORT			; restore original value	[01]
-
+	stx	CPU_PORT		; restore original value	[01]
 	ldx	TempStore		; restore X			[FA]
 	rts
  
