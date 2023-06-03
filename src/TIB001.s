@@ -2010,8 +2010,26 @@ StopWatchdog:				;				[8DBD]
 	sta	CIA2CRB
 	rts
 
-CartNMICont:
+
+; NMI routine is used by the watchdog timer from CIA2, it's not connected to the cartridge
+CartNMI:				;				[8DE7]
 	pha
+	PushB	CPU_PORT
+	LoadB	CPU_PORT, $37		; ROM+I/O
+
+	lda	CIA2IRQ			; XXX what is bit 7 and 2?
+	bpl	:+			; branch if bit 7=0
+	and	#%00000010		; bit 1 meaning? timeout on operation?
+	beq	:+			; branch if bit 1=0
+
+	inc	ErrorCode		; XXX ??? why (to be 1?)	[0351]
+	ldx	TempStackPtr		; XXX ??? why 			[0350]
+	txs				; ? abort current operation and return to caller (before TempStackPtr was saved?)
+	lda	ResetFDC		; reset the FDC			[DF80]
+	jmp	StopWatchdog		;				[8DBD]
+
+:	jsr	NewRoutines		;				[80C0]
+	PopB	CPU_PORT
 	txa
 	pha
 	tya
@@ -2029,29 +2047,6 @@ CartNMICont:
 :	jsr	InitSidCIAIrq2		;				[FDA3]
 	jsr	InitScreenKeyb		;				[E518]
 	jmp	(BasicNMI)		;				[A002]
-
-
-; NMI routine is used by the watchdog timer from CIA2, it's not connected to the cartridge
-CartNMI:				;				[8DE7]
-	pha
-	PushB	CPU_PORT
-	LoadB	CPU_PORT, $37		; ROM+I/O
-
-	lda	CIA2IRQ			; XXX what is bit 7 and 2?
-	bpl	:+
-	and	#%00000010		; bit 2 meaning? timeout on operation?
-	beq	:+
-
-	inc	ErrorCode		; XXX ??? why			[0351]
-	ldx	TempStackPtr		; XXX ??? why 			[0350]
-	txs				; ? abort current operation and return to caller (before TempStackPtr was saved?)
-	lda	ResetFDC		; reset the FDC			[DF80]
-	jmp	StopWatchdog		;				[8DBD]
-
-:	jsr	NewRoutines		;				[80C0]
-	PopB	CPU_PORT
-	pla
-	jmp	CartNMICont		; NMI routine continued  there (could be moved below)	[8DCB]
 
 
 
