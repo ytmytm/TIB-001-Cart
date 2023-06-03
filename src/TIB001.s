@@ -2684,7 +2684,7 @@ ShowSize:				;				[9127]
 ShowBytesFree:				;				[916A]
 	sei
 
-	LoadW_	FdcLENGTH, 0
+	LoadW	FdcLENGTH, 0
 	sta	FdcLENGTH+2		;				[0360]
 
 	LoadB	FdcSCLUSTER, 2
