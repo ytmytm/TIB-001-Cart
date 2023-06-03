@@ -42,4 +42,4 @@ _FindBlank	=	$8078
 _PadOut		=	$807B
 _StopWatchdog	=	$807E
 _RdDataRamDxxx	=	$8081
-__Spare		=	$8084	; don't use! (but it could become _WrDataRamDxxx
+_WrDataRamDxxx	=	$8084

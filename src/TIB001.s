@@ -123,7 +123,7 @@ _FindBlank:		jmp	FindBlank		; [8078] -> [8F4F]
 _PadOut:		jmp	PadOut			; [807B] -> [90CE]
 _StopWatchdog:		jmp	StopWatchdog		; [807E] -> [8DBD]
 _RdDataRamDxxx:		jmp	RdDataRamDxxx		; [8081] -> [01A0]
-__Spare:		jmp	$FFFF			; [8084] -> [FFFF]
+_WrDataRamDxxx:		jmp	WrDataRamDxxx
 
 ; Here starts the initialisation of the cartridge
 CartInit:				;				[8087]
