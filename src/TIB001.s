@@ -1999,9 +1999,7 @@ InitStackProg:				;				[8D5A]
 	bne	:-
 
 	jsr	Specify			;				[891A]
-	jsr	Recalibrate		; JMP instead of JSR+RTS?	[88F7]
-	rts
-
+	jmp	Recalibrate
 
 ;**  Bytes need for the command "Read data"  IMHO
 ; XXX check datasheet
