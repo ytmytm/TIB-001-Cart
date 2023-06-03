@@ -2500,52 +2500,39 @@ A_90CD:					;				[90CD]
 ; out: FdcFileName in 'xx       zz ' normalized for directory entry
 PadOut:					;				[90CE]
 	ldy	#0
-A_90D0:					;				[90D0]
-	lda	(FNADR),Y	;				[BB]
+:	lda	(FNADR),Y	;				[BB]
 	cmp	#'.'			; dot?
 	beq	A_9107			; yes, -> 			[9107]
-
 	iny
-	cpy	FNLEN		; end of the name?		[B7]
-	bne	A_90D0			; no, -> next character		[90D0]
+	cpy	FNLEN			; end of the name?		[B7]
+	bne	:-			; no, -> next character		[90D0]
 
 ; Check if name start with '$' = directory wanted
 	ldy	#0
 	lda	#'$'
-	cmp	(FNADR),Y	; yes?				[BB]
-	bne	A_90E7			; no, ->			[90E7]
-
+	cmp	(FNADR),Y		; yes?				[BB]
+	bne	:+			; no, ->			[90E7]
 	sta	FdcFileName		;				[036C]
-
 	rts
 
-; Find the end of the name
-A_90E7:					;				[90E7]
-	ldy	#0
-A_90E9:					;				[90E9]
-	lda	FdcFileName,Y		;				[036C]
+:	lda	FdcFileName,Y		;				[036C]
 	iny
 	cmp	#0			; end of the name found?
-	bne	A_90E9			; no, -> next character		[90E9]
+	bne	:-			; no, -> next character		[90E9]
 
 	cpy	#FE_OFFS_NAME_END-1	; tenth character or more?
-	bcs	A_9101			; yes, -> error			[9101]
+	bcs	@err			; yes, -> error			[9101]
 
 ; Fill up with spaces
 	dey
-A_90F6:					;				[90F6]
-	lda	#' '
+:	lda	#' '
 	sta	FdcFileName,Y		;				[036C]
-
 	iny
 	cpy	#FE_OFFS_NAME_END	; ten chars done?
-	bne	A_90F6			; no, -> more			[90F6]
-
+	bne	:-
 	rts
 
-
-A_9101:					;				[9101]
-	LoadB	ErrorCode, ERR_NAME_TOO_LONG
+@err:	LoadB	ErrorCode, ERR_NAME_TOO_LONG
 	rts
 
 ; Dot found, copy extension
