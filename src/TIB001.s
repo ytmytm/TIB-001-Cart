@@ -1620,7 +1620,7 @@ FormatDiskLoop:
 
 	LoadB	NumOfSectors, 8		; BUG: 8 or 7? we will write first 8 sectors (boot + two fats + one more? (directory, but it's not cleared with zeros)
 	LoadB	SectorL, 0		; write staring from to boot sector
-	LoadB	SectorH, 0		; XXX optimization
+	sta	SectorH
 
 	jsr	SetupSector		;				[8899]
 	jsr	SeekTrack		;				[898A]
@@ -1715,7 +1715,7 @@ P_8B49:					;				[8B49]
 @loop:	bit	StatusRegister		; FDC ready? XXX bbcf 7		[DE80]
 	bpl	@loop			; no, -> wait			[8B79]
 
-	CmpBI	DataRegister, 0		; XXX LDA DataRegister + BEQ is enough
+	lda	DataRegister
 	beq	:+			;				[8B8A]
 
 	LoadB	ErrorCode, ERR_DISK_WRITE_PROTECT
