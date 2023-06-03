@@ -1652,8 +1652,11 @@ FormatDiskLoop:
 	jsr	Recalibrate		;				[88F7]
 	jmp	FormatDiskLoop
 
+
+; clear pages starting at StartofDir page
+; in: X = number of pages to clear-1 (1=only dir (2 pages), 7=directory+fat, 12=directory+fat+fat2)
+;     changes Pointer
 ClearDirectory:
-; clear directory under $D000, X has count of pages (2=only directory, 8=directory+fat, 12=directory+fat+fat2)
 	LoadB	Pointer, 0
 	MoveB	StartofDir, Pointer+1	; directory sector buffer
 
