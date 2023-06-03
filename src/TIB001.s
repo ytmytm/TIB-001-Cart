@@ -1576,8 +1576,8 @@ FormatDiskLoop:
 
 	MoveB	EndofDir, Pointer+1	; FAT buffer starts right after directory buffer
 
-	lda	#$F9			; $FFF9 - FAT#1 magic?
 	ldy	#0
+	lda	#$F9			; $FFF9 - FAT#1 magic?
 	jsr	WrDataRamDxxx		;				[01AF]
 	iny
 	lda	#$FF
@@ -1588,8 +1588,8 @@ FormatDiskLoop:
 
 	LoadB	Pointer+1, >(FATBuffer+3*$0200)	; page $D800 in RAM? end of fat#1, start of fat#2 ($D200+3*$0200); XXX BUG should add to EndofDir instead of fixed value
 
-	lda	#$F9			; $FFF9 - FAT#2 magic?
 	ldy	#0
+	lda	#$F9			; $FFF9 - FAT#2 magic?
 	jsr	WrDataRamDxxx		;				[01AF]
 	iny
 	lda	#$FF
