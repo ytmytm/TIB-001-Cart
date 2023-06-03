@@ -1359,22 +1359,6 @@ SetupSector:				;				[8899]
 	sta	FdcTrack2		;				[034E]
 @end:	rts
 
-
-; ??? not used anywhere AFAIK
-E_88E1:					;				[88E1]
-	lsr	A
-	sta	FdcTrack		;				[0347]
-	pla
-	and	#1
-	sta	FdcHead			;				[0348]
-	asl	A
-	asl	A
-	sta	FdcHSEL			;				[0346]
-	stx	FdcSector		;				[0349]
-	stx	FdcEOT			;				[034B]
-	rts
-
-
 ;**  Recalibrate the drive
 Recalibrate:				;				[88F7]
 	jsr	Wait4FdcReady		;				[89C0]
