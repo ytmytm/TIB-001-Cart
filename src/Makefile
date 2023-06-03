@@ -2,7 +2,7 @@
 # configuration
 
 # DD-001 device number
-DEVNUM ?= 9
+DEVNUM ?= 7
 
 # build part
 

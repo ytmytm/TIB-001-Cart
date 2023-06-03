@@ -45,6 +45,8 @@ DEVNUM = 9
 
 DirectoryBuffer		= $D000	; buffer ($0200, 1 sector) for directory operations (FAT operations will take EndofDir, so expect this area to be overwritten)
 FATBuffer		= $D200	; buffer ($0600, 3 sectors) for one whole FAT (set implicitly by taking EndofDir as start page)
+; (note: if DirBuffer is put after FAT we could reduce this by 6 pages - only FAT needs to stay in memory)
+LoadSaveBuffer  	= $D800 ; buffer ($0400, 2 sectors) buffer for 1 cluster needed by LOAD/SAVE, must not overlap FATBuffer
 
 ; linker will update that
 .import __STACK0101_LAST__
@@ -139,7 +141,7 @@ CartInit:				;				[8087]
 	lda	ErrorCode		; error found?			[0351]
 	bne	@checkerr		;				[8094]
 ; no error, run BOOT.EXE from its load address ($1000)
-	jmp	(ENDADDR)		;				[00AE]
+	jmp	(LOADADDR)		;				[00AE]
 
 
 ;**  Initialize the C64 - part 2
@@ -981,36 +983,24 @@ NewLoad:				;				[86BC]
 	jmp	(NewILOAD)		;				[03FC]
 
 __NewLoad:
-	pla
-; ??? is VERIFY ignored ???
+	PopB	FlgLoadVerify		; we ignore VERIFY but at least store the flag
 
-	PushB	VICCTR1
+	PushB	VICCTR1			; we don't know if we enter with screen on or off
 
 	jsr	InitStackProg		;				[8D5A]
 	jsr	FindFile		;				[8FEA]
 	bcs	__LoadFileFound
 
-	pla
-	and	#$7F			; XXX why?
-	sta	VICCTR1			;				[D011]
-
+	PopB	VICCTR1			; restore screen status
 	lda	ErrorCode		;				[0351]
 	jsr	ShowError		;				[926C]
-
-	LoadB	VICCTR1, $1B		; screen on
+	LoadB	STATUSIO, 4		; file not found error
+	sec
 	rts
 
 
 ; File found
 __LoadFileFound:
-	ldy	#FE_OFFS_LOAD_ADDRESS	; load address
-	jsr	RdDataRamDxxx		;				[01A0]
-	iny
-	sta	FdcLOADAD+1		;				[036B]
-	jsr	RdDataRamDxxx		;				[01A0]
-	iny				; XXX not needed
-	sta	FdcLOADAD		;				[036A]
-
 	ldy	#FE_OFFS_START_CLUSTER	; first cluster
 	jsr	RdDataRamDxxx		;				[01A0]
 	iny
@@ -1021,82 +1011,102 @@ __LoadFileFound:
 
 	jsr	RdDataRamDxxx		; length			[01A0]
 	iny
-	sta	FdcLENGTH+3		;				[0361]
+	sta	FdcLENGTH		;				[0361]
 	jsr	RdDataRamDxxx		;				[01A0]
 	iny
-	sta	FdcLENGTH+2		;				[0360]
+	sta	FdcLENGTH+1		;				[0360]
 	jsr	RdDataRamDxxx		;				[01A0]
 	iny
-	sta	FdcLENGTH+1		;				[035F]
+	sta	FdcLENGTH+2		; can't use it			[035F]
 	jsr	RdDataRamDxxx		;				[01A0]
-	iny				; XXX not needed, GetFATs calls SetupSector and destros Y
-	sta	FdcLENGTH		;				[035E]
+	sta	FdcLENGTH+3		; can't use it			[035E]
 
 	jsr	GetFATs			;				[8813]
 	jsr	CalcFirst		;				[883A]
 
-	MoveB	FdcLENGTH+3, FdcBYTESLEFT
-	MoveB	FdcLENGTH+2, FdcBYTESLEFT+1
+	;; handle loadaddress
+	LoadW	Pointer, LoadSaveBuffer	; load whole first cluster into buffer after FATs ($D800)
+	LoadW	FdcBYTESLEFT, 2*DD_SECTOR_SIZE	; space for 1 cluster
+	jsr	SetupSector
+	jsr	SeekTrack
+	LoadB	NumOfSectors, 2		; 1 cluster
+	jsr	ReadSectors
 
-	lda	SECADR		; load address from user?
-	beq	:+			; yes(?)
+	; load address from user or file?
+	lda	SECADR
+	beq	:+			; load address from user
 
-	MoveW_	FdcLOADAD, ENDADDR ; no, from directory
-:	MoveW_	ENDADDR, Pointer
+	; read load address from file
+	; restore pointer for RdDataRamDxxx
+	LoadW	Pointer, LoadSaveBuffer
+	ldy	#0
+	jsr	RdDataRamDxxx
+	sta	ENDADDR
+	iny
+	jsr	RdDataRamDxxx
+	sta	ENDADDR+1
 
+:	; ENDADDR is now LOADADDR target
+	MoveW	ENDADDR, LOADADDR	; preserve load address (only to run BOOT)
+	; FdcLENGTH is intact
+	LoadW	Z_FD, LoadSaveBuffer+2	; buffer starts with 2-byte offset
+	LoadB	Z_FF, 4			; 4 pages in 2 sectors in 1 cluster
+	ldx	#2			; first page starts without first 2 bytes
+	ldy	#0
+:	MoveW	Z_FD, Pointer		; read from Z_FD
+	jsr	RdDataRamDxxx
+	pha
+	MoveW	ENDADDR, Pointer	; write to ENDADDR
+	pla
+	jsr	WrDataRamDxxx
+	IncW	ENDADDR			; next address
+	IncW	Z_FD
+	DecW	FdcLENGTH
+	lda	FdcLENGTH
+	ora	FdcLENGTH+1		; is there anything left?
+	beq	@done			; file shorter than 1K
+	inx
+	bne	:-			; until all bytes from page
+	dec	Z_FF
+	bne	:-			; until all pages
+	; file is longer than 1 cluster
+	jsr	GetNextCluster		;				[87A4]
+	jsr	CalcFirst		; convert cluster to sector
+	MoveW	ENDADDR, Pointer	; update Pointer from ENDADDR
+	MoveW	FdcLENGTH, FdcBYTESLEFT	; count of what's left to load
 @loop:
-	LoadB	NumOfSectors, 2
-
 	jsr	SetupSector		;				[8899]
 	jsr	SeekTrack		;				[898A]
 
-	LoadB	NumOfSectors, 2
-
+	LoadB	NumOfSectors, 2		; 1 cluster
 	jsr	ReadSectors		;				[885E]
 
-	PushB	Pointer
-	PushB	Pointer+1
-
+	PushW	Pointer
 	jsr	GetNextCluster		;				[87A4]
-
-	PopB	Pointer+1
-	PopB	Pointer
+	PopW	Pointer
 
 	CmpBI	FdcCLUSTER+1, $0F	; magic FAT value for end of file?
 	beq	@done
 
-	jsr	CalcFirst		;				[883A]
+	jsr	CalcFirst		; no, read next cluster
 	jmp	@loop
 
-@done:	lda	ENDADDR		;				[AE]
-	clc
-	adc	FdcLENGTH+3		;				[0361]
-	tax
-
-	lda	ENDADDR+1		;				[AF]
-	adc	FdcLENGTH+2		;				[0360]
-	tay
-
-	cli
-
-	LoadB	STATUSIO, 0
-
-	pla
-	and	#$7F			; XXX why?
-	sta	VICCTR1			;				[D011]
-
-	txa
-	pha
-	tya
-	pha
-
+@done:
+	PopB	VICCTR1			; restore screen status
 	lda	ErrorCode		;				[0351]
 	jsr	ShowError		;				[926C]
+	LoadB	STATUSIO, 0		; no error
 
-	pla
-	tay
-	pla
+	lda	ENDADDR			; return end address in X/Y
+	clc				; Kernal sets ENDADDR to end of file too
+	adc	FdcLENGTH		;				[0361]
+	sta	ENDADDR
 	tax
+	lda	ENDADDR+1		;				[AF]
+	adc	FdcLENGTH+1		;				[0360]
+	sta	ENDADDR+1
+	tay
+	cli
 	clc
 	rts
 
@@ -2762,17 +2772,6 @@ ShowError:				;				[926C]
 
 @end:	clc
 	rts
-
-
-;**  Load the File BOOT.EXE ino memory - part 1
-LoadBootExe:				;				[9294]
-	LoadW_	FNADR, BootExeName		; this is SETNAM
-	LoadB	FNLEN, BootExeNameEnd-BootExeName	; filename length
-
-; Load address: $0801, but not really - in fact BOOT.EXE loads and starts at $1000
-	ldx	#<$0801
-	ldy	#>$0801
-	jmp	LoadBootExe2		;				[869D]
 
 
 ; unused, FAT volume label? but format doesn't reference it 

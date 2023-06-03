@@ -314,6 +314,13 @@
 	@j:
 .endmacro
 
+.macro DecW addr
+	.local @j
+	lda addr
+	bne @j
+	dec addr+1
+@j:	dec addr
+.endmacro
 
 .macro ASSERT_NOT_BELOW_IO
 	.assert * < $D000 || * >= $E000, error, "This code can't run below the C64 I/O area."

@@ -13,6 +13,8 @@ SECADR		= $B9	; actual secondary address
 CURDEVICE	= $BA	; actual device number
 FNADR		= $BB	; pointer to string with filename
 
+LOADADDR	= $C3	; vector, load address for program (Kernal), keep it unchanged
+
 ; The used RS232 variables:
 STARTUP		= $F0	; defined in MULT.ASC but not used actually
 NumOfSectors	= $F7	; (1) TTLSEC - number of sectors to read or write
@@ -25,6 +27,9 @@ Z_FD		= $FD
 J_00FE		= $FE	; vector, unused
 Z_FF		= $FF
 StackPage	= $0100
+
+COLOR           = $0286                        ; foreground text color
+
 NmiVector	= $0318	; pointer to NMI-interrupt ($FE47)
 ICKOUT		= $0320	; pointer to KERNAL CHKOUT routine
 ILOAD		= $0330	; pointer to KERNAL LOAD routine
@@ -91,6 +96,7 @@ BasicCold	= $A000
 BasicNMI	= $A002
 VICCTR1		= $D011	; controlregister 1
 VICLINE		= $D012	; line to generate IRQ
+VICBOCL         = $D020                        ; border color
 
 ColourRAM	= $D800	; color RAM area for screen
 
@@ -175,6 +181,8 @@ TestRAM2	= $FD50
 InitSidCIAIrq2	= $FDA3
 InitialiseVIC2	= $FF5B
 ; Kernal jump table (C64/128)
+KERNAL_SETLFS	= $FFBA
+KERNAL_SETNAM	= $FFBD
 KERNAL_CHROUT	= $FFD2
 KERNAL_STOP	= $FFE1
 
