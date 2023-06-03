@@ -198,9 +198,9 @@ NewRoutines:				;				[80C0]
 
 ; Set the new LOAD, SAVE and CKOUT routines for the C64
 
-	LoadW_	ILOAD, NewLoad
-	LoadW_	ISAVE, NewSave
-	LoadW_	ICKOUT, NewCkout
+	LoadW	ILOAD, NewLoad
+	LoadW	ISAVE, NewSave
+	LoadW	ICKOUT, NewCkout
 
 	rts
 
@@ -982,7 +982,7 @@ ClearFATs:				;				[8650]
 	sta	FdcCLUSTER+1		;				[035B]
 	sta	FdcLCLUSTER+1		;				[0359]
 
-	LoadW_	FdcSCLUSTER, 0
+	LoadW	FdcSCLUSTER, 0
 
 :	jsr	GetNextCluster		;				[87A4]
 	jsr	MarkFAT			;				[8534]
@@ -995,7 +995,7 @@ ClearFATs:				;				[8650]
 
 Enfile:					;				[8684]
 	MoveW_	FdcCLUSTER, FdcLCLUSTER
-	LoadW_	FdcSCLUSTER, $0FFF	; ??? FAT magic?
+	LoadW	FdcSCLUSTER, $0FFF	; ??? FAT magic?
 	jmp	MarkFAT			;				[8534]
 
 
