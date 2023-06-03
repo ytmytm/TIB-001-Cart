@@ -1057,12 +1057,12 @@ __LoadFileFound:
 	sei
 	ldy	#FE_OFFS_START_CLUSTER	; first cluster
 	jsr	RdDataRamDxxx		;				[01A0]
-	iny
 	sta	FdcCLUSTER		;				[035A]
-	jsr	RdDataRamDxxx		;				[01A0]
 	iny
+	jsr	RdDataRamDxxx		;				[01A0]
 	sta	FdcCLUSTER+1		;				[035B]
 
+	iny
 	jsr	RdDataRamDxxx		; length			[01A0]
 	iny
 	sta	FdcLENGTH		;				[0361]
