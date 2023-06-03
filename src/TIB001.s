@@ -2608,8 +2608,7 @@ ShowBytesFree:				;				[916A]
 	LoadW	FdcLENGTH, 0
 	sta	FdcLENGTH+2		;				[0360]
 
-	LoadB	FdcSCLUSTER, 2
-	LoadB	FdcSCLUSTER+1, 0
+	LoadW	FdcSCLUSTER, $0002
 A_9180:					;				[9180]
 	MoveW_	FdcSCLUSTER, FdcCLUSTER
 
