@@ -864,8 +864,7 @@ MarkFAT:
 
 	and	#$F0
 	ora	FdcSCLUSTER+1		;				[0357]
-	jsr	WrDataRamDxxx		; XXX JMP <-> JSR+RTS (unless this TXS stuff matters?)
-	rts
+	jmp	WrDataRamDxxx
 
 :	ldy	#1
 	jsr	RdDataRamDxxx		;				[01A0]
@@ -1375,8 +1374,7 @@ Recalibrate:				;				[88F7]
 	lda	FdcPCN			; track = 0?			[0344]
 	bne	:-			; no, -> wait			[8907]
 
-	jsr	SenseDrvStatus		; XXX jmp and remove next rts	[8933]
-	rts
+	jmp	SenseDrvStatus
 
 
 ;**  Set some values, head moves to track 0
