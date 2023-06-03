@@ -2631,8 +2631,7 @@ ShowSize:				;				[9127]
 	bne	:+			;				[915C]
 	dey
 	bpl	:-			;				[9150]
-	jsr	KERNAL_CHROUT		; XXX JMP instead of JSR+RTS, print final 0
-	rts
+	jmp	KERNAL_CHROUT		; print final 0
 
 :	tya				; XXX TYA+PHA, PLA+TAY, no need to preserve for $FFD2
 	pha
@@ -2708,8 +2707,7 @@ A_919F:					;				[919F]
 	bne	:+
 	dey
 	bpl	:-
-	jsr	KERNAL_CHROUT		; print final 0, JMP instead of JSR+RTS XXX	[FFD2]
-	rts
+	jmp	KERNAL_CHROUT		; print final 0
 
 :	tya				; XXX no need for TYA+PHA, PLA+TAY
 	pha
