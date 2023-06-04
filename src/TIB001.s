@@ -1982,36 +1982,6 @@ A_8D33:					;				[8D33]
 A_8D36:					;				[8D36]
 	rts
 
-; unused
-E_8D37:					;				[8D37]
-	ldx	#2
-; unused
-A_8D39:					;				[8D39]
-:	lda	Wait4FdcReady		;				[89C0]
-	and	#1
-	bne	:-
-	rts
-
-; unused, hex digit printing directly to top of screen
-E_8D41:					;				[8D41]
-	pha
-	and	#$0F
-	tay
-	lda	D_8D80,Y		;				[8D80]
-	sta	VICSCN+1,X		;				[0401]
-	pla
-	pha
-	lsr	A
-	lsr	A
-	lsr	A
-	lsr	A
-	tay
-	lda	D_8D80,Y		;				[8D80]
-	sta	VICSCN,X		;				[0400]
-	pla
-	rts
-
-
 ;**  Initialize the program that should run in the stack page
 InitStackProg:				;				[8D5A]
 ; Preset the "Read data" command,
@@ -2037,12 +2007,6 @@ InitStackProg:				;				[8D5A]
 ; XXX check datasheet
 CmdReadData:				;				[8D77]
 .byte $66, $00, $02, $00, $01, $02, $01, $1B, $FF 
-
-; XXX unused, part of unused hex-printing routine
-D_8D80:					;				[8D80]
-; '0123456789ABCDEF' in screencodes
-.byte "0123456789"
-.byte $01, $02, $03, $04, $05, $06 ; 
 
 ;**  Set the timer of CIA2 to generate an IRQ when FDC has to wait too long
 SetWatchdog:				;				[8D90]
@@ -2874,15 +2838,6 @@ PrintHexDigit:
 HexDigits:
         .byte   "0123456789ABCDEF"
 
-; unused, FAT volume label? but format doesn't reference it 
-S_92A7:
-.asciiz "T.I.B.  VOL"
-
-; unused, ROM doesn't print this message
-S_92B3:					;				[92B3]
-;'T.I.B PLC DISK DRIVER INSTALLED@' in screencodes
-.byte $14, $2E, $09, $2E, $02, $20, $10, $0C, $03, $20, $04, $09, $13, $0B, $20, $04, $12, $09, $16, $05, $12, $20, $09, $0E, $13, $14, $01, $0C, $0C, $05, $04, $00
-
 ; boot file name that gets loaded and executed from its load address
 BootExeName:	.byte "BOOT.PRG"
 BootExeNameEnd:
@@ -2926,9 +2881,6 @@ BIOSParameterBlock:			;  (see FormatDisk)
 	.word DD_HEADS				; number of heads
 	.word 0					; hidden sectors
 	.word 0					; reserved
-
-; unused
-.byte $00, $00, $00, $00			; ....  $945E
 
 ;**  Program that is meant to run in the Stack
 StackProgram:				;				[9462]
@@ -3054,11 +3006,6 @@ WriteData:				;				[0179]
 ;	Pointer = address base
 ; out:	A = data
 ;	no change in X, Y
-; unused!
-; indirect jump to routine in RAM, but $01 is not preserved in any way, interrupts are not disabled
-StackPage153:				;				[0199]
-	LoadB	CPU_PORT, $35		; I/O+RAM only
-	jmp	(J_00FE)		;				[00FE]
 
 RdDataRamDxxx:				;				[01A0]
 	lda	#$30			; 64 KB of RAM visible
