@@ -55,8 +55,8 @@ LoadSaveBuffer  	= $D800 ; buffer ($0400, 2 sectors) buffer for 1 cluster needed
 
 			.assert *=$8000, error, "cartridge ROM must start at $8000"
 
-			.word CartInit				;				[8087]
-			.word CartNMI				;				[8DE7]
+			.word CartInit				; coldstart			[8087]
+			.word CartInit				; warmstart			[8DE7]
  
 			.assert *=$8004, error, "cartridge signature CBM80 must be at $8004"
 			.byte $C3, $C2, $CD, $38, $30		; CBM80, cartridge signature
