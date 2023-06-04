@@ -197,31 +197,17 @@ InitC64:				;				[80F2]
 
 ;**  File "BOOT.EXE" has been found
 TryAgain:				;				[8124]
+	LoadB	VICCTR1, $1B		; screen on
 
-; Clear the screen
+	lda	#$93
+	jsr	KERNAL_CHROUT
 	ldy	#0
-:	lda	#' '
-	sta	VICSCN,Y		;				[0400]
-	sta	VICSCN+$0100,Y		;				[0500]
-	sta	VICSCN+$0200,Y		;				[0600]
-	sta	VICSCN+$0300,Y		;				[0700]
-	lda	#1			; set color to WHITE but it should be in the next loop
-	sta	ColourRAM,Y		;				[D800]
-	dey
-	bne	:-
-
-; Display two lines of text
-	ldy	#0			; XXX Y is zero here already
-:	lda	Text1,Y			; '@' =	zero?			[8172]
-	beq	:+			; yes, -> stop displaying	[814F]
-	sta	VICSCN+40,Y		;				[0428]
-	lda	Text2,Y			;				[8199]
-	sta	VICSCN+80,Y		;				[0450]
+:	lda	StartupTxt,y
+	beq	:+
+	jsr	KERNAL_CHROUT
 	iny
 	bne	:-
 :
-
-	LoadB	VICCTR1, $1B		; screen on
 
 	; long delay that can be interrupted with RUN/STOP
 	ldx	#$64
@@ -232,22 +218,32 @@ TryAgain:				;				[8124]
 	beq	:-
 
 	CmpBI	CIA1DRB, $7F		; RUN/STOP key pressed?
-	beq	@end			; yes, -> exit Z=1		[8171]
+	beq	@endok;@end			; yes, -> exit Z=1		[8171]
 
 	dex				; wait longer?
 	bne	:--			; yes, ->			[8158]
 
 	LoadB	VICCTR1, $0B		; screen off, exit Z=0
 @end:	rts
+@endok:	inc $d020
+	lda #0
+	rts
 
+StartupTxt:
+	.byte 13, 13
+	;      0123456789012345678901234567890123456789
+	.byte "       *** DD-001 V1.2 (2023) ***"
+	.byte 13
+	.byte " ** FIXED AND UPDATED BY YTM/ELYSIUM **"
+	.byte 13,13
+	.byte " HTTPS://GITHUB.COM/YTMYTM/TIB-001-CART"
+	.byte 13,13
+	.byte " INSERT A 720K DISK OR PRESS RUN/STOP"
+	.byte 13,13
+	.byte " FDD AS DEVICE ",$30+DEVNUM
+	.byte 13,13,13
+	.byte 0
  
-Text1:					;				[8172]
-;.tp 'PLEASE LEAVE UNTIL C64 + DRIVE SYNC UP@'
-.byte $10, $0C, $05, $01, $13, $05, $20, $0C, $05, $01, $16, $05, $20, $15, $0E, $14, $09, $0C, $20, $03, $36, $34, $20, $2B, $20, $04, $12, $09, $16, $05, $20, $13, $19, $0E, $03, $20, $15, $10, $00
-Text2:					;				[8199]
-;.tp ' OR PRESS RUN/STOP IF NO DISC PRESENT @'
-.byte $20, $0F, $12, $20, $10, $12, $05, $13, $13, $20, $12, $15, $0E, $2F, $13, $14, $0F, $10, $20, $09, $06, $20, $0E, $0F, $20, $04, $09, $13, $03, $20, $10, $12, $05, $13, $05, $0E, $14, $20, $00
-
 ;**  Rename a file 
 Rename:					;				[81C0]
 	jsr	InitStackProg		;				[8D5A]
