@@ -2115,6 +2115,8 @@ DisplayDir:				;				[8E67]
 	bne	J_8EBA			;				[8EBA]
 
 ; this part displays volume name, without extension, with ASCII to PETSCII conversion
+	lda	#$12			; RVS ON
+	jsr	KERNAL_CHROUT
 	ldy	#FE_OFFS_NAME
 :	sei
 	jsr	RdDataRamDxxx		;				[01A0]
@@ -2132,6 +2134,8 @@ DisplayDir:				;				[8E67]
 	cpy	#FE_OFFS_NAME_END
 	bne	:--
 
+	lda	#$92			; RVS OFF
+	jsr	KERNAL_CHROUT
 	lda	#13			; new line
 	jsr	KERNAL_CHROUT		;				[FFD2]
 	jmp	J_8F1A			;				[8F1A]
