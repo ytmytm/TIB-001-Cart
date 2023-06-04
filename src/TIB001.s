@@ -121,19 +121,19 @@ CartInit:				;				[8087]
 	jsr	InitC64			;				[80F2]
 
 @tryagain:
+	jsr	TryAgain		; show message			[8124]
+	beq	@done			; RUN/STOP pressed?		[80A8]
 	jsr	LoadBootExe		; loading went OK?		[9294]
 	bcc	@bootLoadDone		; yes, ->			[80AE]
 @checkerr:
 	CmpBI	ErrorCode, ERR_FILE_NOT_FOUND ; file not found?
 	beq	@done			; yes, ->			[80A8]
 
-	LoadB	VICCTR1, $1B		; screen on
-	jsr	TryAgain		; show message			[8124]
-	beq	@done			; RUN/STOP pressed?		[80A8]
-	jmp	@tryagain		;				[808F]
+jmp	@tryagain		;				[808F]
 
 ; File "BOOT.EXE" not found, return control to BASIC
 @done:	jsr	InitC64			;				[80F2]
+	cli
 	jmp	(BasicCold)		;				[A000]
 
 ; Error found
@@ -141,7 +141,32 @@ CartInit:				;				[8087]
 	lda	ErrorCode		; error found?			[0351]
 	bne	@checkerr		;				[8094]
 ; no error, run BOOT.EXE from its load address ($1000)
-	jmp	(LOADADDR)		;				[00AE]
+;	jmp	(LOADADDR)		;				[00AE]
+
+	PushW	ENDADDR			; ? needed
+	jsr	$E453			; BASIC vectors
+	jsr	$E3BF			; init BASIC RAM
+	PopW	ENDADDR
+	cli
+	LoadB	VICCTR1, $1b
+	lda	#$93
+	jsr	KERNAL_CHROUT
+	lda	#$41
+	jsr	KERNAL_CHROUT
+	LoadB	VICBOCL, $00
+	lda	ENDADDR
+	sta	$2d
+	sta	$2f
+	sta	$31
+	lda	ENDADDR+1
+	sta	$2e
+	sta	$30
+	sta	$32
+	lda	#0			; basic start
+	jsr	$A871			; clr
+	jsr	$A533			; re-link
+	jsr	$A68E			; set current character pointer to start of basic - 1
+	jmp	$A7AE			; run
 
 
 ;**  Initialize the C64 - part 2
@@ -178,6 +203,13 @@ InitC64:				;				[80F2]
 	jsr	TestRAM2		;				[FD50]
 	jsr	SetVectorsIO2		;				[FD15]
 	jsr	InitialiseVIC2		;				[FF5B]
+
+	;jsr	$E453			; BASIC vectors
+	;jsr	$E3BF			; init BASIC RAM
+	LoadB	VICBOCL, 15		; light gray border
+	LoadB	COLOR, 1		; white on blue	
+;	jsr	$E422			; print BASIC startup messages
+;XXX warm start might jump in here
 
 ; Copy the original vectors of the LOAD and SAVE routine to another place
 	ldx	#3
