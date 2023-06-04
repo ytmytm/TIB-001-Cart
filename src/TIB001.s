@@ -131,7 +131,7 @@ CartInit:				;				[8087]
 
 jmp	@tryagain		;				[808F]
 
-; File "BOOT.EXE" not found, return control to BASIC
+; File "BOOT.PRG" not found, return control to BASIC
 @done:	jsr	InitC64			;				[80F2]
 	cli
 	jmp	(BasicCold)		;				[A000]
@@ -140,9 +140,7 @@ jmp	@tryagain		;				[808F]
 @bootLoadDone:
 	lda	ErrorCode		; error found?			[0351]
 	bne	@checkerr		;				[8094]
-; no error, run BOOT.EXE from its load address ($1000)
-;	jmp	(LOADADDR)		;				[00AE]
-
+; no error, run BOOT.PRG through BASIC
 	PushW	ENDADDR			; ? needed
 	jsr	$E453			; BASIC vectors
 	jsr	$E3BF			; init BASIC RAM
@@ -952,7 +950,7 @@ Enfile:					;				[8684]
 	jmp	MarkFAT			;				[8534]
 
 
-;**  Load the File BOOT.EXE into memory
+;**  Load the File BOOT.PRG into memory
 LoadBootExe:				;				[9294]
 	lda	#1
 	ldx	#DEVNUM
@@ -2788,10 +2786,8 @@ S_92B3:					;				[92B3]
 .byte $14, $2E, $09, $2E, $02, $20, $10, $0C, $03, $20, $04, $09, $13, $0B, $20, $04, $12, $09, $16, $05, $12, $20, $09, $0E, $13, $14, $01, $0C, $0C, $05, $04, $00
 
 ; boot file name that gets loaded and executed from its load address
-BootExeName:	.byte "BOOT.EXE"
+BootExeName:	.byte "BOOT.PRG"
 BootExeNameEnd:
-; unused filename terminator byte
-		.byte 0
 
 .define TblErrorMsg	Msg00, Msg01, Msg02, Msg03, Msg04, Msg05, Msg06, Msg07, Msg08, Msg09, Msg0A, Msg0B, Msg0C, Msg0D, Msg0E, Msg0F, Msg10, Msg11 
 
