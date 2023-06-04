@@ -26,6 +26,7 @@ REFERENCE_ROM = ../firmware/rom-8000-9FFFp.bin
 $(FIRMWARE_ROM): $(PREFIXED_OBJS) $(INC) rom.cfg
 	-mkdir -p $(BUILD_DIR)
 	$(LD) $(LDFLAGS) -C rom.cfg $(PREFIXED_OBJS) -o $@
+	cat $(FIRMWARE_ROM) $(REFERENCE_ROM) > $(BUILD_DIR)/tib001-16k.bin
 
 $(BUILD_DIR)/%.o: %.s
 	@mkdir -p `dirname $@`
