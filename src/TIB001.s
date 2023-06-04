@@ -4,11 +4,23 @@
 ; (started by unknown person - thank you very much!)
 ; continued by Maciej 'YTM/Elysium' Witkowiak, 2023
 
+; Changes (YTM):
+; - change device number to 7
+; - LOAD needs 1K buffer for first cluster but now standard PRG files (with load address) can be used
+;	LOAD can load data in $0400-$D1FF range
+; - corrected CHKOUT to that commands can be sent to both DD-001 and IEC devices
+;   DD-001 supports: N(ew), S(cratch), R(ename)
+; - inverse volume name in DisplayDir
+; - load BOOT.PRG instead of BOOT.EXE
+
+; Remarks/TODO (YTM):
+; - make RUN/STOP behave correctly (exit to BASIC but with vectors hooked)
+; - skip over long names file entries
+; - make SAVE save files as standard PRGs
+; - if LOAD could stash FAT chain somewhere (up to 128 bytes) it could load files up to $FFFF
 ; - a lot of loading Pointer with (0, StartofDir), move that to a subroutine
 ; - check status register consistently BIT+BPL instead of LDA+AND#$80+BNE
 ; - DisplayDir seems to be broken at the end (too may plas)
-; - CHKOUT for N,S,R commands seems to be broken
-; - unused code (hex digit print) might be used by tools had they expose it
 
 ; My notes/ideas regarding this disassembly
 ; - only a 3,5" 720 KB DD FDD can be used, not a 5.25" 360 KB one
@@ -20,8 +32,6 @@
 ; - bad: video control register is manipulated using and not restored
 ; - look for ??? for some questions I had
 ; - inconsistent use of Carry for reporting an error
-; - the disk has a FAT table but so far I don't think it has the 12 bits FAT
-;   structure as used by IBM (compatible)s. 
 ; - in general: the programming could have been done more efficient
 
 
@@ -31,7 +41,7 @@
 
 ; device number, this can be set externally via ca65: -DDEVNUM=9 or 'make DEVNUM=9'
 .ifndef DEVNUM
-DEVNUM = 9
+DEVNUM = 7
 .endif
 
 ; GEOS macros for readability and shorter code
