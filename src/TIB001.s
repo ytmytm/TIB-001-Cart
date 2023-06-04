@@ -56,7 +56,7 @@ LoadSaveBuffer  	= $D800 ; buffer ($0400, 2 sectors) buffer for 1 cluster needed
 			.assert *=$8000, error, "cartridge ROM must start at $8000"
 
 			.word CartInit				; coldstart			[8087]
-			.word CartInit				; warmstart			[8DE7]
+			.word CartNMI				; warmstart			[8DE7]
  
 			.assert *=$8004, error, "cartridge signature CBM80 must be at $8004"
 			.byte $C3, $C2, $CD, $38, $30		; CBM80, cartridge signature
@@ -112,11 +112,11 @@ __Spare:		jmp	$FFFF			; [8084] -> [FFFF]
 
 ; Here starts the initialisation of the cartridge
 CartInit:				;				[8087]
-	ldx	#$FF
-	txs				; set the stack pointer
-
-	sei				; XXX code should start with sei
+	stx	$d016			; turn on VIC for PAL/NTSC check by Kernal
+	sei
 	cld
+	ldx	#$FB
+	txs				; set the stack pointer
 
 	jsr	InitC64			;				[80F2]
 
@@ -149,11 +149,6 @@ jmp	@tryagain		;				[808F]
 	PopW	ENDADDR
 	cli
 	LoadB	VICCTR1, $1b
-	lda	#$93
-	jsr	KERNAL_CHROUT
-	lda	#$41
-	jsr	KERNAL_CHROUT
-	LoadB	VICBOCL, $00
 	lda	ENDADDR
 	sta	$2d
 	sta	$2f
@@ -204,25 +199,14 @@ InitC64:				;				[80F2]
 	jsr	SetVectorsIO2		;				[FD15]
 	jsr	InitialiseVIC2		;				[FF5B]
 
-	;jsr	$E453			; BASIC vectors
-	;jsr	$E3BF			; init BASIC RAM
 	LoadB	VICBOCL, 15		; light gray border
 	LoadB	COLOR, 1		; white on blue	
-;	jsr	$E422			; print BASIC startup messages
-;XXX warm start might jump in here
 
-; Copy the original vectors of the LOAD and SAVE routine to another place
-	ldx	#3
-:	lda	ILOAD,X			;				[0330]
-	sta	NewILOAD,X		;				[03FC]
-	dex
-	bpl	:-
-
-; Copy the ICKOUT vector to another place
-	MoveW_	ICKOUT, NewICKOUT	; [0320,1] -> [0336,7]
-
-; Copy the NMI vector to another place
-	MoveW_	NmiVector, NewNMI	; [0318,9] -> [0338,9]
+	; store original vectors of intercepted routines
+	MoveW	ILOAD, NewILOAD
+	MoveW	ISAVE, NewISAVE
+	MoveW	ICKOUT, NewICKOUT
+	MoveW	NmiVector, NewNMI
 
 	jmp	InitC64_2		; part 2			[80B6]
 
@@ -231,8 +215,6 @@ InitC64:				;				[80F2]
 TryAgain:				;				[8124]
 	LoadB	VICCTR1, $1B		; screen on
 
-	lda	#$93
-	jsr	KERNAL_CHROUT
 	ldy	#0
 :	lda	StartupTxt,y
 	beq	:+
@@ -258,11 +240,11 @@ TryAgain:				;				[8124]
 	LoadB	VICCTR1, $0B		; screen off, exit Z=0
 @end:	rts
 @endok:	inc $d020
-	lda #0
-	rts
+	sei
+	jmp	$FCEF			; continue in Kernal
 
 StartupTxt:
-	.byte 13, 13
+	.byte $93, 13, 13
 	;      0123456789012345678901234567890123456789
 	.byte "       *** DD-001 V1.2 (2023) ***"
 	.byte 13
