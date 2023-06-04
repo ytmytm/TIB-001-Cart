@@ -387,23 +387,14 @@ Rename:					;				[81C0]
 
 
 ;**  New routine for opening a channel for output
-; XXX seems unused/unfinished (unless used only from tools somehow)
-; XXX manual says to use it for commands OPEN15,9,15,"N:DISK"
+; XXX manual says to use it for commands OPEN15,9,15:PRINT#15,"N:DISK"
+; XXX (there must be ending quote)
 NewCkout:				;				[8295]
 	pha
-
 	CmpBI	CURDEVICE, DEVNUM	; our DD drive?
 	beq	__NewCkout		; yes, ->			[82A1]
-
 	pla
-	jmp	(A_03F8)		; = ($03F8)			[03F8]
-; BUG
-; ??? where is this vector filled ???
-; I would expect (NewICKOUT) = ($0336)
-
-; Not used
-S_82A0:
-	rti
+	jmp	(NewICKOUT)
  
 __NewCkout:
 	sei
