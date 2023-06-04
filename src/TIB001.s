@@ -938,28 +938,18 @@ Enfile:					;				[8684]
 	jmp	MarkFAT			;				[8534]
 
 
-;**  Load the File BOOT.EXE ino memory - part 2
-;    Note: not used anywhere else AFAIK, so why not one routine?
-LoadBootExe2:				;				[869D]
-	sei
-
-	stx	ENDADDR		;				[AE]
-	sty	ENDADDR+1		;				[AF]
-
-	LoadB	SECADR, $FF
-
-	jsr	InitStackProg		;				[8D5A]
-
-	jsr	FindFile		; File found?			[8FEA]
-	bcc	:+			; no, ->			[86B4]
-	PushB	VICCTR1
-	bcs	__LoadFileFound		; always ->			[86EB]
-
-:	sec
-	LoadB	SECADR, 0
-	sta	FlgLoadVerify		;				[93]
-	rts
-
+;**  Load the File BOOT.EXE into memory
+LoadBootExe:				;				[9294]
+	lda	#1
+	ldx	#DEVNUM
+	ldy	#1			; <>0 - load to address from file
+	jsr	KERNAL_SETLFS
+	lda	#BootExeNameEnd-BootExeName
+	ldx	#<BootExeName
+	ldy	#>BootExeName
+	jsr	KERNAL_SETNAM
+	lda	#0			; LOAD
+	jmp	NewLoad
 
 ; New LOAD routine
 ; in:	X/Y = Load address 
