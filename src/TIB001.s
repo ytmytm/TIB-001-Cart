@@ -21,6 +21,11 @@
 ; - a lot of loading Pointer with (0, StartofDir), move that to a subroutine
 ; - check status register consistently BIT+BPL instead of LDA+AND#$80+BNE
 ; - DisplayDir seems to be broken at the end (too may plas)
+; - handle disk commands with OPEN (need to check file name)
+; - for ICKOUT (PRINT#) check length of buffer, not just ending quote mark
+; - no matter the source, handle disk commands only on SA=15
+; - directory: align columns vertically
+; - directory: show number of blocks (256 bytes) instead of bytes to make it comparable with CBM DOS drives
 
 ; My notes/ideas regarding this disassembly
 ; - only a 3,5" 720 KB DD FDD can be used, not a 5.25" 360 KB one
