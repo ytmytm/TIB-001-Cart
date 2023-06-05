@@ -175,6 +175,8 @@ ResetFDC	= $DF80
 
 ; Kernal ROM functions (C64)
 InitScreenKeyb	= $E518
+PrintSearchingFor = $F5AF	; display 'SEARCHING FOR ...'
+PrintLoading	= $F5D2		; display 'LOADING' or 'VERIFYING'
 IncrClock22	= $F6BC
 SetVectorsIO2	= $FD15
 TestRAM2	= $FD50

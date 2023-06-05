@@ -986,6 +986,8 @@ __NewLoad:
 
 	PushB	VICCTR1			; we don't know if we enter with screen on or off
 
+	jsr	PrintSearchingFor	; Kernal code to display 'SEARCHING FOR ...'
+
 	jsr	InitStackProg		;				[8D5A]
 	jsr	FindFile		;				[8FEA]
 	bcs	__LoadFileFound
@@ -1000,6 +1002,8 @@ __NewLoad:
 
 ; File found
 __LoadFileFound:
+	jsr	PrintLoading		; Kernal code to display 'LOADING' or 'VERIFYING'
+
 	ldy	#FE_OFFS_START_CLUSTER	; first cluster
 	jsr	RdDataRamDxxx		;				[01A0]
 	iny
@@ -1092,19 +1096,28 @@ __LoadFileFound:
 
 @done:
 	PopB	VICCTR1			; restore screen status
+	AddW	FdcLENGTH, ENDADDR	; Kernal also sets ENDADDR to end of file
+
+	bit	MSGFLG			; are we in direct mode?
+	bpl	:+			; no, skip that
+	lda	#' '			; display load and end addresses, like Action Replay
+	jsr	KERNAL_CHROUT
+	lda	#'$'
+	jsr	KERNAL_CHROUT
+	ldx	#LOADADDR		; point to load address on zp
+	jsr	PrintHexWord
+	lda	#' '
+	jsr	KERNAL_CHROUT
+	lda	#'$'
+	jsr	KERNAL_CHROUT
+	ldx	#ENDADDR		; point to end address on zp
+	jsr	PrintHexWord
 	lda	ErrorCode		;				[0351]
 	jsr	ShowError		;				[926C]
-	LoadB	STATUSIO, 0		; no error
 
-	lda	ENDADDR			; return end address in X/Y
-	clc				; Kernal sets ENDADDR to end of file too
-	adc	FdcLENGTH		;				[0361]
-	sta	ENDADDR
-	tax
-	lda	ENDADDR+1		;				[AF]
-	adc	FdcLENGTH+1		;				[0360]
-	sta	ENDADDR+1
-	tay
+:	LoadB	STATUSIO, 0		; no error
+	ldx	ENDADDR			; return end address in X/Y
+	ldy	ENDADDR+1
 	cli
 	clc
 	rts
@@ -2776,6 +2789,31 @@ ShowError:				;				[926C]
 @end:	clc
 	rts
 
+; in: X=offset on zero page to values
+; changes: A, X, Y
+PrintHexWord:
+	lda	$01,x			; hi byte first
+	jsr	PrintHexByte
+	lda	$00,x			; fall through with low byte
+; in: A=byte to print
+; changes: A, Y
+PrintHexByte:
+	pha
+	lsr	a
+	lsr	a
+	lsr	a
+	lsr	a
+	tay
+	jsr	PrintHexDigit		; hi nibble first
+	pla
+	and	#$0F			; fall through with low nibble
+; in: Y=nibble to print
+PrintHexDigit:
+	lda	HexDigits,y
+	jmp	KERNAL_CHROUT
+
+HexDigits:
+        .byte   "0123456789ABCDEF"
 
 ; unused, FAT volume label? but format doesn't reference it 
 S_92A7:
