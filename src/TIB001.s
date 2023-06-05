@@ -992,7 +992,10 @@ __NewLoad:
 	PushB	VICCTR1			; we don't know if we enter with screen on or off
 
 	jsr	PrintSearchingFor	; Kernal code to display 'SEARCHING FOR ...'
+	lda	#$0D
+	jsr	KERNAL_CHROUT
 
+	sei
 	jsr	InitStackProg		;				[8D5A]
 	jsr	FindFile		;				[8FEA]
 	bcs	__LoadFileFound
@@ -1008,7 +1011,7 @@ __NewLoad:
 ; File found
 __LoadFileFound:
 	jsr	PrintLoading		; Kernal code to display 'LOADING' or 'VERIFYING'
-
+	sei
 	ldy	#FE_OFFS_START_CLUSTER	; first cluster
 	jsr	RdDataRamDxxx		;				[01A0]
 	iny
@@ -1117,6 +1120,8 @@ __LoadFileFound:
 	jsr	KERNAL_CHROUT
 	ldx	#ENDADDR		; point to end address on zp
 	jsr	PrintHexWord
+	lda	#$0D
+	jsr	KERNAL_CHROUT		; new line
 	lda	ErrorCode		;				[0351]
 	jsr	ShowError		;				[926C]
 
@@ -2812,6 +2817,7 @@ PrintHexByte:
 	jsr	PrintHexDigit		; hi nibble first
 	pla
 	and	#$0F			; fall through with low nibble
+	tay
 ; in: Y=nibble to print
 PrintHexDigit:
 	lda	HexDigits,y
