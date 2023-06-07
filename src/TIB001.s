@@ -571,96 +571,108 @@ Scratch:				;				[8355]
 
 
 ;**  Routine that replaces original SAVE routine of C64
-NewSave:				;				[838A]
-	sei
-	stx	FdcOFFSET		;				[0367]
+; in: Kernal already stored to ENDADDR ($AE/F) X/Y (end address)
+;     and to STARTADDR $C1/2 location pointed by A (start address)
 
+NewSave:				;				[838A]
 	CmpBI	CURDEVICE, DEVNUM	; our device?
 	beq	__NewSave
-
 	jmp	(NewISAVE)		;				[03FE]
 
 __NewSave:
 	lda	ENDADDR		;				[AE]
 	sec
-	sbc	$00,X			; minus start address LB
-	sta	FdcLENGTH+3		;				[0361]
+	sbc	STARTADDR		; minus start address LB
+	sta	FdcLENGTH		; 				[0361]
 
 	lda	ENDADDR+1		;				[AF]
-	sbc	$01,X			; minus start address HB
-	sta	FdcLENGTH+2		;				[0360]
-	sta	FdcNBUF		; length in pages		[0364]
-; FdcLENGTH+3 / FdcLENGTH+2 now contains the length of the file
+	sbc	STARTADDR+1		; minus start address HB
+	sta	FdcLENGTH+1		;				[0360]
 
 ; End address > start address?
-	bcs	@cont			; yes, -> OK			[83B6]
+	bcs	SaveDo			; yes, -> OK			[83B6]
 
 ; File too large
-	lda	#ERR_FILE_TOO_LARGE
-	jsr	ShowError		;				[926C]
-	LoadB	VICCTR1, $1b		; screen on
+	LoadB	ErrorCode, ERR_FILE_TOO_LARGE
+SaveExitErr:
+	jsr	ShowErrorCode		;				[926C]
+	lda	#3			; Kernal error code 3 = FILE NOT OPEN
+	cli
+	sec
 	rts
 
 ; continue with save file
-@cont:	lsr	FdcNBUF		;				[0364]
-	lsr	FdcNBUF		; length in pages/4+1				[0364]
-	inc	FdcNBUF		; number of needed clusters (2 pages in sector, 2 sectors in cluster+one more for file remainder)
-	MoveB	FdcNBUF, FdcHOWMANY
+SaveDo:
+	jsr	PrintSaving
+
+	bit	MSGFLG			; are we in direct mode?
+	bpl	:+			; no, skip that
+	lda	#' '			; display load and end addresses, like Action Replay
+	jsr	KERNAL_CHROUT
+	lda	#'$'
+	jsr	KERNAL_CHROUT
+	ldx	#STARTADDR		; point to load address on zp
+	jsr	PrintHexWord
+	lda	#' '
+	jsr	KERNAL_CHROUT
+	lda	#'$'
+	jsr	KERNAL_CHROUT
+	ldx	#ENDADDR		; point to end address on zp
+	jsr	PrintHexWord
+	lda	#$0D
+	jsr	KERNAL_CHROUT		; new line
+:
+
+	sei
+
+	AddVW	2, FdcLENGTH		; add extra 2 bytes for load address
+	MoveB	FdcLENGTH+1, FdcHOWMANY	; copy length in pages
+
+	lsr	FdcHOWMANY	;				[0364]
+	lsr	FdcHOWMANY	; length in pages/4+1				[0364]
+	inc	FdcHOWMANY	; number of needed clusters (2 pages in sector, 2 sectors in cluster+one more for file remainder)
 
 	jsr	InitStackProg		;				[8D5A]
 
-	lda	FdcST3			;				[0343]
-	and	#$40			; XXX optimize bit+bcs
-	beq	@cont2
-	LoadB	ErrorCode, ERR_DISK_WRITE_PROTECT
-	jmp	ShowError		;				[926C]
+	bbrf	6, FdcST3, :+		; WP bit set?
+	LoadB	ErrorCode, ERR_DISK_WRITE_PROTECT	; yes -> error
+	bne	SaveExitErr		; return with general error
 
-@cont2:	jsr	GetFATs			;				[8813]
+:	jsr	GetFATs			;				[8813]
 	jsr	FindFile		;				[8FEA]
-	bcs	@overwrite
+	bcs	SaveOverwrite		; file exists, will be overwritten
 
 	CmpBI	ErrorCode, ERR_FILE_NOT_FOUND
-	beq	@newfile
+	beq	SaveNewFile		; not found - a new file will be saved
 
-	lda	ErrorCode		;				[0351]
-	jsr	ShowError		;				[926C]
+SaveExitErrScreenOn:
+	jsr	StopWatchdog		; not needed in every code path but it doesn't hurt
+	LoadB	VICCTR1, $1b		; screen on (hidden by GetFATs/FindFile)
+	jmp	SaveExitErr		; error: different kind of error (I/O on FAT?)
 
-	LoadB	VICCTR1, $1b		; screen on (jump here every time and save few bytes) XXX
-	rts
-
-@overwrite:
+SaveOverwrite:
 	jsr	StopWatchdog		;				[8DBD]
-	PushB	Pointer
-	PushB	Pointer+1
+	PushW	Pointer
 	jsr	ClearFATs		;				[8650]
-	PopB	Pointer+1
-	PopB	Pointer
-	jmp	@dosave			;				[8418]
+	PopW	Pointer
+	jmp	SaveFillDirEntry	; skip over, we already have directory entry in Pointer
 
-@newfile:
+SaveNewFile:
 	jsr	FindBlank		; find available directory entry
+	lda	ErrorCode		; error found? DIRECTORY FULL	[0351]
+	bne	SaveExitErrScreenOn
 
-	lda	ErrorCode		; error found?			[0351]
-	beq	@dosave			;				[8418]
-
-	jsr	ShowError		; XXX same code as above	[926C]
-	LoadB	VICCTR1, $1B		; screen on
-	rts
-
-@dosave:
+SaveFillDirEntry:
 	jsr	StopWatchdog		;				[8DBD]
+; here Pointer points to directory entry in DirectoryBuffer
 
-	PushB	Pointer+1
-	PushB	Pointer
-
+	PushW	Pointer
 	ldx	#0
 	jsr	FindFAT			;				[85A8]
-
-	PopB	Pointer
-	PopB	Pointer+1
+	PopW	Pointer
 
 	ldy	#FE_OFFS_LAST_WRITE_TIME
-	lda	#$79			; write time (1)
+	lda	#$79			; write time (1) 1991-08-05 01:35:50
 	jsr	WrDataRamDxxx		;				[01AF]
 	iny
 	lda	#$0C			; write time (2)
@@ -681,24 +693,18 @@ __NewSave:
 	jsr	WrDataRamDxxx		;				[01AF]
 
 	iny
-	lda	FdcLENGTH+3		; length lo			[0361]
+	lda	FdcLENGTH		; length lo			[0361]
 	jsr	WrDataRamDxxx		;				[01AF]
 	iny
-	lda	FdcLENGTH+2		; length hi			[0360]
+	lda	FdcLENGTH+1		; length hi			[0360]
 	jsr	WrDataRamDxxx		;				[01AF]
-
-	iny				; XXX not needed, Y is changed below
-
-	ldx	FdcOFFSET		; index to zp where load adress stayed	[0367]
-	lda	$01,X			; load addr hi			[01]
-	ldy	#FE_OFFS_LOAD_ADDRESS
-	jsr	WrDataRamDxxx		; load addr hi			[01AF]
 	iny
-	lda	$00,X			;				[00]
-	jsr	WrDataRamDxxx		; load addr lo			[01AF]
+	lda	#0
+	jsr	WrDataRamDxxx		; length+3
+	iny
+	jsr	WrDataRamDxxx		; length+4
 
-SaveReloc:					;				[8472]
-	LoadB	FdcPASS, 1	; ??? this location is not used anywhere
+SaveReloc:				;				[8472]
 	MoveB	FdcHOWMANY, FdcNBUF
 
 J_847D:					;				[847D]
@@ -706,69 +712,106 @@ J_847D:					;				[847D]
 
 	LoadB	ErrorCode, ERR_OK
 
-	jsr	WaitRasterLine		;				[8851]
+	jsr	WaitRasterLine		; why?				[8851]
 
-	ldx	FdcOFFSET		; zp index to load address	[0367]
-	lda	$00,X			; copy load address to Pointer
-	sta	Pointer		;				[FB]
-	lda	$01,X			;				[01]
-	sta	Pointer+1		;				[FC]
+	; handle first cluster differently because of load address
+	LoadW	Pointer, LoadSaveBuffer
+	ldy	#0
+	lda	STARTADDR
+	jsr	WrDataRamDxxx
+	iny
+	lda	STARTADDR+1
+	jsr	WrDataRamDxxx
 
+	LoadW	Z_FD, LoadSaveBuffer+2	; buffer starts with 2-byte offset
+	LoadB	Z_FF, 4			; 4 pages in 2 sectors in 1 cluster
+	ldx	#2			; first page starts without first 2 bytes
+	ldy	#0
+:	MoveW	STARTADDR, Pointer	; read from RAM
+	jsr	RdDataRamDxxx
+	pha
+	MoveW	Z_FD, Pointer		; write to buffer
+	pla
+	jsr	WrDataRamDxxx
+	IncW	STARTADDR		; next address
+	IncW	Z_FD
+	DecW	FdcLENGTH
+	lda	FdcLENGTH
+	ora	FdcLENGTH+1
+	beq	:+			; nothing more left
+	inx
+	bne	:-			; until all bytes from page
+	dec	Z_FF
+	bne	:-			; until all pages
+
+:	; reload Pointer to the buffer
+	LoadW	Pointer, LoadSaveBuffer
+	; do save that first cluster
+	jsr	CalcFirst
+	MoveW	FdcCLUSTER, FdcLCLUSTER
+	jsr	SetupSector
+	jsr	Delay41ms
+	jsr	SeekTrack
+	LoadB	NumOfSectors, 2		; 2 sectors in one cluster
+	jsr	SetWatchdog
+	jsr	WriteSector
+
+	MoveW	STARTADDR, Pointer	; now copy adjusted load address to Pointer
+	jmp	@loopend		; jump into the loop
+
+	; this loop saves $0200 bytes each from Pointer until FdcNBUF is exausted
 @loop:	jsr	CalcFirst		;				[883A]
 
-	MoveW_	FdcCLUSTER, FdcLCLUSTER
+	MoveW	FdcCLUSTER, FdcLCLUSTER
 
 	jsr	SetupSector		;				[8899]
 	jsr	Delay41ms		;				[89D0]
 	jsr	SeekTrack		;				[898A]
 
-	LoadB	NumOfSectors, 2
+	LoadB	NumOfSectors, 2		; 2 sectors, one cluster
 
 	jsr	SetWatchdog		;				[8D90]
 	jsr	WriteSector		;				[8BEE]
+@loopend:
 	jsr	StopWatchdog		;				[8DBD]
 
 	lda	ErrorCode		; error found?			[0351]
 	bne	A_8506			;				[8506]
 
-	dec	FdcNBUF		; are we done?			[0364]
-	beq	@end			;				[84E5]
+	dec	FdcNBUF			; are we done?			[0364]
+	beq	@end			; yes ->			[84E5]
 
-	PushB	Pointer
-	PushB	Pointer+1
-
-	ldx	#1
+	PushW	Pointer
+	ldx	#1			; no, find next free cluster
 	jsr	FindNextFAT		;				[85B2]
-	bcs	:+			; no more FAT clusters free?
+	bcc	:+			; no more FAT clusters free?
+	jsr	MarkFAT			; mark cluster occupied		[8534]
+	PopW	Pointer
+	jmp	@loop			; save next cluster		[8493]
 
-	pla
+:	pla				; pop Pointer data if there was error
 	pla
 	LoadB	ErrorCode, ERR_FILE_TOO_LARGE ; is it rather 'DISK FULL'?
-	jmp	@enderr
-
-:	jsr	MarkFAT			; mark cluster occupied		[8534]
-	PopB	Pointer+1
-	PopB	Pointer
-	jmp	@loop			; save next cluster		[8493]
+	jsr	StopWatchdog
+	cli
+	jmp	SaveExitErrScreenOn	; turn on screen and exit, directory and FAT were not updated yet, just exit
 
 @end:	; file was saved
 	jsr	Enfile			;				[8684]
 	jsr	WaitRasterLine		;				[8851]
 	jsr	WriteFATs		;				[860C]
 	jsr	WriteDirectory		;				[850F]
-@enderr: ; error during file saving, directory and FAT were not updated
-	jsr	StopWatchdog		;				[8DBD]
 
 	lda	ErrorCode		;				[0351]
 	jsr	ShowError		;				[926C]
 
 	LoadB	VICCTR1, $1B		; screen on
-
-	cli
 	LoadB	STATUSIO, 0
-	clc
+	cli
+	clc				; no error
 	rts
 
+	; if there is an error saving sector this seems like infinite loop
 A_8506:					;				[8506]
 	jsr	Specify			;				[891A]
 	jsr	Recalibrate		;				[88F7]
@@ -2771,6 +2814,8 @@ TblDecimalB:	.bankbytes TblDecimal
 
 
 ;**  Show an error message
+ShowErrorCode:		; XXX replace all lda ErrorCode/jsr ShowError by this
+	lda	ErrorCode
 ShowError:				;				[926C]
 	ldx	MSGFLG			; direct mode?			[9D]
 	bmi	:+			; yes, -> display error		[9271]

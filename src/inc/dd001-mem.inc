@@ -13,6 +13,8 @@ SECADR		= $B9	; actual secondary address
 CURDEVICE	= $BA	; actual device number
 FNADR		= $BB	; pointer to string with filename
 
+; these used in LOAD/SAVE, with ENDADDR
+STARTADDR	= $C1	; vector, start address for saving programss
 LOADADDR	= $C3	; vector, load address for program (Kernal), keep it unchanged
 
 ; The used RS232 variables:
@@ -175,8 +177,9 @@ ResetFDC	= $DF80
 
 ; Kernal ROM functions (C64)
 InitScreenKeyb	= $E518
-PrintSearchingFor = $F5AF	; display 'SEARCHING FOR ...'
+PrintSearchingFor = $F5AF	; display 'SEARCHING FOR <filename>'
 PrintLoading	= $F5D2		; display 'LOADING' or 'VERIFYING'
+PrintSaving	= $F68F		; display 'SAVING <filename>"
 IncrClock22	= $F6BC
 SetVectorsIO2	= $FD15
 TestRAM2	= $FD50
