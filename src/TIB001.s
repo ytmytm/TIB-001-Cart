@@ -1348,9 +1348,7 @@ Recalibrate:				;				[88F7]
 	LoadB	DataRegister, 0		; drive 0
 
 :	jsr	SenseIrqStatus		;				[894A]
-	lda	FdcST0			; 				[033C]
-	and	#%00100000		; command completed? XXX bbrf
-	beq	:-			; no, ->			[8907]
+	bbrf	5, FdcST0, :-		; wait as long as 5th bit is 0
 	lda	FdcPCN			; track = 0?			[0344]
 	bne	:-			; no, -> wait			[8907]
 
@@ -1403,9 +1401,7 @@ ReadStatus:				;				[8962]
 	ldy	#0
 	ldx	#0			; try counter
 
-:	lda	StatusRegister		; XXX bbsf 5			[DE80]
-	and	#%00100000
-	bne	:-
+:	bbsf	5, StatusRegister, :-	; wait as long as 5th bit is 1
 	dex				; 256 tries done?
 	beq	@err			; yes, -> error			[8988]
 
@@ -1441,10 +1437,7 @@ SeekTrack:				;				[898A]
 	jsr	Wait4DataReady		;				[89C8]
 
 :	jsr	SenseIrqStatus		;				[894A]
-	lda	FdcST0			;				[033C]
-	lda	FdcST0			; why twice ???			[033C]
-	and	#%00100000		; command completed? XXX bbcf 5
-	beq	:-			; no, -> wait			[89A4]
+	bbrf	5, FdcST0, :-		; wait as long as 5th bit is 0
 	CmpB	FdcPCN, FdcTrack	; same track as present track?
 	beq	@end			; yes, -> exit			[89BF]
 
@@ -1463,10 +1456,8 @@ Wait4FdcReady:				;				[89C0]
 
 
 ;**  Wait until the data register is ready
-Wait4DataReady:				;				[89C8]
-:	lda	StatusRegister		;				[DE80]
-	and	#%10000000		; FDC ready? XXX bbrf 7
-	beq	:-			; no, -> wait			[89C8]
+Wait4DataReady:
+:	bbrf	7, StatusRegister, :-
 	rts
 
 
@@ -1507,9 +1498,7 @@ FormatDisk:				;				[89DB]
 :	jsr	GetlengthFName		;				[8336]
 	jsr	InitStackProg		;				[8D5A]
 
-	lda	FdcST3			;				[0343]
-	and	#%01000000		; XXX bit / bbrf 6
-	beq	:+			;				[8A0F]
+	bbrf	6, FdcST3, :+		; bit 6=0?, yes -> jump
 
 	lda	#ERR_DISK_WRITE_PROTECT
 	jmp	ShowError		;				[926C]
@@ -1680,9 +1669,7 @@ P_8B49:					;				[8B49]
 	LoadB	FdcSector, 1
 
 	ldy	#0
-:	lda	StatusRegister		; XXX optimize bit+bpl		[DE80]
-	and	#$80
-	beq	:-
+:	bbrf	7, StatusRegister, :-	; wait as long as bit 7 is 0; FDC ready?
 	lda	FdcCommand,Y		;				[0345]
 	sta	DataRegister		;				[DE81]
 	iny
@@ -1691,8 +1678,7 @@ P_8B49:					;				[8B49]
 
 	ldx	#15			; retries
 	ldy	#0
-@loop:	bit	StatusRegister		; FDC ready? XXX bbcf 7		[DE80]
-	bpl	@loop			; no, -> wait			[8B79]
+@loop:	bbrf	7, StatusRegister, @loop ; wait as long as bit 7 is 0
 
 	lda	DataRegister
 	beq	:+			;				[8B8A]
@@ -1716,8 +1702,7 @@ FormatTrack:				;				[8B93]
 	LoadB	FdcFormatData+5, 0
 
 	ldy	#0
-:	bit	StatusRegister		; FDC ready?			[DE80]
-	bpl	:-
+:	bbrf	7, StatusRegister, :-	; wait as long as bit 7 is 0; FDC ready?
 	lda	FdcFormatData,Y		;				[0352]
 	sta	DataRegister		;				[DE81]
 	iny
@@ -1731,8 +1716,7 @@ FormatTrack:				;				[8B93]
 @loop:	ldy	#0
 ; Supply TCHRN information
 :	lda	FdcTrack,Y		;				[0347]
-:	bit	StatusRegister		; FDC ready?			[DE80]
-	bpl	:-			; no, -> wait			[8BD1]
+:	bbrf	7, StatusRegister, :-	; wait as long as bit 7 is 0; FDC ready?
 	sta	DataRegister		;				[DE81]
 	iny
 	cpy	#$04			; supplied neede 5 bytes?
@@ -1742,9 +1726,7 @@ FormatTrack:				;				[8B93]
 	bpl	@loop			; no, -> more			[8BCC]
 
 A_8BE4:					;				[8BE4]
-:	lda	StatusRegister		;				[DE80]
-	and	#%00100000		; execution finished?
-	bne	:-
+:	bbsf	5, StatusRegister, :-	; wait as long as bit 5 is 1; execution finished?
 	jmp	ReadStatus		;				[8962]
 
 
@@ -1753,9 +1735,7 @@ WriteSector:				;				[8BEE]
 	ldy	#0
 	LoadB	FdcCommand, $65		; code for "write sector"
 
-:	lda	StatusRegister		;				[DE80]
-	and	#$80			; FDC ready? ; XXX BPL like above
-	beq	:-
+:	bbrf	7, StatusRegister, :-	; wait as long as bit 7 is 0; FDC ready?
 	lda	FdcCommand,Y		;				[0345]
 	sta	DataRegister		;				[DE81]
 	iny
@@ -1839,9 +1819,7 @@ ReadSector:				;				[8C78]
 
 	LoadB	FdcCommand, $66		; "Read sector" command
 ; Write the needed bytes into the FDC
-:	lda	StatusRegister		;				[DE80]
-	and	#$80			; FDC busy? XXX BPL like above
-	beq	:-
+:	bbrf	7, StatusRegister, :-	; wait as long as bit 7 is 0; FDC ready?
 	lda	FdcCommand,Y		;				[0345]
 	sta	DataRegister		;				[DE81]
 	iny
@@ -2749,9 +2727,7 @@ ReadPagesFlop:				;				[0102]
 ReadPagesFlopLoop:
 	ldx	#$30			; 64K RAM config		[30]
 ReadPagesFlopNextByte:
-:	bit	StatusRegister		; FDC ready?			[DE80]
-	bpl	:-
-
+:	bbrf	7, StatusRegister, :-	; wait as long as 7th bit is 0; FDC ready?
 	lda	DataRegister		; read byte			[DE81]
 	stx	CPU_PORT			; 64K RAM config
 	sta	(Pointer),Y		; save byte			[FB]
@@ -2771,9 +2747,8 @@ L_0119:					;				[0119]
 	beq	@end			; yes, -> exit			[0138]
 	inc	PageCounter		;				[02]
 
-; Read the rest of the sector, FDC expects this
-:	bit	StatusRegister		; FDC ready?			[DE80]
-	bpl	:-			; no, -> wait			[0129]
+; Read and ignore the rest of the sector, FDC expects this
+:	bbrf	7, StatusRegister, :-	; wait as long as 7th bit is 0; FDC ready?
 	lda	DataRegister		; dummy read			[DE81]
 	iny				; finished reading?
 	bne	:-			; no, -> next byte		[0129]
@@ -2790,8 +2765,7 @@ RdBytesSector:				;				[0139]
 	stx	TempStackPtr		;				[0350]
 
 	ldx	#$30			; 64K RAM config
-:	bit	StatusRegister		; FDC ready?			[DE80]
-	bpl	:-			; no, -> wait			[013F]
+:	bbrf	7, StatusRegister, :-	; wait as long as 7th bit is 0; FDC ready?
 	lda	DataRegister		; read byte			[DE81]
 	stx	CPU_PORT			; 64K RAM config
 	sta	(Pointer),Y		; store byte			[FB]
@@ -2803,9 +2777,7 @@ RdBytesSector:				;				[0139]
 
 ; Read next number of bytes. See L_0165.
 RdBytesSectorByte:
-:	bit	StatusRegister		; FDC ready?			[DE80]
-	bpl	:-			; no, -> wait			[0154]
-
+:	bbrf	7, StatusRegister, :-	; wait as long as 7th bit is 0; FDC ready?
 	lda	DataRegister		; read byte			[DE81]
 	stx	CPU_PORT			; 64K RAM config		[01]
 	sta	(Pointer),Y		; store byte			[FB]
@@ -2819,10 +2791,8 @@ L_0165:					;				[0165]
 	tya				; whole sector read?
 	beq	@end			; yes, -> exit			[0178]
 
-; Read the rest of the sector, FDC expects this
-:	bit	StatusRegister		; FDC ready?			[DE80]
-	bpl	:-			; no, -> wait			[016D]
-
+; Read and ignore the rest of the sector, FDC expects this
+:	bbrf	7, StatusRegister, :-	; wait as long as 7th bit is 0; FDC ready?
 	lda	DataRegister		; dummy read			[DE81]
 	iny				; finished reading?
 	bne	:-			; no, -> next byte		[016D]
@@ -2838,9 +2808,8 @@ WriteData:				;				[0179]
 	stx	CPU_PORT			;				[01]
 	lda	(Pointer),Y		; read byte from RAM under I/O	[FB]
 	ldx	#$37
-	stx	CPU_PORT			; I/O+ROM
-:	bit	StatusRegister		; FDC ready?			[DE80]
-	bpl	:-			; no, -> wait			[0187]
+	stx	CPU_PORT		; I/O+ROM
+:	bbrf	7, StatusRegister, :-	; wait as long as 7th bit is 0; FDC ready?
 	sta	DataRegister		;				[DE81]
 	iny
 	bne	:--
