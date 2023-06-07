@@ -414,7 +414,6 @@ __NewCkout:
 	sei
 	tya
 	pha
-
 	txa
 	pha
 
@@ -424,7 +423,7 @@ __NewCkout:
 	bne	@end			; no -> exit, must start with quote
 	iny
 
-; Save current Y
+; Save current Y (XXX but it must be 1?)
 	tya
 	pha
 
@@ -544,7 +543,7 @@ Scratch:				;				[8355]
 	bcs	@found			; yes
 
 	LoadB	ErrorCode, ERR_FILE_NOT_FOUND
-	rts
+	rts				; sec?
 
 @found:	ldy	#FE_OFFS_NAME
 	lda	#FE_DELETED		; means: file has been deleted
@@ -2000,6 +1999,7 @@ InitStackProg:				;				[8D5A]
 CmdReadData:				;				[8D77]
 .byte $66, $00, $02, $00, $01, $02, $01, $1B, $FF 
 
+
 ;**  Set the timer of CIA2 to generate an IRQ when FDC has to wait too long
 SetWatchdog:				;				[8D90]
 
@@ -2019,6 +2019,7 @@ SetWatchdog:				;				[8D90]
 
 	lda	CIA2IRQ			; clear interrupt flag register, acknowledge any pending interrupts
 	rts
+
 
 ;**  Disable timer IRQ, stop the timer
 StopWatchdog:				;				[8DBD]
@@ -2601,8 +2602,7 @@ A_9107:					;				[9107]
 ShowSize:				;				[9127]
 	lda	#' '
 	jsr	KERNAL_CHROUT		;				[FFD2]
-
-	lda	#' '			; XXX seems unneeded, $FFD2 saves everything
+	lda	#' '
 	jsr	KERNAL_CHROUT		;				[FFD2]
 
 	ldy	#FE_OFFS_SIZE
@@ -2616,7 +2616,7 @@ ShowSize:				;				[9127]
 	sta	FdcLENGTH+1		;				[035F]
 	LoadB	FdcLENGTH+2, 0
 
-	; pass FdcLENGTH/35/36, convert to 5 digits in FdcNBUF
+	; pass FdcLENGTH/+1/+2, convert to 5 digits in FdcNBUF
 	jsr	BN2DEC			;				[920E]
 
 	ldy	#$04			; XXX why not 5? it would be identical to ShowBytesFree
