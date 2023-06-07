@@ -404,6 +404,7 @@ Rename:					;				[81C0]
 ;**  New routine for opening a channel for output
 ; XXX manual says to use it for commands OPEN15,9,15:PRINT#15,"N:DISK"
 ; XXX (there must be ending quote)
+; for OPEN15,9,15,"N:DISK" we would have to intercept Kernal OPEN
 NewCkout:				;				[8295]
 	pha
 	CmpBI	CURDEVICE, DEVNUM	; our DD drive?
@@ -1044,6 +1045,7 @@ __NewLoad:
 	bcs	__LoadFileFound
 
 	PopB	VICCTR1			; restore screen status
+
 	lda	ErrorCode		;				[0351]
 	jsr	ShowError		;				[926C]
 	LoadB	STATUSIO, 4		; file not found error
@@ -3046,15 +3048,18 @@ WriteData:				;				[0179]
 	bpl	:--			; no, -> next 256 bytes		[017D]
 	rts
 
+; Read one byte from anywhere in RAM (incl. under I/O)
+; Note: interrupts must be disabled
+; in:	Y = pointer offset
+;	Pointer = address base
+; out:	A = data
+;	no change in X, Y
 ; unused!
 ; indirect jump to routine in RAM, but $01 is not preserved in any way, interrupts are not disabled
 StackPage153:				;				[0199]
 	LoadB	CPU_PORT, $35		; I/O+RAM only
 	jmp	(J_00FE)		;				[00FE]
 
-
-;**  Read one byte of data from the RAM under the $D0xx or $D2xx area
-; in:	Y = location within D000/D200 area
 RdDataRamDxxx:				;				[01A0]
 	lda	#$30			; 64 KB of RAM visible
 	stx	TempStore		; save X			[FA]
@@ -3069,10 +3074,13 @@ RdDataRamDxxx:				;				[01A0]
 	ldx	TempStore		; restore X			[FA]
 	rts
 
+; Write one byte anywhere to RAM (incl. under I/O)
+; Note: interrupts must be disabled
+; in:	A = data
+;	Y = pointer offset
+;	Pointer = address base
+; out:	no change in A, X, Y
 
-;**  Write one byte of data to the RAM under the $D0xx or $D2xx area
-; in:	Y = location within D000/D2000 area
-;	A = data to be stored
 WrDataRamDxxx:				;				[01AF]
 	pha
 
