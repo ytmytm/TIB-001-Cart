@@ -356,13 +356,12 @@ Rename:					;				[81C0]
 
 @cont:	jsr	WaitRasterLine		;				[8851]
 
-	PushB	Pointer
-	PushB	Pointer+1
+	PushW	Pointer
+
 	PushB	DirSector
-
 	jsr	Search			;				[9011]
-
 	PopB	DirSector
+
 	bcs	@err
 
 	jsr	WaitRasterLine		;				[8851]
@@ -379,8 +378,7 @@ Rename:					;				[81C0]
 	jsr	ReadSectors		;				[885E]
 	jsr	SetWatchdog		;				[8D90]
 
-	PopB	Pointer+1
-	PopB	Pointer
+	PopW	Pointer
 
 	ldy	#0
 :	lda	FdcFileName,Y		;				[036C]
@@ -553,16 +551,12 @@ Scratch:				;				[8355]
 	jsr	WrDataRamDxxx		;				[01AF]
 ; Note: MS-DOS saves the first character
 
-	PushB	Pointer
-	PushB	Pointer+1
-
+	PushW	Pointer
 	jsr	WaitRasterLine		;				[8851]
 	jsr	WriteDirectory		;				[850F]
 	jsr	GetFATs			;				[8813]
 	jsr	WaitRasterLine		;				[8851]
-
-	PopB	Pointer+1
-	PopB	Pointer
+	PopW	Pointer
 
 	jsr	ClearFATs		;				[8650]
 	jsr	WriteFATs		;				[860C]
