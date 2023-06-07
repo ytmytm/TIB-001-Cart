@@ -1059,6 +1059,7 @@ __LoadFileFound:
 
 :	; ENDADDR is now LOADADDR target
 	MoveW	ENDADDR, LOADADDR	; preserve load address (only to run BOOT)
+	SubVW	2, FdcLENGTH		; filesystem length is 2 bytes more than data stream lenth
 	; FdcLENGTH is intact
 	LoadW	Z_FD, LoadSaveBuffer+2	; buffer starts with 2-byte offset
 	LoadB	Z_FF, 4			; 4 pages in 2 sectors in 1 cluster
