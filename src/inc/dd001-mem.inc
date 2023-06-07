@@ -20,6 +20,7 @@ LOADADDR	= $C3	; vector, load address for program (Kernal), keep it unchanged
 ; The used RS232 variables:
 STARTUP		= $F0	; defined in MULT.ASC but not used actually
 NumOfSectors	= $F7	; (1) TTLSEC - number of sectors to read or write
+Sector		= $F8	; (word)
 SectorL		= $F8	; --- number of the sector that is wanted
 SectorH		= $F9	; -/
 TempStore	= $FA

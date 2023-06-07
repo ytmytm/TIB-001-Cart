@@ -1619,8 +1619,7 @@ FormatDiskLoop:
 	jsr	WrDataRamDxxx		;				[01AF]
 
 	LoadB	NumOfSectors, 8		; BUG: 8 or 7? we will write first 8 sectors (boot + two fats + one more? (directory, but it's not cleared with zeros)
-	LoadB	SectorL, 0		; write staring from to boot sector
-	sta	SectorH
+	LoadW	Sector, 0		; write staring from to boot sector
 
 	jsr	SetupSector		;				[8899]
 	jsr	SeekTrack		;				[898A]
