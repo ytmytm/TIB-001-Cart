@@ -965,10 +965,8 @@ ClearFATs:				;				[8650]
 
 :	jsr	GetNextCluster		;				[87A4]
 	jsr	MarkFAT			;				[8534]
-
-	MoveB	FdcCLUSTER, FdcLCLUSTER
-	MoveB	FdcCLUSTER+1, FdcLCLUSTER+1
-	cmp	#$0F			; $0F=magic value for end of file? compares with FdcCLUSTER+1
+	MoveW	FdcCLUSTER, FdcLCLUSTER
+	CmpBI	FdcCLUSTER+1, #$0F	; $0F=magic value for the end of file?
 	bne	:-
 	rts
 
