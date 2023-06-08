@@ -904,12 +904,8 @@ FindNextFAT:				;				[85B2]
 	ora	FdcCLUSTER+1		;				[035B]
 	beq	:+
 
-	AddVB	1, FdcSCLUSTER	; XXX this is IncW candidate but needs LDA FdcSCLUSTER+1 at the end
-	lda	FdcSCLUSTER+1		;				[0357]
-	adc	#0
-	sta	FdcSCLUSTER+1		;				[0357]
-
-	cmp	#2
+	IncW	FdcSCLUSTER
+	CmpBI	FdcSCLUSTER+1, 2	; ???? XXX
 	bne	FindNextFAT		;				[85B2]
 
 	CmpBI	FdcSCLUSTER, $CA	; ???? XXX
@@ -922,10 +918,7 @@ FindNextFAT:				;				[85B2]
 	dex
 	bmi	:+			;				[860A]
 
-	AddVB	1, FdcSCLUSTER	; XXX this is IncW candidate but needs LDA FdcSCLUSTER+1 at the end
-	lda	FdcSCLUSTER+1		;				[0357]
-	adc	#0
-	sta	FdcSCLUSTER+1		;				[0357]
+	IncW	FdcSCLUSTER
 	jmp	FindNextFAT		;				[85B2]
 
 :	sec
@@ -2587,15 +2580,8 @@ A_9180:					;				[9180]
 
 	inc	FdcLENGTH+2		;				[0360]
 A_919F:					;				[919F]
-	lda	FdcSCLUSTER		;				[0356]
-	addv	1
-	sta	FdcSCLUSTER		;				[0356]
-
-	lda	FdcSCLUSTER+1		;				[0357]
-	adc	#0
-	sta	FdcSCLUSTER+1		;				[0357]
-
-	cmp	#2
+	IncW	FdcSCLUSTER
+	CmpBI	FdcSCLUSTER+1, 2
 	bne	A_9180			;				[9180]
 
 	CmpBI	FdcSCLUSTER, $CB	; XXX what is $CB?
