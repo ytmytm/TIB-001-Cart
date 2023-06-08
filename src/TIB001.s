@@ -856,17 +856,14 @@ MarkFAT:
 	ldy	#0
 	lda	FdcSCLUSTER		;				[0356]
 	jsr	WrDataRamDxxx		;				[01AF]
-
 	iny
 	jsr	RdDataRamDxxx		;				[01A0]
-
 	and	#$F0
 	ora	FdcSCLUSTER+1		;				[0357]
 	jmp	WrDataRamDxxx
 
 :	ldy	#1
 	jsr	RdDataRamDxxx		;				[01A0]
-
 	and	#$0F
 	sta	TempStore		;				[FA]
 
@@ -956,13 +953,11 @@ WriteFATs:				;				[860C]
 ClearFATs:				;				[8650]
 	ldy	#FE_OFFS_START_CLUSTER	; first cluster of a file
 	jsr	RdDataRamDxxx		;				[01A0]
-
 	sta	FdcCLUSTER		;				[035A]
 	sta	FdcLCLUSTER		;				[0358]
 
 	iny
 	jsr	RdDataRamDxxx		;				[01A0]
-
 	sta	FdcCLUSTER+1		;				[035B]
 	sta	FdcLCLUSTER+1		;				[0359]
 
@@ -1524,14 +1519,14 @@ FormatDisk:				;				[89DB]
 	lda	#ERR_DISK_WRITE_PROTECT
 	jmp	ShowError		;				[926C]
 
-:	ldx	#15
+:	ldx	#15			; XXX define this constant
 	jsr	ClearDirectory
 
 	LoadB	FdcTrack2, 0
 	LoadB	Counter, 1
 
 FormatDiskLoop:
-	LoadB	ErrorCode, ERR_OK	; XXX also 0
+	LoadB	ErrorCode, ERR_OK
 
 	lda	FdcTrack2		;				[034E]
 	lsr	A
