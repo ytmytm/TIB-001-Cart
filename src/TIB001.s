@@ -896,7 +896,7 @@ FindFAT:				;				[85A8]
 	LoadB	FdcSCLUSTER+1, 0
 
 FindNextFAT:				;				[85B2]
-	MoveW_	FdcSCLUSTER, FdcCLUSTER
+	MoveW	FdcSCLUSTER, FdcCLUSTER
 
 	jsr	GetNextCluster		;				[87A4]
 
@@ -918,7 +918,7 @@ FindNextFAT:				;				[85B2]
 	clc
 	rts
 
-:	MoveW_	FdcSCLUSTER, FdcCLUSTER
+:	MoveW	FdcSCLUSTER, FdcCLUSTER
 	dex
 	bmi	:+			;				[860A]
 
@@ -985,7 +985,7 @@ ClearFATs:				;				[8650]
 	rts
 
 Enfile:					;				[8684]
-	MoveW_	FdcCLUSTER, FdcLCLUSTER
+	MoveW	FdcCLUSTER, FdcLCLUSTER
 	LoadW	FdcSCLUSTER, $0FFF	; ??? FAT magic?
 	jmp	MarkFAT			;				[8534]
 
@@ -2575,7 +2575,7 @@ ShowBytesFree:				;				[916A]
 
 	LoadW	FdcSCLUSTER, $0002
 A_9180:					;				[9180]
-	MoveW_	FdcSCLUSTER, FdcCLUSTER
+	MoveW	FdcSCLUSTER, FdcCLUSTER
 
 	jsr	GetNextCluster		;				[87A4]
 
