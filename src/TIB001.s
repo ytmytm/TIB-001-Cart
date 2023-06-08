@@ -1644,7 +1644,7 @@ FormatDiskLoop:
 	jsr	StopWatchdog		;				[8DBD]
 	;we don't have to clear out all sectors occupied by root directory because FormatTrack does this for whole disk
 
-	LoadB	VICCTR1, $1B		; screen on
+@endok:	LoadB	VICCTR1, $1B		; screen on
 	clc
 	rts
 
@@ -1654,10 +1654,7 @@ FormatDiskLoop:
 
 	LoadB	ErrorCode, ERR_DISK_UNRELIABLE
 	jsr	ShowError		;				[926C]
-
-	LoadB	VICCTR1, $1B		; screen on (optimization, see above XXX)
-	clc
-	rts
+	jmp	@endok
 
 @enderr:
 	jsr	StopWatchdog		;				[8DBD]
