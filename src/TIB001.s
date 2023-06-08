@@ -393,8 +393,8 @@ Rename:					;				[81C0]
 	clc
 	rts
 
-@err:	sec				; XXX C=1 already here
-	pla
+@err:					; C=1 already here
+	pla				; pop Pointer
 	pla
 	rts
 
