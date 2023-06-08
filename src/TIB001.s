@@ -2529,22 +2529,22 @@ ShowBytesFree:				;				[916A]
 	sta	FdcLENGTH+2		;				[0360]
 
 	LoadW	FdcSCLUSTER, $0002
-A_9180:					;				[9180]
-	MoveW	FdcSCLUSTER, FdcCLUSTER
+					;				[9180]
+@loop:	MoveW	FdcSCLUSTER, FdcCLUSTER
 
 	jsr	GetNextCluster		;				[87A4]
 
 	lda	FdcCLUSTER		;				[035A]
 	ora	FdcCLUSTER+1		;				[035B]
-	bne	A_919F			;				[919F]
+	bne	:+			;				[919F]
 
-	IncW	FdcLENGTH+1		; yes, word +1/+2
-	IncW	FdcSCLUSTER
+	IncW	FdcLENGTH+1		; yes - 16-bits FdcLENGTH+1/+2
+:	IncW	FdcSCLUSTER
 	CmpBI	FdcSCLUSTER+1, 2
-	bne	A_9180			;				[9180]
+	bne	@loop			;				[9180]
 
 	CmpBI	FdcSCLUSTER, $CB	; XXX what is $CB?
-	bne	A_9180			;				[9180]
+	bne	@loop			;				[9180]
 
 	asl	FdcLENGTH+1		;				[035F]
 	rol	FdcLENGTH+2		;				[0360]
