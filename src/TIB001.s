@@ -2160,13 +2160,8 @@ A_8EC3:					;				[8EC3]
 
 ; next file entry
 J_8F1A:					;				[8F1A]
-	lda	Pointer		; XXX? AddVB $20, Pointer + LDA Pointer+1?
-	addv	FILE_ENTRY_SIZE		; next directory entry
-	sta	Pointer		;				[FB]
-	lda	Pointer+1		;				[FC]
-	adc	#0
-	sta	Pointer+1		;				[FC]
-	cmp	EndofDir		; last page of directory buffer?
+	AddVW	FILE_ENTRY_SIZE, Pointer	; next directory entry
+	CmpB	Pointer+1, EndofDir	; last page of directory buffer?
 	bne	A_8EC3			; no, keep displaying files
 
 	inc	Z_FF
@@ -2237,15 +2232,8 @@ A_8F8B:					;				[8F8B]
 	rts
 
 A_8FA7:					;				[8FA7]
-	lda	Pointer		; next directory entry, use AddVW $20, Pointer + CmpB Pointer, EndofDir (also above) XXX
-	addv	FILE_ENTRY_SIZE
-	sta	Pointer		;				[FB]
-
-	lda	Pointer+1		;				[FC]
-	adc	#0
-	sta	Pointer+1		;				[FC]
-
-	cmp	EndofDir		;				[0335]
+	AddVW	FILE_ENTRY_SIZE, Pointer
+	CmpB	Pointer+1, EndofDir	;				[0335]
 	bne	A_8F8B			;				[8F8B]
 
 	lda	DirSector		;				[0369]
@@ -2377,15 +2365,8 @@ A_9077:					;				[9077]
 A_9079:					;				[9079]
 	ldy	#0
 
-	lda	Pointer		; next dir entry, XXX AddVB $20, Pointer + CmpB Pointer+1, EndofDir
-	addv	$20
-	sta	Pointer		;				[FB]
-
-	lda	Pointer+1		;				[FC]
-	adc	#0
-	sta	Pointer+1		;				[FC]
-
-	cmp	EndofDir		; end of directory sector?	[0335]
+	AddVW	FILE_ENTRY_SIZE, Pointer
+	CmpB	Pointer+1, EndofDir	; end of directory sector?	[0335]
 	bne	A_904F			; no, -> more			[904F]
 
 ; Go to the next directory sector
