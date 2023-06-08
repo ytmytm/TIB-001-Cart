@@ -2498,10 +2498,9 @@ ShowSize:				;				[9127]
 	ldx	#0
 	sei				; XXX SEI but where is CLI?
 	jsr	RdDataRamDxxx		;				[01A0]
-	iny
 	sta	FdcLENGTH		;				[035E]
-	jsr	RdDataRamDxxx		;				[01A0]
 	iny
+	jsr	RdDataRamDxxx		;				[01A0]
 	sta	FdcLENGTH+1		;				[035F]
 	LoadB	FdcLENGTH+2, 0
 
@@ -2646,9 +2645,9 @@ ShowError:				;				[926C]
 	lda	TblErrorMsgH,X		;				[92EE]
 	sta	Pointer+1		;				[FC]
 
-	ldy	#0
 	jsr	StopWatchdog		;				[8DBD]
 
+	ldy	#0
 :	lda	(Pointer),Y		; end of message?		[FB]
 	beq	:+			; yes, -> exit			[9292]
 	lda	(Pointer),Y		;				[FB]
