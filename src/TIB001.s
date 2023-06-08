@@ -2169,8 +2169,8 @@ J_8F1A:					;				[8F1A]
 	cmp	EndofDir		; last page of directory buffer?
 	bne	A_8EC3			; no, keep displaying files
 
-	AddVB	1, Z_FF			; XXX inc+lda? Z_FF has sector number
-	cmp	#DD_SECT_ROOT+DD_NUM_ROOTDIR_SECTORS ; whole directory read? (7 sectors but this counts pages, we could also count file entries up to DD_ROOT_ENTRIES)
+	inc	Z_FF
+	CmpBI	Z_FF, DD_SECT_ROOT+DD_NUM_ROOTDIR_SECTORS ; whole directory read? (7 sectors but this counts pages, we could also count file entries up to DD_ROOT_ENTRIES)
 	bcs	A_8F46			; yes -> end			[8F46]
 
 	sei
