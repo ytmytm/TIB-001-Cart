@@ -65,10 +65,15 @@ You need latest cc65 package with ca65/ld65 and GNU Make.
 
 Run `make` to build 8K ROM file in `build/tib001.bin`.
 
-Run `make clean && make regress` to check of the resulting binary matches reference V1.1 ROM.
+Run `make utils` to build some basic utilities.
 
 You can set parameters within `Makefile` or pass them from the command line. For example:
 ```
 make DEVNUM=7
 ```
 to assemble ROM with DD-001 mapped to device #7.
+
+## Only on `dd001-rom-v1.1` branch
+
+Run `make clean && make regress` to check of the resulting binary matches reference V1.1 ROM and utilities.
+

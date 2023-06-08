@@ -1,23 +1,17 @@
 
-.include "dd001-romv1.1-direct-jumptable.inc"
+.include "dd001-jumptable.inc"
 .include "dd001-mem.inc"
 .include "dd001-sym.inc"
 .include "fat12.inc"
 .include "geosmac.inc"
 
-COLOR           := $0286                        ; foreground text color
 CART_COLDSTART  := $8000                        ; cartridge cold start vector
-VICBOCL         := $D020                        ; border color
-KERNAL_SETLFS   := $FFBA                        ; Set logical file
-;KERNAL_SETNAM   := $FFBD                        ; Set file name
 KERNAL_OPEN     := $FFC0                        ; Open file
 KERNAL_CLOSE    := $FFC3                        ; Close file
 KERNAL_CHKIN    := $FFC6                        ; Open channel for input
 KERNAL_CLRCHN   := $FFCC                        ; Clear I/O channels
 KERNAL_CHRIN    := $FFCF                        ; Get a character from the input channel
-;KERNAL_CHROUT   := $FFD2                        ; Output a character
 KERNAL_LOAD     := $FFD5                        ; Load file
-;KERNAL_STOP     := $FFE1                        ; Check if key pressed (RUN/STOP)
 KERNAL_GETIN    := $FFE4                        ; Get a character
 
 ResetFDC00	= $DF00				; can be changed to ResetFDC ($DF80, any address on page)
@@ -27,6 +21,12 @@ DataBufferLen	= $6C00 ; $1400-$8000 (could be even more $0900-$8000!)
 
 ; having a display of number of swaps remaining would be nice
 ; also visual indication of source (GREEN) and target (RED) as border color
+
+	.segment "BASICHEADER"
+
+	.word $0801			; load address
+	.byte $0c,$08,$d0,$07,$9e,$20,$32,$30,$36,$34,$00,$00,$00,$00,$00	; Basic "SYS 2064"
+
 
 	.segment "CODE"
 
@@ -251,6 +251,22 @@ KeyboardScan:
 L09DF:  clc
         ldy     tempY
         rts
+
+;XXX copied from ROM
+
+;**  Turn off the screen and Wait for rasterline $1FF
+WaitRasterLine:				;				[8851]
+	LoadB	VICCTR1, $0b		; screen off
+:	CmpBI	VICLINE, $FF
+	bne :-
+	rts
+
+;**  Wait until the data register is ready
+Wait4DataReady:
+:	bbrf	7, StatusRegister, :-
+	rts
+
+;XXX end of ROM copy
 
 TblBitClear:
         .byte   $FE,$FD,$FB,$F7,$EF,$DF,$BF,$7F
