@@ -423,7 +423,7 @@ __NewCkout:
 	bne	@end			; no -> exit, must start with quote
 	iny
 
-; Save current Y (XXX but it must be 1?)
+; Save current Y (but it must be 1)
 	tya
 	pha
 
@@ -436,7 +436,7 @@ __NewCkout:
 	cmp	#'"'			; quote found?
 	bne	:-			; must end with quote within 33 characters
 
-; Restore original Y
+; Restore original Y (but it must be 1)
 	pla
 	tay
 
@@ -1290,7 +1290,7 @@ ReadSectors:				;				[885E]
 	jsr	SetWatchdog		;				[8D90]
 	jsr	ReadSector		;				[8C78]
 
-	CmpBI	Counter, 9		; read whole track?
+	CmpBI	Counter, 9		; 9 retries?
 	bne	:+
 
 	LoadB	ErrorCode, ERR_DISK_MAY_BE_DAMAGED
@@ -2071,7 +2071,7 @@ J_8E18:					;				[8E18]
 
 	jsr	ReadSector		;				[8C78]
 
-	CmpBI	Counter, 9		; whole track?
+	CmpBI	Counter, 9		; retries? whole track?
 	bne	@nottrack		;				[8E55]
 
 	LoadB	ErrorCode, ERR_DISK_MAY_BE_DAMAGED
