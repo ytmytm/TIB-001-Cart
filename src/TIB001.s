@@ -501,8 +501,6 @@ RenameFilePrep:
 	iny
 	bne	:-
 :	tya
-	sty	FNLEN		; XXX destroyed immediately by GetlengthFName
-	tya
 	pha
 	jsr	GetlengthFName		;				[8336]
 	MoveB	FNLEN, FdcFILELEN
@@ -1322,7 +1320,6 @@ SetupSector:				;				[8899]
 
 ; Convert sector to track
 :	ldx	#0			; tracks
-	ldy	#0			; XXX Y not used here
 
 :	lda	SectorL			;				[F8]
 	subv	DD_SECTORS_PER_TRACK
@@ -1681,7 +1678,7 @@ ClearDirectory:
 	MoveB	StartofDir, Pointer+1	; directory sector buffer
 
 	lda	#0
-	ldy	#0			; XXX tay
+	tay
 :	jsr	WrDataRamDxxx		;				[01AF]
 	iny
 	bne	:-
@@ -2872,7 +2869,7 @@ RdBytesSectorByte:
 L_0165:					;				[0165]
 	cpy	#0			; finished with reading?
 	bne	RdBytesSectorByte	; no, -> next byte		[0154]
-	cpy	#0			; whole sector read? XXX? always BEQ here?
+	tya				; whole sector read?
 	beq	@end			; yes, -> exit			[0178]
 
 ; Read the rest of the sector, FDC expects this
