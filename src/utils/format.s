@@ -1,25 +1,25 @@
 
-.include "dd001-romv1.1-direct-jumptable.inc"
+.include "dd001-jumptable.inc"
 .include "dd001-mem.inc"
 .include "dd001-sym.inc"
 .include "fat12.inc"
 .include "geosmac.inc"
 
 NDX             := $00C6                        ; Number of characters in keyboard queue
-COLOR           := $0286                        ; foreground text color
 CART_COLDSTART  := $8000                        ; cartridge cold start vector
-VICBOCL         := $D020                        ; border color
-KERNAL_SETLFS   := $FFBA                        ; Set logical file
-;KERNAL_SETNAM   := $FFBD                        ; Set file name
 KERNAL_OPEN     := $FFC0                        ; Open file
 KERNAL_CLOSE    := $FFC3                        ; Close file
 KERNAL_CHKIN    := $FFC6                        ; Open channel for input
 KERNAL_CLRCHN   := $FFCC                        ; Clear I/O channels
 KERNAL_CHRIN    := $FFCF                        ; Get a character from the input channel
-;KERNAL_CHROUT   := $FFD2                        ; Output a character
 KERNAL_LOAD     := $FFD5                        ; Load file
-;KERNAL_STOP     := $FFE1                        ; Check if key pressed (RUN/STOP)
 KERNAL_GETIN    := $FFE4                        ; Get a character
+
+	.segment "BASICHEADER"
+
+	.word $0801			; load address
+	.byte $0c,$08,$d0,$07,$9e,$20,$32,$30,$36,$34,$00,$00,$00,$00,$00	; Basic "SYS 2064"
+
 
 	.segment "CODE"
 

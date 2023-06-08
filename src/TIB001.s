@@ -130,6 +130,10 @@ _StopWatchdog:		jmp	StopWatchdog		; [807E] -> [8DBD]
 _RdDataRamDxxx:		jmp	RdDataRamDxxx		; [8081] -> [01A0]
 _WrDataRamDxxx:		jmp	WrDataRamDxxx
 
+; disk copy needs more functions:
+; WaitRasterLine
+; Wait4DataReady
+
 ; Here starts the initialisation of the cartridge
 CartInit:				;				[8087]
 	stx	$d016			; turn on VIC for PAL/NTSC check by Kernal
