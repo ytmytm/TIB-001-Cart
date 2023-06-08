@@ -1248,12 +1248,9 @@ CalcFirst:				;				[883A]
 	rol	SectorH			;				[F9]
 	addv	10
 	sta	SectorL			;				[F8]
-
-	lda	SectorH			;				[F9]
-	adc	#0			; XXX BCC+INC would be enough
-	sta	SectorH			;				[F9]
-
-	rts
+	bcc	:+
+	inc	SectorH
+:	rts
 
 
 ;**  Turn off the screen and Wait for rasterline $1FF
@@ -2542,11 +2539,7 @@ A_9180:					;				[9180]
 	ora	FdcCLUSTER+1		;				[035B]
 	bne	A_919F			;				[919F]
 
-	inc	FdcLENGTH+1		;				[035F]
-	bne	A_919F			;				[919F]
-
-	inc	FdcLENGTH+2		;				[0360]
-A_919F:					;				[919F]
+	IncW	FdcLENGTH+1		; yes, word +1/+2
 	IncW	FdcSCLUSTER
 	CmpBI	FdcSCLUSTER+1, 2
 	bne	A_9180			;				[9180]
