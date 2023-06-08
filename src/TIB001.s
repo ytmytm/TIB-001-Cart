@@ -2066,8 +2066,7 @@ J_8E18:					;				[8E18]
 	jsr	SetWatchdog		;				[8D90]
 	jsr	WaitRasterLine		;				[8851]
 
-	LoadB	FdcBYTESLEFT+1, 2
-	LoadB	FdcBYTESLEFT, 0
+	LoadW	FdcBYTESLEFT, DD_SECTOR_SIZE	; whole sector
 
 	jsr	ReadSector		;				[8C78]
 
