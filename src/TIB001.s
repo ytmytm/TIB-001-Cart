@@ -2039,18 +2039,14 @@ CartNMI:				;				[8DE7]
 ReadDirectory:				;				[8E0F]
 	LoadB	NumOfSectors, 1
 	LoadB	Counter, 0
-J_8E18:					;				[8E18]
+@repeat:				;				[8E18]
+	MoveB	StartofDir, Pointer+1
+	LoadB	Pointer, 0
+	sta	ErrorCode
+	sta	SectorH
 	MoveB	Z_FF, SectorL
 
-	ldx	#0
-	stx	SectorH			; XXX optimize			[F9]
-
-	LoadB	Pointer, 0
-	MoveB	StartofDir, Pointer+1
-
 	jsr	SetupSector		;				[8899]
-
-	LoadB	ErrorCode, ERR_OK
 
 	jsr	SeekTrack		;				[898A]
 	jsr	SetWatchdog		;				[8D90]
@@ -2074,7 +2070,7 @@ J_8E18:					;				[8E18]
 
 @err:	jsr	Specify			;				[891A]
 	jsr	Recalibrate		;				[88F7]
-	jmp	J_8E18			;				[8E18]
+	jmp	@repeat			;				[8E18]
 
 
 ;**  Display the directory
