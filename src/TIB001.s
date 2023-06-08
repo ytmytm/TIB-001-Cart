@@ -2121,16 +2121,10 @@ DisplayDir:				;				[8E67]
 	ldy	#FE_OFFS_NAME
 :	sei
 	jsr	RdDataRamDxxx		;				[01A0]
-	sta	Z_FD			; XXX this store/restore is not needed for KERNAL_CHROUT
-	tya				; ditto
-	pha
-	CmpBI	Z_FD, $60		; < 'a' ?
+	cmp	#$60			; < 'a' ?
 	bcc	:+			; yes, ->			[8EA6]
 	subv	$20			; convert to PETSCII
 :	jsr	KERNAL_CHROUT		;				[FFD2]
-	lda	Z_FD			; XXX not needed
-	pla				; ditto
-	tay
 	iny
 	cpy	#FE_OFFS_NAME_END
 	bne	:--
@@ -2160,18 +2154,7 @@ A_8EC3:					;				[8EC3]
 	iny
 	cmp	#' '			; skip over padding spaces
 	beq	:+
-	sta	Z_FD			; XXX this store/restore is totally not needed
-	txa
-	pha
-	tya
-	pha
-	lda	Z_FD			;				[FD]
 	jsr	KERNAL_CHROUT		;				[FFD2]
-	lda	Z_FD			; ditto
-	pla
-	tay
-	pla
-	tax
 :	dex
 	bpl	:--			; all 8 characters?
 ; display extension dot
@@ -2184,17 +2167,7 @@ A_8EC3:					;				[8EC3]
 	iny
 	cmp	#' '			; skip over padding spaces
 	beq	:+
-	sta	Z_FD			; XXX this store/restore is totally not needed
-	txa
-	pha
-	tya
-	pha
-	lda	Z_FD			;				[FD]
 	jsr	KERNAL_CHROUT		;				[FFD2]
-	pla				; ditto
-	tay
-	pla
-	tax
 :	dex
 	bpl	:--			; all 3 characters?
 ; display file size
@@ -2590,12 +2563,8 @@ ShowSize:				;				[9127]
 	bpl	:-			;				[9150]
 	jmp	KERNAL_CHROUT		; print final 0
 
-:	tya				; XXX TYA+PHA, PLA+TAY, no need to preserve for $FFD2
-	pha
-	lda	FdcNBUF,Y		; print actual digits		[0364]
+:	lda	FdcNBUF,Y		; print actual digits		[0364]
 	jsr	KERNAL_CHROUT		;				[FFD2]
-	pla
-	tay
 	dey
 	bpl	:-			;				[915C]
 	rts
@@ -2644,17 +2613,11 @@ A_919F:					;				[919F]
 
 ; print out message (XXX why not use the same code as from ShowError?)
 	ldy	#0
-:	tya				; XXX no need to preserve Y
-	pha
-	lda	TotalBytesFreeTxt,Y
+:	lda	TotalBytesFreeTxt,Y
 	beq	:+
 	jsr	KERNAL_CHROUT		;				[FFD2]
-	pla
-	tay
 	iny
 	bne	:-
-	beq	:++			; XXX not need without PHA
-:	pla
 
 ; print out number from FdcNBUF
 :	ldy	#5
@@ -2665,12 +2628,8 @@ A_919F:					;				[919F]
 	bpl	:-
 	jmp	KERNAL_CHROUT		; print final 0
 
-:	tya				; XXX no need for TYA+PHA, PLA+TAY
-	pha
-	lda	FdcNBUF,Y		; print digits			[0364]
+:	lda	FdcNBUF,Y		; print digits			[0364]
 	jsr	KERNAL_CHROUT		;				[FFD2]
-	pla
-	tay
 	dey
 	bpl	:-
 	rts
@@ -2749,18 +2708,13 @@ ShowError:				;				[926C]
 	jsr	StopWatchdog		;				[8DBD]
 
 :	lda	(Pointer),Y		; end of message?		[FB]
-	beq	@end			; yes, -> exit			[9292]
-	tya
-	pha
-; XXX Note: saving Y is not needed, KERNAL_CHROUT does save Y
+	beq	:+			; yes, -> exit			[9292]
 	lda	(Pointer),Y		;				[FB]
 	jsr	KERNAL_CHROUT		;				[FFD2]
-	pla
-	tay
 	iny
-	jmp	:-
+	bne	:-
 
-@end:	clc
+:	clc
 	rts
 
 ; in: X=offset on zero page to values
