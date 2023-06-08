@@ -322,12 +322,12 @@ Rename:					;				[81C0]
 	bcs	@err_longname
 	dey
 
-:	lda	#' '
-	sta	FdcFileName,Y		;				[036C]
+	lda	#' '
+:	sta	FdcFileName,Y		;				[036C]
 	iny
 	cpy	#FE_OFFS_NAME_END
-	bne	:-			; XXX should loop back to 'sta' because A is still $20
-	jmp	@cont			; XXX beq will work here
+	bne	:-
+	beq	@cont
 
 @err_longname:
 	LoadB	ErrorCode, ERR_NAME_TOO_LONG
