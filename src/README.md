@@ -1,33 +1,50 @@
 
+# Supported hardware and disk format
+
+You can use standard PC floppy drive and HD floppies.
+
+In my experience it is necessary to cover the HD hole (opposite to write protect) and then format HD disks - either using PC or from within BASIC:
+
+```
+OPEN 15,7,15:PRINT#15,"N:NEWDISK":CLOSE15
+```
+
+On a PC it is *very* important to choose correct allocation size. You need 1K (1024 bytes, 2 sectors) allocation size/cluster size, not 512 bytes.
+
+On Linux this can be done with:
+```
+mkfs.vfat -F 12 -r 112 -f 2 -s 2 /dev/fd # or disk.img
+```
+
+This is:
+
+- FAT12
+- 112 root directory entries
+- 2 FATs
+- 2 sectors per cluster
+
+
 # TODO
 
-- keep load address in first 2 bytes of the file, where it belongs
 - correct and reassemble utilities, this time with jump table
 - fail fast if there is no FDD or no disk in FDD
-- own BASIC startup message
 - display directory using tokenized BASIC to avoid own number/text routines
 	- add '<' for read-only files
 	- add 'DIR' for directories
-	- display volume label as disk header
 	- show 'BLOCKS FREE' assuming 256-byte blocks (we can't allocate it like that, but it makes CBM drives comparable, it's equally meaningless to 'BYTES FREE' message)
 
 # Source code
 
-- split ROM into multiple files with clear exports/imports (like reassembled GEOS) and several segments
 - use constants for BIOS Parameter Block and file entries
-- replace some bit testing jumps by GEOS macros
 - disassembled utilities use direct jumps to ROM, without using JUMPTABLE
 
 # Optimizations
 
-- filename code is repeating (8 characters, dot, 3 characters and space padding)
+- filename processing code is repeating (8 characters, dot, 3 characters and space padding)
 - screen on is repeating a lot
 - loading vector to StartofDir repeats a lot
-- consistently use BIT/BPL for controller status, there are all variants
-- remove unused code
-- replace screen text by ASCIIZ and $FFD2 printing (or BASIC $AB1E)
-- display SEARCHING (F5AF) or LOADING/VERYFING (F5D2)
-- actually implement VERIFY
+- move temporary values to zero-page occupied by tape
+- actually implement VERIFY (needed?)
 
 # New utilities
 

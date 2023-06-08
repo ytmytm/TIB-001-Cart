@@ -8,24 +8,29 @@
 ; - change device number to 7
 ; - LOAD needs 1K buffer for first cluster but now standard PRG files (with load address) can be used
 ;	LOAD can load data in $0400-$D1FF range
+; - SAVE also uses 1K buffer and saves standard PRG files with load address
 ; - corrected CHKOUT to that commands can be sent to both DD-001 and IEC devices
 ;   DD-001 supports: N(ew), S(cratch), R(ename)
 ; - inverse volume name in DisplayDir
 ; - load BOOT.PRG instead of BOOT.EXE
 
 ; Remarks/TODO (YTM):
+; - make directory look like CBM directory listing
 ; - make RUN/STOP behave correctly (exit to BASIC but with vectors hooked)
-; - skip over long names file entries
-; - make SAVE save files as standard PRGs
 ; - if LOAD could stash FAT chain somewhere (up to 128 bytes) it could load files up to $FFFF
 ; - a lot of loading Pointer with (0, StartofDir), move that to a subroutine
-; - check status register consistently BIT+BPL instead of LDA+AND#$80+BNE
 ; - DisplayDir seems to be broken at the end (too may plas)
 ; - handle disk commands with OPEN (need to check file name)
 ; - for ICKOUT (PRINT#) check length of buffer, not just ending quote mark
 ; - no matter the source, handle disk commands only on SA=15
 ; - directory: align columns vertically
-; - directory: show number of blocks (256 bytes) instead of bytes to make it comparable with CBM DOS drives
+; - directory: show number of blocks (256 bytes) or sectors (512 bytes) or clusters (1024 bytes) instead of bytes to make it comparable with CBM DOS drives
+;	(in either case no need to use 24/32-bit decimal printing routine)
+; - check disk format (BIOS Parameter Block) and explain when+why it's not supported
+; - move more variables to zero page, check C64 memory maps on what it used with tape (a lot!)
+; - store version, number of drives and own device number in fixed signature right after jump table
+; - DOS wedge for @<number>, $, /, % or ^ commands
+; - replace all bit numbers in bbsf/bbrf to constant defines
 
 ; My notes/ideas regarding this disassembly
 ; - only a 3,5" 720 KB DD FDD can be used, not a 5.25" 360 KB one
