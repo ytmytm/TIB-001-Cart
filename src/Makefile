@@ -6,12 +6,12 @@ DEVNUM ?= 7
 
 # build part
 
+BUILD_DIR = build
+
 AS = ca65
 LD = ld65
 ASFLAGS = -t none -I inc -I . -DDEVNUM=$(DEVNUM)
-LDFLAGS = 
-
-BUILD_DIR = build
+LDFLAGS = -m $(BUILD_DIR)/mapfile.map
 
 SOURCES = TIB001.s
 

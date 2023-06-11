@@ -69,7 +69,9 @@ FATBuffer		= $D200	; buffer ($0600, 3 sectors) for one whole FAT (set implicitly
 LoadSaveBuffer  	= $D800 ; buffer ($0400, 2 sectors) buffer for 1 cluster needed by LOAD/SAVE, must not overlap FATBuffer
 
 ; linker will update that
-.import __STACK0101_LAST__
+.import __romstack_RUN__
+.import __romstack_SIZE__
+.import __romstack_LOAD__
 
 			.segment "rom8000"
 
@@ -1933,10 +1935,11 @@ InitStackProg:				;				[8D5A]
 	bpl	:-
 
 ; Actual copy
-	ldx	#<(__STACK0101_LAST__-2)
-:	lda	StackProgram,X		;				[9462]
-	sta	StackPage1,X		;				[0101]
-	dex
+	ldx	#0
+:	lda	__romstack_LOAD__,X		;				[9462]
+	sta	__romstack_RUN__,X	;				[0101]
+	inx
+	cpx	#<(__romstack_SIZE__+1)
 	bne	:-
 
 	jsr	Specify			;				[891A]
@@ -2723,10 +2726,6 @@ BIOSParameterBlock:			;  (see FormatDisk)
 StackProgram:				;				[9462]
 .segment "romstack"
 
-StackPage1:				;				[0101]
-.byte $00					; .  $0101
- 
-
 ;**  Read a number of pages (= 256 bytes) form the floppy
 ; in:	256-Y bytes are read 
 ; Note: only used at one place and for just two pages
@@ -2862,7 +2861,4 @@ WrDataRamDxxx:				;				[01AF]
 	stx	CPU_PORT		; restore original value	[01]
 	ldx	TempStore		; restore X			[FA]
 	rts
- 
-.end					; End of part to assemble
- 
  
