@@ -1007,8 +1007,8 @@ LoadBootExe:				;				[9294]
 	ldy	#>BootExeName
 	jsr	KERNAL_SETNAM
 	lda	#0			; LOAD
-	jmp	NewLoad
-
+;	jmp	NewLoad
+	.assert * = NewLoad, error, "LoadBoot exe must fall through into NewLoad"
 ; New LOAD routine
 ; in:	X/Y = Load address 
 ;       A   = LOAD (0)  or   VERIFY (1) 
