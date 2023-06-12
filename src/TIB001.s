@@ -2432,75 +2432,57 @@ A_90A0:
 	rts
 
 
-;**  Copy the file name to two places
 ; Strip spaces? Reverse of PadOut?
 ; in: (FNADR), FNLEN
 ; out: (FNADR), uses FdcFileName as a work area
 StripSP:				;				[90A7]
-; note: StripSP is the name according the manual but what does it mean then?
 	ldy	#0
 	ldx	#0
 
-; Copy the given file name to a temporary storage
-A_90AB:					;				[90AB]
-	lda	(FNADR),Y	;				[BB]
+:	lda	(FNADR),Y	;				[BB]
 	iny
 	cmp	#' '
+	beq	:+			; skip copying spaces	[90B8]
 
-	bne	A_90B4			; no, ->			[90B4]
-; not needed IMHO
-	beq	A_90B8			; always -> skip copying	[90B8]
-
-A_90B4:					;				[90B4]
 	sta	FdcFileName,X		;				[036C]
-
 	inx
-A_90B8:					;				[90B8]
-	cpy	FNLEN		; whole name copied?		[B7]
-	bne	A_90AB			; no, -> next character		[90AB]
+:	cpy	FNLEN			; whole name copied?		[B7]
+	bne	:--			; no, -> next character		[90AB]
 
 	lda	#0
 	sta	FdcFileName,X		; zero end the name		[036C]
 
-; And copy it again
-	ldy	FNLEN		;				[B7]
-; note: why? Y already had this length
-
-A_90C3:					;				[90C3]
-	lda	FdcFileName,Y		;				[036C]
-	beq	A_90CD			;				[90CD]
-
-	sta	(FNADR),Y	;				[BB]
-
-	dey
-	bne	A_90C3			;				[90C3]
-A_90CD:					;				[90CD]
+	stx	FNLEN
+	ldy	#0
+:	lda	FdcFileName,Y
+	sta	(FNADR),Y
+	iny
+	cpy	FNLEN
+	bne	:-
 	rts
 
 ; in (FNADR), FNLEN in 'xx.zz'
 ; out: FdcFileName in 'xx       zz ' normalized for directory entry
 PadOut:					;				[90CE]
 	ldy	#0
-:	lda	(FNADR),Y	;				[BB]
+	lda	#'$'			; '$' = directory wanted
+	cmp	(FNADR),Y
+	bne	:+
+	sta	FdcFileName
+	rts
+
+:	lda	(FNADR),Y		;				[BB]
 	cmp	#'.'			; dot?
-	beq	A_9107			; yes, -> 			[9107]
+	beq	@dotfound		; yes, -> 			[9107]
 	iny
 	cpy	FNLEN			; end of the name?		[B7]
 	bne	:-			; no, -> next character		[90D0]
 
-; Check if name start with '$' = directory wanted
 	ldy	#0
-	lda	#'$'
-	cmp	(FNADR),Y		; yes?				[BB]
-	bne	:+			; no, ->			[90E7]
-	sta	FdcFileName		;				[036C]
-	rts
-
 :	lda	FdcFileName,Y		;				[036C]
 	iny
 	cmp	#0			; end of the name found?
 	bne	:-			; no, -> next character		[90E9]
-
 	cpy	#FE_OFFS_NAME_END-1	; tenth character or more?
 	bcs	@err			; yes, -> error			[9101]
 
@@ -2517,7 +2499,7 @@ PadOut:					;				[90CE]
 	rts
 
 ; Dot found, copy extension
-A_9107:					;				[9107]
+@dotfound:					;				[9107]
 	tya
 	pha				; save Y
 
