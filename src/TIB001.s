@@ -2577,7 +2577,7 @@ ShowBytesFree:				;				[916A]
 	bne	:-
 	rts
 
-BlocksFreeTxt:	.asciiz " BLOCKS FREE."
+BlocksFreeTxt:	.byte " BLOCKS FREE.", 13, 0
 
 
 
