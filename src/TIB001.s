@@ -72,6 +72,10 @@ LoadSaveBuffer  	= $D800 ; buffer ($0400, 2 sectors) buffer for 1 cluster needed
 .import __romstack_RUN__
 .import __romstack_SIZE__
 .import __romstack_LOAD__
+; wedge
+.import DOSWedge_Install
+; for wedge
+.export NewCkout
 
 			.segment "rom8000"
 
@@ -155,12 +159,19 @@ CartInit:				;				[8087]
 	CmpBI	ErrorCode, ERR_FILE_NOT_FOUND ; file not found?
 	beq	@done			; yes, ->			[80A8]
 
-jmp	@tryagain		;				[808F]
+	jmp	@tryagain		;				[808F]
 
 ; File "BOOT.PRG" not found, return control to BASIC
-@done:	jsr	InitC64			;				[80F2]
+@done:	;jsr	InitC64			;				[80F2]
+	jsr	StopWatchdog
 	cli
-	jmp	(BasicCold)		;				[A000]
+	jsr	$E453			; cold start: BASIC vectors
+	jsr	$E3BF			; cold start: BASIC ram init
+	jsr	$E422			; cold start: startup message
+	jsr	DOSWedge_Install	; install wedge
+	LoadB	CURDEVICE, DEVNUM	; make our device default
+	LoadB	VICCTR1, $1b		; screen is visible
+	jmp	$E37B			; warm start & loop
 
 ; Error found
 @bootLoadDone:
@@ -257,16 +268,13 @@ TryAgain:				;				[8124]
 	beq	:-
 
 	CmpBI	CIA1DRB, $7F		; RUN/STOP key pressed?
-	beq	@endok;@end			; yes, -> exit Z=1		[8171]
+	beq	@end			; yes, -> exit Z=1		[8171]
 
 	dex				; wait longer?
 	bne	:--			; yes, ->			[8158]
 
 	LoadB	VICCTR1, $0B		; screen off, exit Z=0
 @end:	rts
-@endok:	inc $d020
-	sei
-	jmp	$FCEF			; continue in Kernal
 
 StartupTxt:
 	.byte $93, 13, 13

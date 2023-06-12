@@ -13,7 +13,7 @@ LD = ld65
 ASFLAGS = -t none -I inc -I . -DDEVNUM=$(DEVNUM)
 LDFLAGS = -m $(BUILD_DIR)/mapfile.map
 
-SOURCES = TIB001.s
+SOURCES = TIB001.s wedge.s
 
 INC = inc/dd001-mem.inc inc/dd001-sym.inc inc/fat12.inc inc/geosmac.inc
 

@@ -33,6 +33,13 @@ StackPage	= $0100
 
 COLOR           = $0286                        ; foreground text color
 
+; unused space: $02A7-$02FF
+Wedge_BUFFER	= $02A7	; (80)
+Wedge_tmpDEVNUM	= $02A7+80 ; (1)
+Wedge_tmp1	= $02A7+81 ; (1)
+Wedge_tmp2	= $02A7+82 ; (1)
+Wedge_tmp3	= $02A7+83 ; (1) ; $02FA
+
 NmiVector	= $0318	; pointer to NMI-interrupt ($FE47)
 ICKOUT		= $0320	; pointer to KERNAL CHKOUT routine
 ILOAD		= $0330	; pointer to KERNAL LOAD routine
@@ -186,10 +193,23 @@ SetVectorsIO2	= $FD15
 TestRAM2	= $FD50
 InitSidCIAIrq2	= $FDA3
 InitialiseVIC2	= $FF5B
+
 ; Kernal jump table (C64/128)
+KERNAL_SETMSG	= $FF90
+KERNAL_SECOND	= $FF93		; secondary address after LISTEN
+KERNAL_TKSA	= $FF96		; secondary address after TALK
+KERNAL_ACPTR	= $FFA5		; get data from the serial bus
+KERNAL_CIOUT	= $FFA8		; send data through the serial bus
+KERNAL_UNTALK	= $FFAB		; send UNTALK, talker stops talking
+KERNAL_UNLISTEN = $FFAE		; send UNLISTEN, listeners stop listening
+KERNAL_LISTEN	= $FFB1		; send LISTEN
+KERNAL_TALK	= $FFB4		; send TALK
 KERNAL_SETLFS	= $FFBA
 KERNAL_SETNAM	= $FFBD
 KERNAL_CHROUT	= $FFD2
+KERNAL_LOAD	= $FFD5
 KERNAL_STOP	= $FFE1
+KERNAL_GETIN	= $FFE4
+
 
 NmiVectorRAM	= $FFFA
