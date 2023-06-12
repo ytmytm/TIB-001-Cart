@@ -33,7 +33,7 @@ Z_FF		= $FF
 COLOR           = $0286                        ; foreground text color
 
 ; unused space: $02A7-$02FF
-Wedge_BUFFER	= $02A7	; (80)
+Wedge_BUFFER	= $02A7	; (80) ; share with FdcFILELEN, FdcFILETEM?
 Wedge_tmpDEVNUM	= $02A7+80 ; (1)
 Wedge_tmp1	= $02A7+81 ; (1)
 Wedge_tmp2	= $02A7+82 ; (1)
@@ -68,10 +68,10 @@ FdcHead		= $0348	; +12 (1)
 FdcSector	= $0349	; +13 (1)
 FdcNumber	= $034A	; +14 (1) bytes/sector during format, 2 = 512 b/s
 FdcEOT		= $034B	; +15 (1) end of track
-FdcGPL		= $034C	; +16 (1) unused; gap length? (but not for format), in docs initalized to $1b
+;FdcGPL		= $034C	; +16 (1) unused; gap length? (but not for format), in docs initalized to $1b
 FdcDTL		= $034D	; +17 (1) unused
 FdcTrack2	= $034E	; +18 (1) CYLIND; = FdcTrack and $FE  ???
-FdcTEMP		= $034F	; +19 (1) unused
+;FdcTEMP		= $034F	; +19 (1) unused
 TempStackPtr	= $0350	; +20 (1) TSTACK; temporary storage for the stack pointer
 ErrorCode	= $0351	; +21 (1) ERROR; error code, 0=ok, any other from Msg table
 FdcFormatData	= $0352	; +22 (4) FRED; block of data used only by the format command (4 bytes but overwrites the 5th - following SCLUSTER)
@@ -82,15 +82,15 @@ FdcCLUSTER_2	= $035C	; +32 (2) (3 occurences)
 FdcLENGTH	= $035E	; +34 (4) file length in bytes, lowest byte first (to FS_OFFS_SIZE)
 FdcBYTESLEFT	= $0362	; +38 (2) number of bytes to transfer via stack-routine?
 FdcNBUF		= $0364	; +40 (1) number of buffers
-FdcPASS		= $0365	; +41 (1) SaveReloc stores 1 here, not used otherwise (1 occurence)
+;FdcPASS		= $0365	; +41 (1) SaveReloc stores 1 here, not used otherwise (1 occurence)
 Counter		= $0366	; +42 (1) TRYS
-FdcOFFSET	= $0367	; +43 (1) offset to zero page where load address stayed for SAVE (3 occurences)
+;FdcOFFSET	= $0367	; +43 (1) offset to zero page where load address stayed for SAVE (3 occurences)
 FdcHOWMANY	= $0368	; +44 (1) (2 occurences)
 DirSector	= $0369	; +45 (1) DIRSEC; momentary directory sector
-FdcLOADAD	= $036A	; +46 (2) load address in LOAD/SAVE, copied from offset $10 in directory entry (2 occurences)
+;FdcLOADAD	= $036A	; +46 (2) load address in LOAD/SAVE, copied from offset $10 in directory entry (2 occurences)
 FdcFileName	= $036C	; +48 (30) FILEBUF; temp storage for file name
-FdcFILETEM	= $038A	; +78 (11) storage for 8.3 filename (2 occurences)
-FdcFILELEN	= $0395	; +89 (1) filename length? (2 occurences)
+FdcFILETEM	= $038A	; +78 (11) storage for 8.3 filename (2 occurences, only RENAME)
+FdcFILELEN	= $0395	; +89 (1) filename length? (2 occurences, only RENAME)
 
 NewILOAD	= $03FC
 NewISAVE	= $03FE
