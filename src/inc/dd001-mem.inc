@@ -29,7 +29,6 @@ Pointer		= $FB	; (2) TO, general source/target memory pointer
 Z_FD		= $FD
 J_00FE		= $FE	; vector, unused
 Z_FF		= $FF
-StackPage	= $0100
 
 COLOR           = $0286                        ; foreground text color
 
@@ -93,19 +92,13 @@ FdcFileName	= $036C	; +48 (30) FILEBUF; temp storage for file name
 FdcFILETEM	= $038A	; +78 (11) storage for 8.3 filename (2 occurences)
 FdcFILELEN	= $0395	; +89 (1) filename length? (2 occurences)
 
-A_03F8		= $03F8 ; firmware BUG: jumps here instead of NewICKOUT vector ($0336)
 NewILOAD	= $03FC
 NewISAVE	= $03FE
-VICSCN		= $0400	; screenmemory
 
-
-BasicCold	= $A000
 BasicNMI	= $A002
 VICCTR1		= $D011	; controlregister 1
 VICLINE		= $D012	; line to generate IRQ
-VICBOCL         = $D020                        ; border color
-
-ColourRAM	= $D800	; color RAM area for screen
+VICBOCL         = $D020 ; border color
 
 CIA1DRB		= $DC01	; data register port B (scan for RUN/STOP)
 
