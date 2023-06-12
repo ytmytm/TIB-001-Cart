@@ -23,10 +23,39 @@ This is:
 - 2 FATs
 - 2 sectors per cluster
 
+# DOS wedge
+
+DOS wedge comes from disassembly of DOS 5.1 wedge from 1541 DEMO DISK by Bob Fairbairn (1982-07-13)
+
+## Commands
+
+!-----!--------!
+! @   ! display status !
+! @#<number> ! change current device !
+! @$  ! display directory !
+! @Q  ! disable DOS wedge !
+! @<CBM DOS command> ! send command to the drive, i.e. `@N:EMPTY,00` or '@R:OLDNAME=NEWNAME` !
+! /<filename> ! load a file into BASIC area !
+! %<filename> ! load a file by its load address !
+! ^<filename> ! load and run BASIC program !
+! {left arrow}<filename> ! save a file !
+!-----!--------!
+
+## Directory
+
+Directory listing will show subdirectories as file type `DIR`, all other files are `PRG`.
+
+Hidden files are displayed with splat (`*PRG`).
+
+Read-only files will have lock mark (`PRG<`).
+
+## Tip
+
+After displaying directory you can quickload a file by moving cursor up next to the file you want to load and putting '/' into the first column and pressing RETURN.
+
 
 # TODO
 
-- correct and reassemble utilities, this time with jump table
 - fail fast if there is no FDD or no disk in FDD
 - display directory using tokenized BASIC to avoid own number/text routines
 	- add '<' for read-only files
@@ -36,7 +65,7 @@ This is:
 # Source code
 
 - use constants for BIOS Parameter Block and file entries
-- disassembled utilities use direct jumps to ROM, without using JUMPTABLE
+- complete FormatDisk part to include volume name and random serial number
 
 # Optimizations
 
@@ -58,6 +87,7 @@ This is:
 		- 3.5 to 3.5 with progress information and **CLEAR** information about source/target disk
                   and number of remaining switches
 		- 3.5 to IMG file on 1581 or SD2IEC and back
+- utility to explain what is not right with floppy format (i.e. 5-sector FATs with 512-byte cluster instead of expected 3-sector FAT with 1024-byte clusters).
 
 # Build system
 
