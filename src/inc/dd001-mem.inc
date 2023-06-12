@@ -173,6 +173,9 @@ Status Register 3
 DataRegister	= $DE81
 ResetFDC	= $DF80
 
+; BASIC ROM functions (C64)
+PrintIntegerXA	= $BDCD		; print integer from X/A (X=low)
+
 ; Kernal ROM functions (C64)
 InitScreenKeyb	= $E518
 PrintSearchingFor = $F5AF	; display 'SEARCHING FOR <filename>'
