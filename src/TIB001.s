@@ -120,10 +120,10 @@ _FindFile:		jmp	FindFile		; [805A] -> [8FEA]
 _WriteDirectory:	jmp	WriteDirectory		; [805D] -> [850F]
 _ReadDirectory:		jmp	ReadDirectory		; [8060] -> [8E0F]
 _SaveReloc:		jmp	SaveReloc		; [8063] -> [8472]
-_ShowSize:		jmp	ShowSize		; [8066] -> [9127]
+_ShowSize:		jmp	ShowSize		; [8066] -> [9127] XXX remove
 _ShowError:		jmp	ShowError		; [8069] -> [926C]
-_ShowBytesFree:		jmp	ShowBytesFree		; [806C] -> [916A]
-_BN2DEC:		jmp	BN2DEC			; [806F] -> [920E]
+_ShowBytesFree:		jmp	ShowBytesFree		; [806C] -> [916A] XXX remove
+_BN2DEC:		jmp	BN2DEC			; [806F] -> [920E] XXX remove
 _StripSP:		jmp	StripSP			; [8072] -> [90A7]
 _Search:		jmp	Search			; [8075] -> [9011]
 _FindBlank:		jmp	FindBlank		; [8078] -> [8F4F]
@@ -213,6 +213,7 @@ NewRoutines:				;				[80C0]
 	LoadW	ISAVE, NewSave
 	LoadW	ICKOUT, NewCkout
 
+ShowSize:				; XXX remove and shift jumptab
 	rts
 
 
@@ -2081,7 +2082,13 @@ DisplayDir:				;				[8E67]
 	bne	J_8EBA			;				[8EBA]
 
 ; this part displays volume name, without extension, with ASCII to PETSCII conversion
+	lda	#'0'
+	jsr	KERNAL_CHROUT
+	lda	#' '
+	jsr	KERNAL_CHROUT
 	lda	#$12			; RVS ON
+	jsr	KERNAL_CHROUT
+	lda	#'"'
 	jsr	KERNAL_CHROUT
 	ldy	#FE_OFFS_NAME
 :	sei
@@ -2094,11 +2101,18 @@ DisplayDir:				;				[8E67]
 	cpy	#FE_OFFS_NAME_END
 	bne	:--
 
+	lda	#'"'
+	jsr	KERNAL_CHROUT
+	lda	#' '
+	jsr	KERNAL_CHROUT
+	lda	#'D'			; disk id = 'DD'
+	jsr	KERNAL_CHROUT
+	jsr	KERNAL_CHROUT
 	lda	#$92			; RVS OFF
 	jsr	KERNAL_CHROUT
 	lda	#13			; new line
 	jsr	KERNAL_CHROUT		;				[FFD2]
-	jmp	J_8F1A			;				[8F1A]
+	jmp	J_8F1A			; next entry			[8F1A]
 
 ; this part displays file entries
 J_8EBA:					;				[8EBA]
@@ -2109,64 +2123,110 @@ A_8EC3:					;				[8EC3]
 	sei
 	jsr	RdDataRamDxxx		;				[01A0]
 	cmp	#FE_EMPTY		; empty file entry? (note: it's 0)
-	beq	A_8F46			; end of directory
-	cmp	#FE_DELETED		; deleted file entry?
-	beq	J_8F1A			; skip over it
+	bne	:+
+	jmp	A_8F46			; end of directory
+:	cmp	#FE_DELETED		; deleted file entry?
+	bne	:+
+	jmp	J_8F1A			; yes, next file entry
 
-	ldx	#FE_OFFS_EXT-1		; only the filename part
-:	sei
-	jsr	RdDataRamDxxx		;				[01A0]
+:	ldy	#FE_OFFS_SIZE+1		; skip over lowest byte
+	sei
+	jsr	RdDataRamDxxx
+	sta	LOADADDR		; low byte of block count
 	iny
-	cmp	#' '			; skip over padding spaces
-	beq	:+
-	jsr	KERNAL_CHROUT		;				[FFD2]
-:	dex
-	bpl	:--			; all 8 characters?
-; display extension dot
+	jsr	RdDataRamDxxx
+	sta	LOADADDR+1		; hi byte of block count
+	IncW	LOADADDR		; +1
+	ldx	LOADADDR
+	lda	LOADADDR+1
+	jsr	PrintIntegerXA		; print number from A/X (BASIC)
+	CmpWI	LOADADDR, 100
+	bcs	:+
+	lda	#' '			; align for numbers <100
+	jsr	KERNAL_CHROUT
+	CmpBI	LOADADDR, 10
+	bcs	:+
+	lda	#' '			; align for numbers <10
+	jsr	KERNAL_CHROUT
+
+:	lda	#' '
+	jsr	KERNAL_CHROUT
+	lda	#'"'
+	jsr	KERNAL_CHROUT
+
+	ldy	#FE_OFFS_NAME		; filename always 8.3 with padded spaces
+:	sei
+	jsr	RdDataRamDxxx
+	jsr	KERNAL_CHROUT
+	iny
+	cpy	#FE_OFFS_EXT
+	bne	:+
 	lda	#'.'
-	jsr	KERNAL_CHROUT		;				[FFD2]
+	jsr	KERNAL_CHROUT
+:	cpy	#FE_OFFS_NAME_END
+	bne	:--
 
-	ldx	#3-1			; only extension part
-:	sei
-	jsr	RdDataRamDxxx		;				[01A0]
-	iny
-	cmp	#' '			; skip over padding spaces
+	lda	#'"'
+	jsr	KERNAL_CHROUT
+
+	ldy	#FE_OFFS_ATTR
+	sei
+	jsr	RdDataRamDxxx
+	pha				; remember attribute
+	and	#FE_ATTR_HIDDEN		; hidden?
 	beq	:+
-	jsr	KERNAL_CHROUT		;				[FFD2]
-:	dex
-	bpl	:--			; all 3 characters?
-; display file size
-	jsr	ShowSize		;				[9127]
+	lda	#'*'			; show as splat file
+	.byte	$2c
+:	lda	#' '
+	jsr	KERNAL_CHROUT
 
-	lda	#13			; new line
+	pla				; attribute
+	pha				; remember again
+	and	#FE_ATTR_DIRECTORY	; directory?
+	beq	@prg
+	lda	#'D'
+	ldx	#'I'
+	ldy	#'R'
+	bne	:+
+@prg:	lda	#'P'
+	ldx	#'R'
+	ldy	#'G'
+:	jsr	KERNAL_CHROUT
+	txa
+	jsr	KERNAL_CHROUT
+	tya
+	jsr	KERNAL_CHROUT
+
+	pla				; attribute
+	and	#FE_ATTR_READ_ONLY	; read only?
+	beq	:+
+	lda	#'<'
+	jsr	KERNAL_CHROUT
+
+:	lda	#13			; new line
 	jsr	KERNAL_CHROUT		;				[FFD2]
 
 ; next file entry
-J_8F1A:					;				[8F1A]
+J_8F1A:
 	AddVW	FILE_ENTRY_SIZE, Pointer	; next directory entry
 	CmpB	Pointer+1, EndofDir	; last page of directory buffer?
-	bne	A_8EC3			; no, keep displaying files
+	beq	:+
+	jmp	A_8EC3			; no, keep displaying files
 
-	inc	Z_FF
+:	inc	Z_FF
 	CmpBI	Z_FF, DD_SECT_ROOT+DD_NUM_ROOTDIR_SECTORS ; whole directory read? (7 sectors but this counts pages, we could also count file entries up to DD_ROOT_ENTRIES)
 	bcs	A_8F46			; yes -> end			[8F46]
 
 	sei
 	jsr	ReadDirectory		;				[8E0F]
-	LoadB	VICCTR1, $1B		; screen on (why?)
+	LoadB	VICCTR1, $1B		; screen on (why? - to make directory appear on screen partially)
 	jsr	StopWatchdog		;				[8DBD]
+	jsr	KERNAL_STOP		; run/stop?
+	beq	A_8F46			; yes -> end
 	jmp	J_8EBA			; 				[8EBA]
 
 A_8F46:
-	jsr	ShowBytesFree		;				[916A]
-
-	pla				; ???? there should be nothing on stack except return addres now
-	pla				; BUG
-	pla
-	pla
-	pla
-	rts
-
+	jmp	ShowBytesFree		;				[916A]
 
 ; scan directory for available directory entry for a new file
 ; in: FdcFileName
@@ -2271,8 +2331,11 @@ FindFile:				;				[8FEA]
 
 @cont2:	CmpBI	FdcFileName, '$'	; directory wanted?
 	bne	Search			;				[9011]
-
-	jmp	DisplayDir		;				[8E67]
+	jsr	DisplayDir		;				[8E67]
+	pla				; pop caller 'NewLoad'
+	pla				; XXX this special case is not good for API anyway!!!
+	pla				; pop VICCTR1 pushed by NewLoad
+	rts
 
 
 ;**  Search for a file
@@ -2480,41 +2543,6 @@ A_9107:					;				[9107]
 :	rts
 
 
-; print 2 spaces and file size (in bytes)
-ShowSize:				;				[9127]
-	lda	#' '
-	jsr	KERNAL_CHROUT		;				[FFD2]
-	lda	#' '
-	jsr	KERNAL_CHROUT		;				[FFD2]
-
-	ldy	#FE_OFFS_SIZE
-	ldx	#0
-	sei				; XXX SEI but where is CLI?
-	jsr	RdDataRamDxxx		;				[01A0]
-	sta	FdcLENGTH		;				[035E]
-	iny
-	jsr	RdDataRamDxxx		;				[01A0]
-	sta	FdcLENGTH+1		;				[035F]
-	LoadB	FdcLENGTH+2, 0
-
-	; pass FdcLENGTH/+1/+2, convert to 5 digits in FdcNBUF
-	jsr	BN2DEC			;				[920E]
-
-	ldy	#$04			; XXX why not 5? it would be identical to ShowBytesFree
-	lda	#'0'
-:	cmp	FdcNBUF,Y		; skip leading zeros		[0364]
-	bne	:+			;				[915C]
-	dey
-	bpl	:-			;				[9150]
-	jmp	KERNAL_CHROUT		; print final 0
-
-:	lda	FdcNBUF,Y		; print actual digits		[0364]
-	jsr	KERNAL_CHROUT		;				[FFD2]
-	dey
-	bpl	:-			;				[915C]
-	rts
-
-
 ShowBytesFree:				;				[916A]
 	sei
 
@@ -2539,42 +2567,32 @@ ShowBytesFree:				;				[916A]
 	CmpBI	FdcSCLUSTER, $CB	; XXX what is $CB?
 	bne	@loop			;				[9180]
 
+	; to bytes - * $0400
 	asl	FdcLENGTH+1		;				[035F]
 	rol	FdcLENGTH+2		;				[0360]
 	asl	FdcLENGTH+1		;				[035F]
 	rol	FdcLENGTH+2		;				[0360]
-	jsr	BN2DEC			;				[920E]
+	; to blocks - * $0400 / $0100
+	ldx	FdcLENGTH+1
+	lda	FdcLENGTH+2
+	jsr	PrintIntegerXA
 
 ; print out message (XXX why not use the same code as from ShowError?)
 	ldy	#0
-:	lda	TotalBytesFreeTxt,Y
+:	lda	BlocksFreeTxt,Y
 	beq	:+
 	jsr	KERNAL_CHROUT		;				[FFD2]
 	iny
 	bne	:-
-
-; print out number from FdcNBUF
-:	ldy	#5
-	lda	#'0'
-:	cmp	FdcNBUF,Y		; XXX same as above: skip leading zeros	[0364]
-	bne	:+
-	dey
-	bpl	:-
-	jmp	KERNAL_CHROUT		; print final 0
-
-:	lda	FdcNBUF,Y		; print digits			[0364]
-	jsr	KERNAL_CHROUT		;				[FFD2]
-	dey
-	bpl	:-
 	rts
 
- 
-TotalBytesFreeTxt:	.asciiz "TOTAL BYTES FREE "
+BlocksFreeTxt:	.asciiz " BLOCKS FREE."
 
 
 ; convert 24-bit number to ASCII
 ; in: FdcLENGTH/35/36 (lo,hi,bank)
 ; out: FdcNBUF (5 digits) with leading zeros
+; XXX not used anymore
 BN2DEC:					;				[920E]
 	ldy	#5			; start with 100000
 @loop:	ldx	#0
