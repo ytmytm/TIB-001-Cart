@@ -29,17 +29,17 @@ DOS wedge comes from disassembly of DOS 5.1 wedge from 1541 DEMO DISK by Bob Fai
 
 ## Commands
 
-|-----				|--------|
-| @   				| display status |
-| @#<number> 			| change current device |
-| @$  				| display directory |
-| @Q  				| disable DOS wedge |
-| @<CBM DOS command> 		| send command to the drive, i.e. `@N:EMPTY,00` or '@R:OLDNAME=NEWNAME` |
-| /<filename> 			| load a file into BASIC area |
-| %<filename> 			| load a file by its load address |
-| ^<filename> 			| load and run BASIC program |
-| {left arrow}<filename>	| save a file |
-|-----				|--------|
+| command 				| description |
+|--------				|--------|
+|  `@`   				| display status |
+|  `@#<number>` 			| change current device |
+|  `@$`					| display directory |
+|  `@Q` 				| disable DOS wedge |
+|  `@<CBM DOS command>` 		| send command to the drive, i.e. `@N:EMPTY,00` or `@R:OLDNAME=NEWNAME` |
+|  `/<filename>` 			| load a file into BASIC area |
+|  `%<filename>` 			| load a file by its load address |
+|  `^<filename>` 			| load and run BASIC program |
+|  `{left arrow}<filename>`		| save a file |
 
 ## Directory
 
