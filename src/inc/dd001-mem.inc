@@ -85,9 +85,6 @@ FdcLOADAD	= $036A	; +46 (2) load address in LOAD/SAVE, copied from offset $10 in
 FdcFileName	= $036C	; +48 (30) FILEBUF; temp storage for file name
 FdcFILETEM	= $038A	; +78 (11) storage for 8.3 filename (2 occurences)
 FdcFILELEN	= $0395	; +89 (1) filename length? (2 occurences)
-FdcTEMP_1	= $0396	; +90 (1) unused
-FdcTEMP_2	= $0397	; +91 (1) unused
-FdcTEMP_3	= $0398 ; +92 (1) unused
 
 A_03F8		= $03F8 ; firmware BUG: jumps here instead of NewICKOUT vector ($0336)
 NewILOAD	= $03FC
