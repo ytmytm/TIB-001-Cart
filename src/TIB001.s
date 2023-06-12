@@ -225,6 +225,7 @@ NewRoutines:				;				[80C0]
 	LoadW	ICKOUT, NewCkout
 
 ShowSize:				; XXX remove and shift jumptab
+BN2DEC:					; XXX remove and shift jumptab
 	rts
 
 
@@ -2577,58 +2578,6 @@ ShowBytesFree:				;				[916A]
 	rts
 
 BlocksFreeTxt:	.asciiz " BLOCKS FREE."
-
-
-; convert 24-bit number to ASCII
-; in: FdcLENGTH/35/36 (lo,hi,bank)
-; out: FdcNBUF (5 digits) with leading zeros
-; XXX not used anymore
-BN2DEC:					;				[920E]
-	ldy	#5			; start with 100000
-@loop:	ldx	#0
-:	lda	FdcLENGTH		;				[035E]
-	sec
-	sbc	TblDecimalL,Y		;				[925A]
-	sta	FdcLENGTH		;				[035E]
-
-	lda	FdcLENGTH+1		;				[035F]
-	sbc	TblDecimalH,Y		;				[9260]
-	sta	FdcLENGTH+1		;				[035F]
-
-	lda	FdcLENGTH+2		;				[0360]
-	sbc	TblDecimalB,Y		;				[9266]
-	bcc	:+
-
-	sta	FdcLENGTH+2		;				[0360]
-	inx
-	bne	:-
-
-; Oops, we subtracted to much. add it again
-:	lda	FdcLENGTH		;				[035E]
-	clc
-	adc	TblDecimalL,Y		;				[925A]
-	sta	FdcLENGTH		;				[035E]
-
-	lda	FdcLENGTH+1		;				[035F]
-	adc	TblDecimalH,Y		;				[9260]
-	sta	FdcLENGTH+1		;				[035F]
-
-	txa
-	addv	'0'
-	sta	FdcNBUF,Y		;				[0364]
-
-	dey				; next multiple of ten?
-	bne	@loop			; yes, ->			[9210]
-
-	lda	FdcLENGTH		;				[035E]
-	addv	'0'
-	sta	FdcNBUF,Y		;				[0364]
-	rts
-
-.define TblDecimal 0, 10, 100, 1000, 10000, 100000
-TblDecimalL:	.lobytes TblDecimal
-TblDecimalH:	.hibytes TblDecimal
-TblDecimalB:	.bankbytes TblDecimal
 
 
 
