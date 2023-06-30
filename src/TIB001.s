@@ -84,12 +84,13 @@ LoadSaveBuffer  	= $D800 ; buffer ($0400, 2 sectors) buffer for 1 cluster needed
 			.assert *=$8004, error, "cartridge signature CBM80 must be at $8004"
 			.byte $C3, $C2, $CD, $38, $30		; CBM80, cartridge signature
 
-; jump table was supposed to be used by external (3rd party) programs
-; TIB's own software was assembled with direct calls to functions
-; probably from the same source code as ROM with conditional assembly
-; (e.g. filecopy contains parts of NewSave)
+			.assert *=$8009, error, "version and capabilities must be at $8009"
+			.byte "DD01"	; magic
+			.byte $12	; version 1.2
+			.byte $01	; support for 1 drive
+			.byte $02	; clusters have 2 sectors (1K allocation)
 
-			.assert *=$8009, error, "jump table must be at $8009"
+			.assert *=$8010, error, "jump table must be at $8010"
 _NewLoad:		jmp	NewLoad			; [8009] -> [86BC]
 _NewSave:		jmp	NewSave			; [800C] -> [838A]
 _FormatDisk:		jmp	FormatDisk		; [800F] -> [89DB]
