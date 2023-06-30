@@ -16,11 +16,11 @@
 ; - make directory look like CBM directory listing
 ; - show filesizes in blocks (256 bytes), same for disk free space
 ; - DOS wedge for @#<number>, @$, /, %, ^, <- commands, @Q to disable
+; - a lot of loading Pointer with (0, StartofDir), move that to a subroutine
 
 ; Remarks/TODO (YTM):
 ; - make DOS wedge commands shorter: @<number>, $, % (as load+run same as ^) 
 ; - if LOAD could stash FAT chain somewhere (up to 128 bytes) it could load files up to $FFFF
-; - a lot of loading Pointer with (0, StartofDir), move that to a subroutine
 ; - FindFile has special handler for '$' which manipulates stack for NewLoad, remove it
 ; - handle disk commands with OPEN (need to check file name)
 ; - for ICKOUT (PRINT#) check length of buffer, not just ending quote mark
@@ -199,8 +199,8 @@ CartInit:				;				[8087]
 ;**  Initialize the C64 - part 2
 ;    Note: not used anywhere else AFAIK, so why not one routine?
 InitC64_2:				;				[80B6]
-	LoadB	StartofDir, >DirectoryBuffer		; ??? start+end page number for directory sector cache, use SetSpace for that
-	LoadB	EndofDir, >(DirectoryBuffer+$0200)
+	lda	#>DirectoryBuffer
+	jsr	SetSpace
 
 ; Replace some routines by new ones
 NewRoutines:				;				[80C0]
@@ -384,8 +384,7 @@ Rename:					;				[81C0]
 
 	jsr	WaitRasterLine		;				[8851]
 
-	LoadB	Pointer, 0
-	MoveB	StartofDir, Pointer+1
+	jsr	LoadDirPointer
 
 	LoadB	NumOfSectors, 1
 	MoveB	DirSector, SectorL
@@ -831,8 +830,7 @@ WriteDirectory:				;				[850F]
 
 	LoadB	NumOfSectors, 1
 
-	MoveB	StartofDir, Pointer+1
-	LoadB	Pointer, 0
+	jsr	LoadDirPointer
 
 	MoveB	DirSector, SectorL
 	LoadB	SectorH, 0
@@ -1568,8 +1566,7 @@ FormatDiskLoop:
 	CmpBI	FdcTrack, 80		; 80 - last track?
 	bne	FormatDiskLoop
 
-	LoadB	Pointer, 0
-	MoveB	StartofDir, Pointer+1	; directory sector buffer
+	jsr	LoadDirPointer		; directory sector buffer
 
 	ldy	#0			; FAT12 identifier+BIOS Parameter Block
 :	lda	BIOSParameterBlock,Y	;				[943E]
@@ -1593,7 +1590,9 @@ FormatDiskLoop:
 	lda	#$FF
 	jsr	WrDataRamDxxx		;				[01AF]
 
-	LoadB	Pointer+1, >(FATBuffer+3*$0200)	; page $D800 in RAM? end of fat#1, start of fat#2 ($D200+3*$0200); XXX BUG should add to EndofDir instead of fixed value
+	lda	EndofDir
+	addv	6			; XXX DD_FAT_SIZE*2 or dir buffer is included? $D000+$0200+3*$0200 = $D800; beyond fat#1, start of fat#2 ($D200+3*$0200)
+	sta	Pointer+1
 
 	ldy	#0
 	lda	#$F9			; $FFF9 - FAT#2 magic?
@@ -1612,18 +1611,18 @@ FormatDiskLoop:
 	jsr	SeekTrack		;				[898A]
 	jsr	SetWatchdog		;				[8D90]
 
-	MoveB	StartofDir, Pointer+1	; set back to directory sector buffer (with boot sector data at the moment)
+	jsr	LoadDirPointer		; set Pointer back to directory sector buffer (with boot sector data at the moment)
 
-	jsr	WriteSector		;				[8BEE]
+	jsr	WriteSector		; write all these sectors at once
 	jsr	StopWatchdog		;				[8DBD]
 
 	ldx	#1
 	jsr	ClearDirectory
 
-	MoveB	StartofDir, Pointer+1	; set back to directory sector buffer, now for file entries
+	jsr	LoadDirPointer		; set back to directory sector buffer, now for file entries
 
-	ldx	#0
-	ldy	#0
+	tax				; A=0 here, after LoadDirPointer
+	tay
 :	lda	FdcFileName,X		; volume label			[036C]
 	inx
 	jsr	WrDataRamDxxx		;				[01AF]
@@ -1664,11 +1663,8 @@ FormatDiskLoop:
 ; in: X = number of pages to clear-1 (1=only dir (2 pages), 7=directory+fat, 12=directory+fat+fat2)
 ;     changes Pointer
 ClearDirectory:
-	LoadB	Pointer, 0
-	MoveB	StartofDir, Pointer+1	; directory sector buffer
-
-	lda	#0
-	tay
+	jsr	LoadDirPointer		; directory sector buffer
+	tay				; A=0 here
 :	jsr	WrDataRamDxxx		;				[01AF]
 	iny
 	bne	:-
@@ -2025,14 +2021,18 @@ CartNMI:				;				[8DE7]
 	jmp	(BasicNMI)		;				[A002]
 
 
+; set Pointer to StartofDir*$0100, return with 0 in A
+LoadDirPointer:
+	MoveB	StartofDir, Pointer+1
+	LoadB	Pointer, 0
+	rts
 
 ReadDirectory:				;				[8E0F]
 	LoadB	NumOfSectors, 1
 	LoadB	Counter, 0
 @repeat:				;				[8E18]
-	MoveB	StartofDir, Pointer+1
-	LoadB	Pointer, 0
-	sta	ErrorCode
+	jsr	LoadDirPointer
+	sta	ErrorCode		; A=0 here
 	sta	SectorH
 	MoveB	Z_FF, SectorL
 
@@ -2078,8 +2078,7 @@ DisplayDir:				;				[8E67]
 	clc
 	rts
 
-:	LoadB	Pointer, 0		; setup pointer to StartofDir page (under I/O)
-	MoveB	StartofDir, Pointer+1
+:	jsr	LoadDirPointer		; setup pointer to StartofDir page (under I/O)
 
 	ldy	#FE_OFFS_ATTR
 	sei
@@ -2122,8 +2121,7 @@ DisplayDir:				;				[8E67]
 
 ; this part displays file entries
 J_8EBA:					;				[8EBA]
-	LoadB	Pointer, 0		; almost the same code as above
-	MoveB	StartofDir, Pointer+1
+	jsr	LoadDirPointer
 A_8EC3:					;				[8EC3]
 	ldy	#FE_OFFS_NAME
 	sei
@@ -2245,8 +2243,7 @@ FindBlank:				;				[8F4F]
 
 	jsr	SetupSector		;				[8899]
 A_8F62:					;				[8F62]
-	LoadB	Pointer, 0
-	MoveB	StartofDir, Pointer+1
+	jsr	LoadDirPointer
 
 	LoadB	NumOfSectors, 1
 	asl	A			; A:=2 -> $0200 in FdcBYTESLEFT,9
@@ -2260,8 +2257,7 @@ A_8F62:					;				[8F62]
 	clc
 	rts
 
-@noerr:	LoadB	Pointer, 0
-	MoveB	StartofDir, Pointer+1
+@noerr:	jsr	LoadDirPointer
 A_8F8B:					;				[8F8B]
 	ldx	#0
 	ldy	#FE_OFFS_NAME
@@ -2356,8 +2352,7 @@ Search:					;				[9011]
 
 	jsr	SetupSector		;				[8899]
 A_9024:
-	LoadB	Pointer, 0
-	MoveB	StartofDir, Pointer+1 ; normally $D0
+	jsr	LoadDirPointer
 
 	LoadB	NumOfSectors, 1
 	asl	A			; A:=2 -> $0200 in FdcBYTESLEFT
@@ -2375,9 +2370,7 @@ A_9024:
 
 ; Read the directory under the $Dxxx area
 A_9044:					;				[9044]
-	LoadB	Pointer, 0
-	MoveB	StartofDir, Pointer+1 ; normally $D0
-; note: (Pointer) most probably points to $D000
+	jsr	LoadDirPointer
 
 	ldy	#FE_OFFS_NAME
 A_904F:					;				[904F]
