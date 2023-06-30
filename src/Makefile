@@ -23,6 +23,8 @@ PREFIXED_OBJS = $(addprefix $(BUILD_DIR)/, $(OBJS))
 FIRMWARE_ROM = $(BUILD_DIR)/tib001.bin
 REFERENCE_ROM = ../firmware/rom-8000-9FFFp.bin
 
+all: rom utils
+
 $(FIRMWARE_ROM): $(PREFIXED_OBJS) $(INC) rom.cfg
 	-mkdir -p $(BUILD_DIR)
 	$(LD) $(LDFLAGS) -C rom.cfg $(PREFIXED_OBJS) -o $@
@@ -67,8 +69,6 @@ $(BUILD_DIR)/format.prg: $(BUILD_DIR)/format.o utils/cfgbasic.cfg
 utils: $(BUILD_DIR)/format.prg $(BUILD_DIR)/dispasc.prg $(BUILD_DIR)/disphex.prg $(BUILD_DIR)/diskmon.prg $(BUILD_DIR)/diskcopy.prg
 
 rom: $(FIRMWARE_ROM)
-
-all: rom utils
 
 clean:
 	rm -rf $(BUILD_DIR)
