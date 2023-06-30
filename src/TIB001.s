@@ -1574,9 +1574,38 @@ FormatDiskLoop:
 	iny
 	cpy	#32
 	bne	:-
-	; XXX would have to set also boot signature ($AA55)
-	; XXX and file system name 'FAT12   '
-	; XXX and volume name (from FdcFileName) and randomize volume serial
+
+	ldy	#$26
+	lda	#$29			; DOS 4.1 signature
+	jsr	WrDataRamDxxx
+	iny				; randomize volume serial number
+	lda	$a2			; jiffy low
+	jsr	WrDataRamDxxx
+	iny
+	lda	VICLINE			; raster
+	jsr	WrDataRamDxxx
+	iny
+	lda	$a1			; jiffy mid
+	jsr	WrDataRamDxxx
+	iny
+	lda	$a0
+	jsr	WrDataRamDxxx		; jiffy hi
+
+	ldx	#0
+:	iny
+	lda	FdcFileName,x		; volume label
+	jsr	WrDataRamDxxx
+	inx
+	cpx	#11
+	bne	:-
+
+	ldx	#0
+:	iny
+	lda	BIOSFileSystemType,x	; filesystem type
+	jsr	WrDataRamDxxx
+	inx
+	cpx	#8
+	bne	:-
 
 	MoveB	EndofDir, Pointer+1	; FAT buffer starts right after directory buffer
 
@@ -2668,6 +2697,9 @@ BIOSParameterBlock:			;  (see FormatDisk)
 	.word DD_HEADS				; number of heads
 	.word 0					; hidden sectors
 	.word 0					; reserved
+
+BIOSFileSystemType:
+	.byte "FAT12   "			; 8 bytes
 
 ;**  Program that is meant to run in the Stack
 StackProgram:				;				[9462]
