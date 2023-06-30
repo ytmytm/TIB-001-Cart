@@ -6,15 +6,6 @@
 .include "geosmac.inc"
 
 CART_COLDSTART  := $8000                        ; cartridge cold start vector
-KERNAL_OPEN     := $FFC0                        ; Open file
-KERNAL_CLOSE    := $FFC3                        ; Close file
-KERNAL_CHKIN    := $FFC6                        ; Open channel for input
-KERNAL_CLRCHN   := $FFCC                        ; Clear I/O channels
-KERNAL_CHRIN    := $FFCF                        ; Get a character from the input channel
-KERNAL_LOAD     := $FFD5                        ; Load file
-KERNAL_GETIN    := $FFE4                        ; Get a character
-
-ResetFDC00	= $DF00				; can be changed to ResetFDC ($DF80, any address on page)
 
 DataBuffer	= $1400	; somewhere above program code, page alinged
 DataBufferLen	= $6C00 ; $1400-$8000 (could be even more $0900-$8000!)
@@ -32,7 +23,7 @@ DataBufferLen	= $6C00 ; $1400-$8000 (could be even more $0900-$8000!)
 
         ldx     #$FF
         txs
-        lda     ResetFDC00
+        lda     ResetFDC
 
 	LoadB	COLOR, 1		; white text
         LoadB	VICBOCL, 6		; blue border
@@ -137,16 +128,6 @@ ReadChunk:
         jsr     Recalibrate
         jmp     ReadChunk
 :	rts
-
-; XXX unused code
-        lda     #$4A
-        sta     DataRegister
-        jsr     Wait4DataReady
-        lda     #$00
-        sta     DataRegister
-        jsr     Wait4DataReady
-        jsr     ReadStatus
-        rts
 
 InsertSourceDisk:
         ldy     #0
@@ -272,36 +253,31 @@ TblBitClear:
         .byte   $FE,$FD,$FB,$F7,$EF,$DF,$BF,$7F
 TblBitSet:
         .byte   $01,$02,$04,$08,$10,$20,$40,$80
-StartupTxt:
-        .byte   "DISKCOPY IS COPYRIGHT TIB.PLC A"
-        .byte   "ND NO    PART OF THIS PROGRAM M"
-        .byte   "AY BE RESOLD BY   THE USER WITH"
-        .byte   "OUT PERMISION OF TIB.PLC   RUN/"
-        .byte   "STOP = ABORT TO MAIN MENU"
-        .byte   $00
+StartupTxt:     ;0123456789012345678901234567890123456789
+	.byte	$93 ; clear screen
+        .byte   "DISKCOPY IS COPYRIGHT TIB.PLC AND NO", 13
+	.byte   "PART OF THIS PROGRAM MAY BE RESOLD BY", 13
+	.byte	"THE USER WITHOUT PERMISION OF TIB.PLC", 13
+        .byte   "RUN/STOP = ABORT TO MAIN MENU",13,0
 
 SourceDiskTxt:
-        .byte   "PLACE SOURCE DISK IN DRIVE PRES"
-        .byte   "S RETURN"
-        .byte   $00
+        .asciiz	"PLACE SOURCE DISK IN DRIVE PRESS RETURN"
 
 TargetDiskTxt:
-        .byte   "PLACE DESTINATION DISK IN DRIVE"
-        .byte   " PRESS RETURN"
-        .byte   $00
+        .asciiz	"PLACE DESTINATION DISK IN DRIVE PRESS RETURN"
 
 CompletedTxt:
-        .byte   "COPY COMPLETE PRESS RETURN"
-        .byte   $00
+        .asciiz	"COPY COMPLETE PRESS RETURN"
 
-LocalSectorL:  .byte   $00
-LocalSectorH:  .byte   $00
-CountDiskSwaps:  .byte   $00
+LocalSectorL:
+	.byte	$00
+LocalSectorH:
+	.byte	$00
+CountDiskSwaps:
+	.byte	$00
 ; Y reg storage during keyboard scan
-tempY:  .byte   $00
-LocalNumOfSectors:  .byte   $00
-
-; unused junk bytes
-        .byte   "0123456789ABCDEF"
-        .byte   $00,$00
+tempY:
+	.byte	$00
+LocalNumOfSectors:
+	.byte	$00
 

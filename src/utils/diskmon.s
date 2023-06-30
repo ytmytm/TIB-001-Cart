@@ -7,13 +7,7 @@
 
 LASTSHIFT	:= $028E			; last pattern of CTRL/SHIFT/C=
 CART_COLDSTART  := $8000                        ; cartridge cold start vector
-KERNAL_OPEN     := $FFC0                        ; Open file
-KERNAL_CLOSE    := $FFC3                        ; Close file
-KERNAL_CHKIN    := $FFC6                        ; Open channel for input
-KERNAL_CLRCHN   := $FFCC                        ; Clear I/O channels
 KERNAL_CHRIN    := $FFCF                        ; Get a character from the input channel
-KERNAL_LOAD     := $FFD5                        ; Load file
-KERNAL_GETIN    := $FFE4                        ; Get a character
 
 ; somewhere above the program code, don't have to be page alligned
 DataBuffer = $4000
@@ -36,8 +30,6 @@ DataBufferLength = $0400		; 2 sectors = 4 pages
 	LoadB	CPU_PORT, $37		; ROM+I/O
 	LoadB	VICCTR1, $1B		; screen on
 
-        lda     #$93			; clear screen
-        jsr     KERNAL_CHROUT
         cli
         ldy     #0
 :	lda     StartupTxt,y		; print startup message
@@ -45,9 +37,6 @@ DataBufferLength = $0400		; 2 sectors = 4 pages
         jsr     KERNAL_CHROUT
         iny
 	bne	:-
-;102D
-:	lda     #13			; new line (XXX could be embedded in StartupTxt)
-        jsr     KERNAL_CHROUT
 
 ;1032
 MainLoop:
@@ -472,16 +461,21 @@ L1341:  cpy     InputBufLen
 L1370:  LoadB	L141D, $3F
         rts
 
-; XXX having brief info about commands here would be nice
 ; XXX does it display current sector number somewhere?
 
-StartupTxt:
-        .byte   "DISKMON  IS COPYRIGHT TIB.PLC A"
-        .byte   "ND NO    PART OF THIS PROGRAM M"
-        .byte   "AY BE RESOLD BY   THE USER WITH"
-        .byte   "OUT PERMISION OF TIB.PLC   X   "
-        .byte   "     = ABORT TO MAIN MENU"
-        .byte   $00
+StartupTxt:     ;0123456789012345678901234567890123456789
+	.byte	$93 ; clear screen
+        .byte   "DISKMON IS COPYRIGHT TIB.PLC AND NO", 13
+	.byte   "PART OF THIS PROGRAM MAY BE RESOLD BY", 13
+	.byte	"THE USER WITHOUT PERMISION OF TIB.PLC", 13
+	.byte	"+ = NEXT SECTOR",13
+	.byte	"- = PREVIOUS SECTOR",13
+	.byte	"R = READ SECTOR TO BUFFER",13
+	.byte	"W = WRITE SECTOR FROM BUFFER",13
+	.byte	"M = DUMP HEX BUFFER",13
+	.byte	": = EDIT BUFFER",13
+	.byte	"C = ?",13
+	.byte	"X = QUIT PROGRAM",13,13,0
 
 HexDigits:
         .byte   "0123456789ABCDEF"
@@ -498,41 +492,4 @@ LocalSectorH:  .byte   $00
 L1423:  .byte   $00,$00,$00,$00
 
 InputBuffer:
-; junk bytes follow
-	.byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $15,$13,$05
-        .byte   " "
-        .byte   $12,$05,$14,$15,$12,$0E
-        .byte   "     "
-        .byte   $14,$0F
-        .byte   " "
-        .byte   $05,$18,$05,$03,$15,$14,$05
-        .byte   " "
-        .byte   $01
-        .byte   "  ."
-        .byte   $05,$18,$05
-        .byte   " "
-        .byte   $06,$09,$0C,$05
-        .byte   "  $="
-        .byte   $05,$12,$01,$13,$05,$04,$00
-        .byte   "0123456789ABCDEF"
-
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
 

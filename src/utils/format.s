@@ -12,8 +12,6 @@ KERNAL_CLOSE    := $FFC3                        ; Close file
 KERNAL_CHKIN    := $FFC6                        ; Open channel for input
 KERNAL_CLRCHN   := $FFCC                        ; Clear I/O channels
 KERNAL_CHRIN    := $FFCF                        ; Get a character from the input channel
-KERNAL_LOAD     := $FFD5                        ; Load file
-KERNAL_GETIN    := $FFE4                        ; Get a character
 
 	.segment "BASICHEADER"
 
@@ -31,15 +29,13 @@ KERNAL_GETIN    := $FFE4                        ; Get a character
 	LoadB	CPU_PORT, $37		; ROM+I/O
 	LoadB	VICCTR1, $1B		; screen on
 
-        lda     #$93			; clear screen
-        jsr     KERNAL_CHROUT
         cli
         ldy     #0
 :	lda     StartupTxt,y		; print startup message
         beq     :+
         jsr     KERNAL_CHROUT
         iny
-        jmp     :-
+	bne	:-
 :
 
 DoFormatLoop:
@@ -90,17 +86,12 @@ DoFormatLoop:
 
 PromptTxt:	.asciiz	"PLEASE ENTER DISK NAME >"
 
-StartupTxt:
-		.byte	"DISK FORMAT IS COPYRIGHT TIB.PLC AND NO    PART OF THIS PROGRAM"
-		.byte	" MAY BE RESOLD BY   THE USER WITHOUT PERMISION OF TIB.PLC   *"
-		.byte	"       = ABORT TO MAIN MENU"
-		.byte   $00
+StartupTxt:     ;0123456789012345678901234567890123456789
+	.byte	$93 ; clear screen
+        .byte   "DISK FORMAT IS COPYRIGHT TIB.PLC AND NO", 13
+	.byte   "PART OF THIS PROGRAM MAY BE RESOLD BY", 13
+	.byte	"THE USER WITHOUT PERMISION OF TIB.PLC", 13
+        .byte	"* = ABORT TO MAIN MENU",13,0
 
-; junk bytes follow
-        .byte   "0123456789ABCDEF"
-
-FileNameBuf     := $0961                        ; Buffer to store file name
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00
-
+FileNameBuf:
 
