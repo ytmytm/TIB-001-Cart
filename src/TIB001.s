@@ -122,10 +122,7 @@ _FindFile:		jmp	FindFile		; [805A] -> [8FEA]
 _WriteDirectory:	jmp	WriteDirectory		; [805D] -> [850F]
 _ReadDirectory:		jmp	ReadDirectory		; [8060] -> [8E0F]
 _SaveReloc:		jmp	SaveReloc		; [8063] -> [8472]
-_ShowSize:		jmp	ShowSize		; [8066] -> [9127] XXX remove
 _ShowError:		jmp	ShowError		; [8069] -> [926C]
-_ShowBytesFree:		jmp	ShowBytesFree		; [806C] -> [916A] XXX remove
-_BN2DEC:		jmp	BN2DEC			; [806F] -> [920E] XXX remove
 _StripSP:		jmp	StripSP			; [8072] -> [90A7]
 _Search:		jmp	Search			; [8075] -> [9011]
 _FindBlank:		jmp	FindBlank		; [8078] -> [8F4F]
@@ -222,8 +219,6 @@ NewRoutines:				;				[80C0]
 	LoadW	ISAVE, NewSave
 	LoadW	ICKOUT, NewCkout
 
-ShowSize:				; XXX remove and shift jumptab
-BN2DEC:					; XXX remove and shift jumptab
 	rts
 
 
