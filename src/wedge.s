@@ -200,15 +200,7 @@ LCDAF:  jmp     L0079
 DisplayDirectory:  			; '@$'
 	CmpBI	CURDEVICE, DEVNUM	; DD-001?
 	bne 	:+
-	php
-	sei				; dir from DD-001 but prepare yourself
-	PushB	VICCTR1
-	LoadB	VICCTR1, $0b		; screen off
-	jsr	InitStackProg
 	jsr	DisplayDir		; yes, use that routine instead
-	jsr	StopWatchdog
-	PopB	VICCTR1
-	plp
 	jmp	LCE1A			; proper exit
 
 :	LoadB	SECADR, $60		; channel 0

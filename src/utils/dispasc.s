@@ -163,15 +163,7 @@ DoDisplayTextData:
         jmp     DoMainLoop
 
 DoDirectory:
-	php
-	sei
-	PushB	VICCTR1
-	LoadB	VICCTR1, $0b
-	jsr     InitStackProg
 	jsr	DisplayDir
-	jsr	StopWatchdog
-	PopB	VICCTR1
-	plp
 	clc
 	rts
 
