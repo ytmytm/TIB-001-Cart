@@ -21,7 +21,6 @@
 ; Remarks/TODO (YTM):
 ; - make DOS wedge commands shorter: @<number>, $, % (as load+run same as ^) 
 ; - if LOAD could stash FAT chain somewhere (up to 128 bytes) it could load files up to $FFFF
-; - FindFile has special handler for '$' which manipulates stack for NewLoad, remove it
 ; - handle disk commands with OPEN (need to check file name)
 ; - for ICKOUT (PRINT#) check length of buffer, not just ending quote mark
 ; - no matter the source, handle disk commands only on SA=15
@@ -1044,7 +1043,12 @@ __NewLoad:
 ; File found
 __LoadFileFound:
 	jsr	PrintLoading		; Kernal code to display 'LOADING' or 'VERIFYING'
-	sei
+	CmpBI	FdcFileName, '$'	; directory wanted?
+	bne	:+
+	PopB	VICCTR1			; yes, restore stack
+	jmp	LoadDir			; continue in special routine that maps directory entries to BASIC code into (ENDADDR)
+
+:	sei
 	ldy	#FE_OFFS_START_CLUSTER	; first cluster
 	jsr	RdDataRamDxxx		;				[01A0]
 	sta	FdcCLUSTER		;				[035A]
@@ -2300,6 +2304,225 @@ DisplayDir:
 	jmp	ShowBytesFree		;				[916A]
 
 
+
+; in: X, offset into Wedge_BUFFER
+; out: next X
+WriteDirBASICByte:
+	sta	Wedge_BUFFER,x
+	inx
+	rts
+
+; convert FAT dir entry in FdcFileName buffer into BASIC line in Wedge_BUFFER
+; in: FdcFileName (must be valid: no FE_EMPTY/FE_DELETED)
+; out: Wedge_BUFFER filled up to X (points to byte past the needed one)
+;      changes LOADADDR (don't know if that's an issue with LOAD+BASIC)
+ConvertDirEntryToBASIC:
+	ldx	#0
+
+	lda	#1
+	jsr	WriteDirBASICByte	; line link $0101, BASIC fixes that
+	jsr	WriteDirBASICByte
+
+	lda	FdcFileName+FE_OFFS_ATTR
+	cmp	#FE_ATTR_VOLUME_ID	; is that entry volume id?
+	bne	@fileentry		; no
+
+; this part displays volume name, without extension, with ASCII to PETSCII conversion
+	lda	#0			; line number
+	jsr	WriteDirBASICByte
+	jsr	WriteDirBASICByte
+	lda	#$12			; RVS ON
+	jsr	WriteDirBASICByte
+	lda	#'"'
+	jsr	WriteDirBASICByte
+
+	ldy	#FE_OFFS_NAME
+:	lda	FdcFileName,y
+	cmp	#$60			; < 'a' ?
+	bcc	:+			; yes, ->			[8EA6]
+	subv	$20			; convert to PETSCII
+:	jsr	WriteDirBASICByte
+	iny
+	cpy	#FE_OFFS_NAME_END
+	bne	:--
+
+	lda	#'"'
+	jsr	WriteDirBASICByte
+	lda	#' '
+	jsr	WriteDirBASICByte
+	lda	#'D'			; disk id = 'DD'
+	jsr	WriteDirBASICByte
+	jsr	WriteDirBASICByte
+	lda	#$92			; RVS OFF ; XXX needed?
+	jsr	WriteDirBASICByte
+	lda	#0			; end of line marker
+	jmp	WriteDirBASICByte
+
+; this part displays file entries, without ASCII to PETSCII convert
+@fileentry:
+	MoveW	FdcFileName+FE_OFFS_SIZE+1, LOADADDR ; skip over lowest byte
+	lda	FdcFileName+FE_OFFS_SIZE
+	beq	:+
+	IncW	LOADADDR		; +1 sector if lowest byte is non-zero
+:	lda	LOADADDR
+	jsr	WriteDirBASICByte
+	lda	LOADADDR+1
+	jsr	WriteDirBASICByte
+
+	CmpWI	LOADADDR, 100
+	bcs	:+
+	lda	#' '			; align for numbers <100
+	jsr	WriteDirBASICByte
+	CmpBI	LOADADDR, 10
+	bcs	:+
+	lda	#' '			; align for numbers <10
+	jsr	WriteDirBASICByte
+
+:	lda	#' '
+	jsr	WriteDirBASICByte
+	lda	#'"'
+	jsr	WriteDirBASICByte
+
+	ldy	#FE_OFFS_NAME		; filename always 8.3 with padded spaces
+:	lda	FdcFileName,y
+	jsr	WriteDirBASICByte
+	iny
+	cpy	#FE_OFFS_EXT
+	bne	:+
+	lda	#'.'
+	jsr	WriteDirBASICByte
+:	cpy	#FE_OFFS_NAME_END
+	bne	:--
+
+	lda	#'"'
+	jsr	WriteDirBASICByte
+
+	lda	FdcFileName+FE_OFFS_ATTR
+	pha				; remember attribute
+	and	#FE_ATTR_HIDDEN		; hidden?
+	beq	:+
+	lda	#'*'			; show as splat file
+	.byte	$2c
+:	lda	#' '
+	jsr	WriteDirBASICByte
+
+	pla				; attribute
+	pha				; remember again
+	and	#FE_ATTR_DIRECTORY	; directory?
+	beq	@prg
+	lda	#'D'
+	jsr	WriteDirBASICByte
+	lda	#'I'
+	jsr	WriteDirBASICByte
+	lda	#'R'
+	jsr	WriteDirBASICByte
+	bne	:+
+@prg:	lda	#'P'
+	jsr	WriteDirBASICByte
+	lda	#'R'
+	jsr	WriteDirBASICByte
+	lda	#'G'
+	jsr	WriteDirBASICByte
+
+:	pla				; attribute
+	and	#FE_ATTR_READ_ONLY	; read only?
+	beq	:+
+	lda	#'<'
+	jsr	WriteDirBASICByte
+
+:	lda	#0			; end of line marker
+	jmp	WriteDirBASICByte
+
+
+
+; almost the same as DisplayDir but for loading dir as BASIC code
+LoadDir:
+	lda	SECADR			; load address from user or file?
+	beq	:+			; from user
+	LoadW	ENDADDR, $0401		; that's VIC / 1541 default
+
+:	jsr	OpenDir
+	tax
+	beq	@loop			; error found?
+	sec				; XXX exit properly with error from LOAD
+	rts
+
+@loop:
+	jsr	GetNextDirEntry
+	tax
+	bne	@end
+
+	lda	FdcFileName+FE_OFFS_NAME
+	cmp	#FE_EMPTY		; empty file entry? (note: it's 0)
+	beq	@end			; yes, end of directory
+	cmp	#FE_DELETED		; deleted file entry?
+	beq	@loop			; yes, next file entry
+
+	jsr	ConvertDirEntryToBASIC
+	dex				; returns with X past the last written byte
+	ldy	#0
+:	lda	Wedge_BUFFER,x		; copy line
+	sta	(ENDADDR),y
+	IncW	ENDADDR
+	dex
+	bpl	:-			; go down to 0 (inclusive)
+	jmp	@loop			; next dir entry
+
+@end:	jsr	CloseDir
+	jsr	GetBlocksFree		; A(lo)/X(hi) number of free blocks
+	tay				; lo
+	txa
+	pha				; hi
+	tya
+	pha				; lo
+
+	ldy	#0
+	lda	#1			; BASIC line link $0101
+	sta	(ENDADDR),y
+	iny
+	sta	(ENDADDR),y
+	iny
+
+	pla				; blocks lo
+	sta	(ENDADDR),y
+	iny
+	pla				; blocks hi
+	sta	(ENDADDR),y
+	iny
+
+	ldx	#0
+:	lda	BlocksFreeTxt,x
+	beq	:+
+	sta	(ENDADDR),y
+	iny
+	inx
+	bne	:-
+
+	; three zeros at the end
+:	sta	(ENDADDR),y
+	iny
+	sta	(ENDADDR),y
+	iny
+	sta	(ENDADDR),y
+	iny
+	tya
+	clc
+	adc	ENDADDR
+	sta	ENDADDR
+	bcc	:+
+	inc	ENDADDR+1
+:
+
+	; the same ending as in NewLoad (XXX could start even earlier right after @done to display load/end addr)
+	LoadB	STATUSIO, 0		; no error
+	ldx	ENDADDR			; return end address in X/Y
+	ldy	ENDADDR+1
+	cli
+	clc
+	rts
+
+
+
 ; scan directory for available directory entry for a new file
 ; in: FdcFileName
 ; out: C=1 error (file exists or otherwise), C=0 ok and FdcFileName copied to that file entry
@@ -2401,11 +2624,9 @@ FindFile:				;				[8FEA]
 
 @cont2:	CmpBI	FdcFileName, '$'	; directory wanted?
 	bne	Search			;				[9011]
-	jsr	DisplayDir		;				[8E67]
-	pla				; pop caller 'NewLoad'
-	pla				; XXX this special case is not good for API anyway!!!
-	pla				; pop VICCTR1 pushed by NewLoad
+	sec				; found
 	rts
+
 
 
 ;**  Search for a file
