@@ -2545,7 +2545,12 @@ PadOut:					;				[90CE]
 :	rts
 
 
-ShowBytesFree:				;				[916A]
+
+; in: none
+; out: A(lo)/X(hi) number of free blocks
+GetBlocksFree:
+	php
+	PushW	Pointer			; preserve pointer because GetNextCluster will destroy it
 	sei
 
 	LoadW	FdcLENGTH, 0
@@ -2575,18 +2580,24 @@ ShowBytesFree:				;				[916A]
 	asl	FdcLENGTH+1		;				[035F]
 	rol	FdcLENGTH+2		;				[0360]
 	; to blocks - * $0400 / $0100
-	ldx	FdcLENGTH+1
-	lda	FdcLENGTH+2
+
+	PopW	Pointer
+	plp
+	ldx	FdcLENGTH+2		; hi
+	lda	FdcLENGTH+1		; lo
+	rts
+
+ShowBytesFree:
+	jsr	GetBlocksFree
+	; swap X/A to make X low, A hi
+	ldx	FdcLENGTH+1		; lo
+	lda	FdcLENGTH+2		; hi
 	jsr	PrintIntegerXA
 
-; print out message (XXX why not use the same code as from ShowError?)
-	ldy	#0
-:	lda	BlocksFreeTxt,Y
-	beq	:+
-	jsr	KERNAL_CHROUT		;				[FFD2]
-	iny
-	bne	:-
-	rts
+; print out message
+	lda	#<BlocksFreeTxt
+	ldy	#>BlocksFreeTxt
+	jmp	PrintString
 
 BlocksFreeTxt:	.byte " BLOCKS FREE.", 13, 0
 

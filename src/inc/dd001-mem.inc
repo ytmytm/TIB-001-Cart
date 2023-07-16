@@ -174,6 +174,7 @@ DataRegister	= $DE81
 ResetFDC	= $DF80
 
 ; BASIC ROM functions (C64)
+PrintString	= $AB1E		; print null-terminated string from Y/A (Y=hi)
 PrintIntegerXA	= $BDCD		; print integer from X/A (X=low)
 
 ; Kernal ROM functions (C64)
