@@ -493,8 +493,7 @@ __NewCkout:
 	jsr	FormatDisk		;				[89DB]
 
 @end:	php
-	lda	ErrorCode		;				[0351]
-	jsr	ShowError		;				[926C]
+	jsr	ShowErrorCode
 	LoadB	VICCTR1, $1B		; screen on
 	plp
 
@@ -807,8 +806,7 @@ J_847D:					;				[847D]
 	jsr	WriteFATs		;				[860C]
 	jsr	WriteDirectory		;				[850F]
 
-	lda	ErrorCode		;				[0351]
-	jsr	ShowError		;				[926C]
+	jsr	ShowErrorCode
 
 	LoadB	VICCTR1, $1B		; screen on
 	LoadB	STATUSIO, 0
@@ -1034,8 +1032,7 @@ __NewLoad:
 
 	PopB	VICCTR1			; restore screen status
 
-	lda	ErrorCode		;				[0351]
-	jsr	ShowError		;				[926C]
+	jsr	ShowErrorCode
 	LoadB	STATUSIO, 4		; file not found error
 	sec
 	rts
@@ -1156,8 +1153,7 @@ __LoadFileFound:
 	jsr	PrintHexWord
 	lda	#$0D
 	jsr	KERNAL_CHROUT		; new line
-	lda	ErrorCode		;				[0351]
-	jsr	ShowError		;				[926C]
+	jsr	ShowErrorCode
 
 :	LoadB	STATUSIO, 0		; no error
 	ldx	ENDADDR			; return end address in X/Y
@@ -2597,7 +2593,7 @@ BlocksFreeTxt:	.byte " BLOCKS FREE.", 13, 0
 
 
 ;**  Show an error message
-ShowErrorCode:		; XXX replace all lda ErrorCode/jsr ShowError by this
+ShowErrorCode:
 	lda	ErrorCode
 ShowError:				;				[926C]
 	ldx	MSGFLG			; direct mode?			[9D]
