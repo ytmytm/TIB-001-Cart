@@ -2611,24 +2611,18 @@ ShowError:				;				[926C]
 	bmi	:+			; yes, -> display error		[9271]
 	rts
 
-:	tax
-	lda	TblErrorMsgL,X		;				[92DC]
-	sta	Pointer		;				[FB]
-	lda	TblErrorMsgH,X		;				[92EE]
-	sta	Pointer+1		;				[FC]
-
-	jsr	StopWatchdog		;				[8DBD]
-
-	ldy	#0
-:	lda	(Pointer),Y		; end of message?		[FB]
-	beq	:+			; yes, -> exit			[9292]
-	lda	(Pointer),Y		;				[FB]
-	jsr	KERNAL_CHROUT		;				[FFD2]
-	iny
-	bne	:-
-
-:	clc
+:	pha
+	jsr	StopWatchdog
+	pla
+	tax
+	lda	TblErrorMsgH,X		;				[92DC]
+	tay
+	lda	TblErrorMsgL,X		;				[92EE]
+	jsr	PrintString
+	clc
 	rts
+
+
 
 ; in: X=offset on zero page to values
 ; changes: A, X, Y
