@@ -130,6 +130,9 @@ _PadOut:		jmp	PadOut			; [807B] -> [90CE]
 _StopWatchdog:		jmp	StopWatchdog		; [807E] -> [8DBD]
 _RdDataRamDxxx:		jmp	RdDataRamDxxx		; [8081] -> [01A0]
 _WrDataRamDxxx:		jmp	WrDataRamDxxx
+_OpenDir:		jmp	OpenDir
+_GetNextDirEntry:	jmp	GetNextDirEntry
+_CloseDir:		jmp	CloseDir
 
 ; disk copy needs more functions:
 ; WaitRasterLine
@@ -2084,28 +2087,97 @@ ReadDirectory:				;				[8E0F]
 	jmp	@repeat			;				[8E18]
 
 
-;**  Display the directory
-DisplayDir:				;				[8E67]
-	LoadB	Z_FF, DD_SECT_ROOT	; start sector of root dir
+; out: A=ErrorCode
+OpenDir:
+        php
+        sei
+        PushB   VICCTR1
+        LoadB   VICCTR1, $0b
+        jsr     InitStackProg
+        LoadB   Z_FF, DD_SECT_ROOT      ; start sector of root dir
+        jsr     ReadDirectory           ;                               [8E0F]
+        jsr     StopWatchdog            ;                               [8DBD]
+        jsr     GetFATs                 ;                               [8813]
+        PopB    VICCTR1
+        plp
+        jsr	LoadDirPointer		; setup pointer to StartofDir page (under I/O)
+        lda     ErrorCode               ; error found?                  [0351]
+        rts
 
-	jsr	ReadDirectory		;				[8E0F]
-	jsr	StopWatchdog		;				[8DBD]
-	jsr	GetFATs			;				[8813]
 
-	LoadB	VICCTR1, $1B		; screen on
+; in: A=device
+; not sure if this is necessary
+CloseDir:
+        LoadB   VICCTR1, $1B
+        jsr     StopWatchdog            ;                               [8DBD]
+        LoadB   ErrorCode, ERR_OK
+        rts
 
-	lda	ErrorCode		; error found?			[0351]
-	beq	:+
-	clc
+; copy 32 bytes of FAT dir entry to FdcFileName buffer
+; out: A=0 ok, A<>0 error or end of dir
+GetNextDirEntry:
+	lda	Pointer			; end of dir from last call
+	ora	Pointer+1
+	bne	:+
+	lda	#ERR_NO_MORE_DIRECTORY_SPACE
 	rts
 
-:	jsr	LoadDirPointer		; setup pointer to StartofDir page (under I/O)
-
-	ldy	#FE_OFFS_ATTR
+	; copy 32 bytes of FAT dir entry to FdcFileName buffer (spills into FdcFILETEM but that's not a problem)
+:	php
 	sei
-	jsr	RdDataRamDxxx		;				[01A0]
+	ldy	#0
+:	jsr	RdDataRamDxxx
+	sta	FdcFileName,y
+	iny
+	cpy	#FILE_ENTRY_SIZE
+	bne	:-
+
+	; prepare next dir entry, reset pointer to 0 if end of dir
+	AddVW	FILE_ENTRY_SIZE, Pointer	; next directory entry
+	CmpB	Pointer+1, EndofDir	; last page of directory buffer?
+	beq	:+
+	lda	ErrorCode		; no, keep going
+	plp
+	rts
+
+:	inc	Z_FF
+	CmpBI	Z_FF, DD_SECT_ROOT+DD_NUM_ROOTDIR_SECTORS ; whole directory read? (7 sectors but this counts pages, we could also count file entries up to DD_ROOT_ENTRIES)
+	bcs	:+			; yes -> end			[8F46]
+
+	sei
+	PushB	VICCTR1
+	LoadB	VICCTR1, $0b
+	jsr	ReadDirectory		;				[8E0F]
+	jsr	StopWatchdog		;				[8DBD]
+	PopB	VICCTR1
+	; reload pointer to start of buffer
+	jsr	LoadDirPointer
+	lda	ErrorCode
+	plp
+	rts
+
+:	LoadW	Pointer, 0		; mark that it's the end of dir
+	lda	ErrorCode
+	plp
+	rts
+
+
+;**  Display the directory
+DisplayDir:
+	jsr	OpenDir
+	tax
+	beq	@cont			; error found?
+	sec
+	rts
+
+@cont:	jsr	GetNextDirEntry
+	tax
+	beq	@cont2
+	jmp	@end			; error found
+
+@cont2:	lda	FdcFileName+FE_OFFS_ATTR
 	cmp	#FE_ATTR_VOLUME_ID	; is that entry volume id?
-	bne	J_8EBA			;				[8EBA]
+	bne	@loop2			; no? skip into loop without reading new entry
 
 ; this part displays volume name, without extension, with ASCII to PETSCII conversion
 	lda	#'0'
@@ -2117,8 +2189,7 @@ DisplayDir:				;				[8E67]
 	lda	#'"'
 	jsr	KERNAL_CHROUT
 	ldy	#FE_OFFS_NAME
-:	sei
-	jsr	RdDataRamDxxx		;				[01A0]
+:	lda	FdcFileName,y
 	cmp	#$60			; < 'a' ?
 	bcc	:+			; yes, ->			[8EA6]
 	subv	$20			; convert to PETSCII
@@ -2138,31 +2209,25 @@ DisplayDir:				;				[8E67]
 	jsr	KERNAL_CHROUT
 	lda	#13			; new line
 	jsr	KERNAL_CHROUT		;				[FFD2]
-	jmp	J_8F1A			; next entry			[8F1A]
 
 ; this part displays file entries
-J_8EBA:					;				[8EBA]
-	jsr	LoadDirPointer
-A_8EC3:					;				[8EC3]
-	ldy	#FE_OFFS_NAME
-	sei
-	jsr	RdDataRamDxxx		;				[01A0]
+@loop:
+	jsr	GetNextDirEntry
+	tax
+	beq	@loop2
+	jmp	@end			; error / end of dir
+@loop2:	lda	FdcFileName+FE_OFFS_NAME
 	cmp	#FE_EMPTY		; empty file entry? (note: it's 0)
 	bne	:+
-	jmp	A_8F46			; end of directory
+	jmp	@end			; yes, end of directory
 :	cmp	#FE_DELETED		; deleted file entry?
-	bne	:+
-	jmp	J_8F1A			; yes, next file entry
+	beq	@loop			; yes, next file entry
 
-:	ldy	#FE_OFFS_SIZE+1		; skip over lowest byte
-	sei
-	jsr	RdDataRamDxxx
-	sta	LOADADDR		; low byte of block count
-	iny
-	jsr	RdDataRamDxxx
-	sta	LOADADDR+1		; hi byte of block count
-	IncW	LOADADDR		; +1
-	ldx	LOADADDR
+	MoveW	FdcFileName+FE_OFFS_SIZE+1, LOADADDR ; skip over lowest byte
+	lda	FdcFileName+FE_OFFS_SIZE
+	beq	:+
+	IncW	LOADADDR		; +1 sector if lowest byte is non-zero
+:	ldx	LOADADDR
 	lda	LOADADDR+1
 	jsr	PrintIntegerXA		; print number from A/X (BASIC)
 	CmpWI	LOADADDR, 100
@@ -2180,8 +2245,7 @@ A_8EC3:					;				[8EC3]
 	jsr	KERNAL_CHROUT
 
 	ldy	#FE_OFFS_NAME		; filename always 8.3 with padded spaces
-:	sei
-	jsr	RdDataRamDxxx
+:	lda	FdcFileName,y
 	jsr	KERNAL_CHROUT
 	iny
 	cpy	#FE_OFFS_EXT
@@ -2194,9 +2258,7 @@ A_8EC3:					;				[8EC3]
 	lda	#'"'
 	jsr	KERNAL_CHROUT
 
-	ldy	#FE_OFFS_ATTR
-	sei
-	jsr	RdDataRamDxxx
+	lda	FdcFileName+FE_OFFS_ATTR
 	pha				; remember attribute
 	and	#FE_ATTR_HIDDEN		; hidden?
 	beq	:+
@@ -2230,28 +2292,13 @@ A_8EC3:					;				[8EC3]
 
 :	lda	#13			; new line
 	jsr	KERNAL_CHROUT		;				[FFD2]
-
-; next file entry
-J_8F1A:
-	AddVW	FILE_ENTRY_SIZE, Pointer	; next directory entry
-	CmpB	Pointer+1, EndofDir	; last page of directory buffer?
-	beq	:+
-	jmp	A_8EC3			; no, keep displaying files
-
-:	inc	Z_FF
-	CmpBI	Z_FF, DD_SECT_ROOT+DD_NUM_ROOTDIR_SECTORS ; whole directory read? (7 sectors but this counts pages, we could also count file entries up to DD_ROOT_ENTRIES)
-	bcs	A_8F46			; yes -> end			[8F46]
-
-	sei
-	jsr	ReadDirectory		;				[8E0F]
-	LoadB	VICCTR1, $1B		; screen on (why? - to make directory appear on screen partially)
-	jsr	StopWatchdog		;				[8DBD]
 	jsr	KERNAL_STOP		; run/stop?
-	beq	A_8F46			; yes -> end
-	jmp	J_8EBA			; 				[8EBA]
+	beq	@end			; yes -> end
+	jmp	@loop
 
-A_8F46:
+@end:	jsr	CloseDir
 	jmp	ShowBytesFree		;				[916A]
+
 
 ; scan directory for available directory entry for a new file
 ; in: FdcFileName
