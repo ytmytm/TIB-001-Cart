@@ -2355,7 +2355,11 @@ ConvertDirEntryToBASIC:
 	lda	#'D'			; disk id = 'DD'
 	jsr	WriteDirBASICByte
 	jsr	WriteDirBASICByte
-	lda	#$92			; RVS OFF ; XXX needed?
+	lda	#' '
+	jsr	WriteDirBASICByte
+	lda	#'2'			; DOS id = '2A'
+	jsr	WriteDirBASICByte
+	lda	#'A'
 	jsr	WriteDirBASICByte
 	lda	#0			; end of line marker
 	jmp	WriteDirBASICByte
