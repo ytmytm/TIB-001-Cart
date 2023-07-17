@@ -2092,6 +2092,7 @@ ReadDirectory:				;				[8E0F]
 
 
 ; out: A=ErrorCode
+; Pointer, Z_FF must not be changed until CloseDir
 OpenDir:
         php
         sei
@@ -2118,6 +2119,7 @@ CloseDir:
         rts
 
 ; copy 32 bytes of FAT dir entry to FdcFileName buffer
+; Pointer, Z_FF must not be changed until CloseDir
 ; out: A=0 ok, A<>0 error or end of dir
 GetNextDirEntry:
 	lda	Pointer			; end of dir from last call

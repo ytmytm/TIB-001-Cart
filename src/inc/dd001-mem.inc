@@ -23,12 +23,11 @@ NumOfSectors	= $F7	; (1) TTLSEC - number of sectors to read or write
 Sector		= $F8	; (word)
 SectorL		= $F8	; --- number of the sector that is wanted
 SectorH		= $F9	; -/
-TempStore	= $FA
+TempStore	= $FA	; (1) temp storage, particularly in Rd/WrDataRamDxxx
 
 Pointer		= $FB	; (2) TO, general source/target memory pointer
-Z_FD		= $FD
-J_00FE		= $FE	; vector, unused
-Z_FF		= $FF
+Z_FD		= $FD	; (2) memory pointer used in save routine
+Z_FF		= $FF	; (1) directory sector counter used in directory load/display
 
 COLOR           = $0286                        ; foreground text color
 
