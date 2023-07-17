@@ -2461,14 +2461,17 @@ LoadDir:
 	beq	@loop			; yes, next file entry
 
 	jsr	ConvertDirEntryToBASIC
-	dex				; returns with X past the last written byte
+	stx	TempStore
 	ldy	#0
-:	lda	Wedge_BUFFER,x		; copy line
+:	lda	Wedge_BUFFER,y		; copy line
 	sta	(ENDADDR),y
-	IncW	ENDADDR
-	dex
-	bpl	:-			; go down to 0 (inclusive)
-	jmp	@loop			; next dir entry
+	iny
+	cpy	TempStore
+	bne	:-
+	AddB	TempStore, ENDADDR
+	bcc	:+
+	inc	ENDADDR+1
+:	jmp	@loop			; next dir entry
 
 @end:	jsr	CloseDir
 	jsr	GetBlocksFree		; A(lo)/X(hi) number of free blocks
