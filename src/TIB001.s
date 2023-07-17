@@ -2508,8 +2508,7 @@ LoadDir:
 	sta	(ENDADDR),y
 	iny
 	tya
-	clc
-	adc	ENDADDR
+	add	ENDADDR
 	sta	ENDADDR
 	bcc	:+
 	inc	ENDADDR+1
