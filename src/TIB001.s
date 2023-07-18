@@ -2348,6 +2348,12 @@ ConvertDirEntryToBASIC:
 	cpy	#FE_OFFS_NAME_END
 	bne	:--
 
+	lda	#' '
+:	jsr	WriteDirBASICByte	; pad to 16 characters
+	iny
+	cpy	#16
+	bne	:-
+
 	lda	#'"'
 	jsr	WriteDirBASICByte
 	lda	#' '
@@ -2403,6 +2409,12 @@ ConvertDirEntryToBASIC:
 	lda	#'"'
 	jsr	WriteDirBASICByte
 
+	lda	#' '
+:	jsr	WriteDirBASICByte	; pad to 16 characters
+	iny
+	cpy	#16
+	bne	:-
+
 	lda	FdcFileName+FE_OFFS_ATTR
 	pha				; remember attribute
 	and	#FE_ATTR_HIDDEN		; hidden?
@@ -2434,9 +2446,13 @@ ConvertDirEntryToBASIC:
 	and	#FE_ATTR_READ_ONLY	; read only?
 	beq	:+
 	lda	#'<'
+	.byte	$2c
+:	lda	#' '
 	jsr	WriteDirBASICByte
+	lda	#' '
+	jsr	WriteDirBASICByte	; one extra space at the end
 
-:	lda	#0			; end of line marker
+	lda	#0			; end of line marker
 	jmp	WriteDirBASICByte
 
 
