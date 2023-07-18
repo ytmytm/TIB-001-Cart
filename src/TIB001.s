@@ -2172,138 +2172,48 @@ GetNextDirEntry:
 DisplayDir:
 	jsr	OpenDir
 	tax
-	beq	@cont			; error found?
+	beq	@loop			; error found?
 	sec
 	rts
 
-@cont:	jsr	GetNextDirEntry
-	tax
-	beq	@cont2
-	jmp	@end			; error found
-
-@cont2:	lda	FdcFileName+FE_OFFS_ATTR
-	cmp	#FE_ATTR_VOLUME_ID	; is that entry volume id?
-	bne	@loop2			; no? skip into loop without reading new entry
-
-; this part displays volume name, without extension, with ASCII to PETSCII conversion
-	lda	#'0'
-	jsr	KERNAL_CHROUT
-	lda	#' '
-	jsr	KERNAL_CHROUT
-	lda	#$12			; RVS ON
-	jsr	KERNAL_CHROUT
-	lda	#'"'
-	jsr	KERNAL_CHROUT
-	ldy	#FE_OFFS_NAME
-:	lda	FdcFileName,y
-	cmp	#$60			; < 'a' ?
-	bcc	:+			; yes, ->			[8EA6]
-	subv	$20			; convert to PETSCII
-:	jsr	KERNAL_CHROUT		;				[FFD2]
-	iny
-	cpy	#FE_OFFS_NAME_END
-	bne	:--
-
-	lda	#'"'
-	jsr	KERNAL_CHROUT
-	lda	#' '
-	jsr	KERNAL_CHROUT
-	lda	#'D'			; disk id = 'DD'
-	jsr	KERNAL_CHROUT
-	jsr	KERNAL_CHROUT
-	lda	#$92			; RVS OFF
-	jsr	KERNAL_CHROUT
-	lda	#13			; new line
-	jsr	KERNAL_CHROUT		;				[FFD2]
-
-; this part displays file entries
 @loop:
 	jsr	GetNextDirEntry
 	tax
-	beq	@loop2
-	jmp	@end			; error / end of dir
-@loop2:	lda	FdcFileName+FE_OFFS_NAME
+	bne	@end
+
+	lda	FdcFileName+FE_OFFS_NAME
 	cmp	#FE_EMPTY		; empty file entry? (note: it's 0)
-	bne	:+
-	jmp	@end			; yes, end of directory
-:	cmp	#FE_DELETED		; deleted file entry?
+	beq	@end			; yes, end of directory
+	cmp	#FE_DELETED		; deleted file entry?
 	beq	@loop			; yes, next file entry
 
-	MoveW	FdcFileName+FE_OFFS_SIZE+1, LOADADDR ; skip over lowest byte
-	lda	FdcFileName+FE_OFFS_SIZE
+	jsr	ConvertDirEntryToBASIC
+	stx	TempStore
+
+	ldx	Wedge_BUFFER+2		; filesize lo
+	lda	Wedge_BUFFER+3
+	jsr	PrintIntegerXA
+	lda	#' '
+	jsr	KERNAL_CHROUT
+
+	ldy	#4
+:	lda	Wedge_BUFFER,y		; print out until end of line marker
 	beq	:+
-	IncW	LOADADDR		; +1 sector if lowest byte is non-zero
-:	ldx	LOADADDR
-	lda	LOADADDR+1
-	jsr	PrintIntegerXA		; print number from A/X (BASIC)
-	CmpWI	LOADADDR, 100
-	bcs	:+
-	lda	#' '			; align for numbers <100
-	jsr	KERNAL_CHROUT
-	CmpBI	LOADADDR, 10
-	bcs	:+
-	lda	#' '			; align for numbers <10
-	jsr	KERNAL_CHROUT
-
-:	lda	#' '
-	jsr	KERNAL_CHROUT
-	lda	#'"'
-	jsr	KERNAL_CHROUT
-
-	ldy	#FE_OFFS_NAME		; filename always 8.3 with padded spaces
-:	lda	FdcFileName,y
 	jsr	KERNAL_CHROUT
 	iny
-	cpy	#FE_OFFS_EXT
-	bne	:+
-	lda	#'.'
-	jsr	KERNAL_CHROUT
-:	cpy	#FE_OFFS_NAME_END
-	bne	:--
+	cpy	TempStore
+	bne	:-
 
-	lda	#'"'
+:	lda	#$92			; RVS OFF (needed only once)
 	jsr	KERNAL_CHROUT
-
-	lda	FdcFileName+FE_OFFS_ATTR
-	pha				; remember attribute
-	and	#FE_ATTR_HIDDEN		; hidden?
-	beq	:+
-	lda	#'*'			; show as splat file
-	.byte	$2c
-:	lda	#' '
+	lda	#13			; new line
 	jsr	KERNAL_CHROUT
-
-	pla				; attribute
-	pha				; remember again
-	and	#FE_ATTR_DIRECTORY	; directory?
-	beq	@prg
-	lda	#'D'
-	ldx	#'I'
-	ldy	#'R'
-	bne	:+
-@prg:	lda	#'P'
-	ldx	#'R'
-	ldy	#'G'
-:	jsr	KERNAL_CHROUT
-	txa
-	jsr	KERNAL_CHROUT
-	tya
-	jsr	KERNAL_CHROUT
-
-	pla				; attribute
-	and	#FE_ATTR_READ_ONLY	; read only?
-	beq	:+
-	lda	#'<'
-	jsr	KERNAL_CHROUT
-
-:	lda	#13			; new line
-	jsr	KERNAL_CHROUT		;				[FFD2]
 	jsr	KERNAL_STOP		; run/stop?
 	beq	@end			; yes -> end
 	jmp	@loop
 
 @end:	jsr	CloseDir
-	jmp	ShowBytesFree		;				[916A]
+	jmp	ShowBytesFree
 
 
 
@@ -2412,7 +2322,7 @@ ConvertDirEntryToBASIC:
 	lda	#' '
 :	jsr	WriteDirBASICByte	; pad to 16 characters
 	iny
-	cpy	#16
+	cpy	#15			; 15 not 16 because there is a dot already in the name
 	bne	:-
 
 	lda	FdcFileName+FE_OFFS_ATTR
