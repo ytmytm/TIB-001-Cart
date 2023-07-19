@@ -17,6 +17,18 @@ FNADR		= $BB	; pointer to string with filename
 STARTADDR	= $C1	; vector, start address for saving programss
 LOADADDR	= $C3	; vector, load address for program (Kernal), keep it unchanged
 
+; BASIC FAC#2
+FdcLENGTH	= $69	; (4) file length in bytes, lowest byte first (to FS_OFFS_SIZE)
+FdcBYTESLEFT	= $6D	; (2) number of bytes to transfer via stack-routine?
+
+; Used a lot in ROM, KERNAL uses them for tape routines
+FdcCLUSTER	= $9B	; (2)
+ErrorCode	= $9E	; (1) ERROR; error code, 0=ok, any other from Msg table
+
+FdcNBUF		= $BD	; (1) number of buffers
+StartofDir	= $BE	; (1)
+EndofDir	= $BF	; (1)
+
 ; The used RS232 variables:
 NumOfSectors	= $AB	; (1) TTLSEC - number of sectors to read or write
 Sector		= $A9	; (word)
@@ -30,68 +42,10 @@ Z_FF		= $A7	; (1) directory sector counter used in directory load/display
 
 COLOR           = $0286                        ; foreground text color
 
-; unused space: $02A7-$02FF
-Wedge_BUFFER	= $02A7	; (80) ; share with FdcFILELEN, FdcFILETEM?
-Wedge_tmpDEVNUM	= $02A7+80 ; (1)
-Wedge_tmp1	= $02A7+81 ; (1)
-Wedge_tmp2	= $02A7+82 ; (1)
-Wedge_tmp3	= $02A7+83 ; (1) ; $02FA
-
 NmiVector	= $0318	; pointer to NMI-interrupt ($FE47)
 ICKOUT		= $0320	; pointer to KERNAL CHKOUT routine
 ILOAD		= $0330	; pointer to KERNAL LOAD routine
 ISAVE		= $0332	; pointer to KERNAL SAVE routine
-
-; $0334-$033B = original free area = 8 bytes
-StartofDir	= $0334
-EndofDir	= $0335
-NewICKOUT	= $0336
-NewNMI		= $0338
-
-
-;TapeBuffer	= $033C	; cassette buffer
-FdcST0		= $033C ; +0 (1)	Status Register 0
-FdcST1		= $033D ; +1 (1)	Status Register 1
-FdcST2		= $033E ; +2 (1)	Status Register 2
-FdcC		= $033F ; +3 (1)	Cylinder
-FdcH		= $0340 ; +4 (1)	Head
-FdcR		= $0341 ; +5 (1)	Record = sector
-FdcN		= $0342 ; +6 (1)	Number of data bytes written into a sector
-FdcST3		= $0343 ; +7 (1)	Status Register 3
-FdcPCN		= $0344	; +8 (1)	present cylinder = track
-FdcCommand	= $0345 ; +9 (1)
-FdcHSEL		= $0346	; +10 (1) head, shifted twice, needed for FDC commands
-FdcTrack	= $0347	; +11 (1)
-FdcHead		= $0348	; +12 (1)
-FdcSector	= $0349	; +13 (1)
-FdcNumber	= $034A	; +14 (1) bytes/sector during format, 2 = 512 b/s
-FdcEOT		= $034B	; +15 (1) end of track
-;FdcGPL		= $034C	; +16 (1) unused; gap length? (but not for format), in docs initalized to $1b
-FdcDTL		= $034D	; +17 (1) unused
-FdcTrack2	= $034E	; +18 (1) CYLIND; = FdcTrack and $FE  ???
-;FdcTEMP		= $034F	; +19 (1) unused
-TempStackPtr	= $0350	; +20 (1) TSTACK; temporary storage for the stack pointer
-ErrorCode	= $0351	; +21 (1) ERROR; error code, 0=ok, any other from Msg table
-FdcFormatData	= $0352	; +22 (4) FRED; block of data used only by the format command (4 bytes but overwrites the 5th - following SCLUSTER)
-FdcSCLUSTER	= $0356	; +26 (2)
-FdcLCLUSTER	= $0358	; +28 (2)
-FdcCLUSTER	= $035A	; +30 (2) (lots of occurences, move to zp?)
-FdcCLUSTER_2	= $035C	; +32 (2) (3 occurences)
-FdcLENGTH	= $035E	; +34 (4) file length in bytes, lowest byte first (to FS_OFFS_SIZE)
-FdcBYTESLEFT	= $0362	; +38 (2) number of bytes to transfer via stack-routine?
-FdcNBUF		= $0364	; +40 (1) number of buffers
-;FdcPASS		= $0365	; +41 (1) SaveReloc stores 1 here, not used otherwise (1 occurence)
-Counter		= $0366	; +42 (1) TRYS
-;FdcOFFSET	= $0367	; +43 (1) offset to zero page where load address stayed for SAVE (3 occurences)
-FdcHOWMANY	= $0368	; +44 (1) (2 occurences)
-DirSector	= $0369	; +45 (1) DIRSEC; momentary directory sector
-;FdcLOADAD	= $036A	; +46 (2) load address in LOAD/SAVE, copied from offset $10 in directory entry (2 occurences)
-FdcFileName	= $036C	; +48 (30) FILEBUF; temp storage for file name
-FdcFILETEM	= $038A	; +78 (11) storage for 8.3 filename (2 occurences, only RENAME)
-FdcFILELEN	= $0395	; +89 (1) filename length? (2 occurences, only RENAME)
-
-NewILOAD	= $03FC
-NewISAVE	= $03FE
 
 BasicNMI	= $A002
 VICCTR1		= $D011	; controlregister 1

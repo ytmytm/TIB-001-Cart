@@ -14,6 +14,12 @@ LE386           := $E386
 LF3D5           := $F3D5
 LF642           := $F642
 
+.import Wedge_BUFFER
+.import Wedge_tmpDEVNUM
+.import Wedge_tmp1
+.import Wedge_tmp2
+.import Wedge_tmp3
+
 .import NewCkout
 
 .export	DOSWedge_Install

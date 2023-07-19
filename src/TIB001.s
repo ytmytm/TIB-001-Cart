@@ -59,6 +59,60 @@ DEVNUM = 7
 ; DD-001 memory locations and defines
 .include "dd001-mem.inc"
 
+.export Wedge_BUFFER
+.export Wedge_tmpDEVNUM
+.export Wedge_tmp1
+.export Wedge_tmp2
+.export Wedge_tmp3
+
+		.segment "ram0200"
+
+; unused space: $02A7-$02FF
+Wedge_BUFFER:	.res 80	; (80) ; share with FdcFILELEN, FdcFILETEM?
+Wedge_tmpDEVNUM: .res 1	; (1)
+Wedge_tmp1:	.res 1	; (1)
+Wedge_tmp2:	.res 1	; (1)
+Wedge_tmp3:	.res 1	; (1)
+
+
+		.segment "ram0300"
+
+NewILOAD:	.res 2
+NewISAVE:	.res 2
+NewICKOUT:	.res 2
+NewNMI:		.res 2
+
+FdcST0:		.res 1 ; +0 (1)	Status Register 0
+FdcST1:		.res 1 ; +1 (1)	Status Register 1
+FdcST2:		.res 1 ; +2 (1)	Status Register 2
+FdcC:		.res 1 ; +3 (1)	Cylinder
+FdcH:		.res 1 ; +4 (1)	Head
+FdcR:		.res 1 ; +5 (1)	Record = sector
+FdcN:		.res 1 ; +6 (1)	Number of data bytes written into a sector
+FdcST3:		.res 1 ; +7 (1)	Status Register 3
+FdcPCN:		.res 1 ; +8 (1)	present cylinder = track
+FdcCommand:	.res 1 ; +9 (1)
+FdcHSEL:	.res 1	; +10 (1) head, shifted twice, needed for FDC commands
+FdcTrack:	.res 1	; +11 (1)
+FdcHead:	.res 1	; +12 (1)
+FdcSector:	.res 1	; +13 (1)
+FdcNumber:	.res 1	; +14 (1) bytes/sector during format, 2 = 512 b/s
+FdcEOT:		.res 1	; +15 (1) end of track
+FdcTrack2:	.res 1	; +18 (1) CYLIND; = FdcTrack and $FE  ???
+TempStackPtr:	.res 1	; +20 (1) TSTACK; temporary storage for the stack pointer
+FdcFormatData:	.res 4	; +22 (4) FRED; block of data used only by the format command (4 bytes but overwrites the 5th - following SCLUSTER)
+FdcSCLUSTER:	.res 2	; +26 (2)
+FdcLCLUSTER:	.res 2	; +28 (2)
+FdcCLUSTER_2:	.res 2	; +32 (2) (3 occurences)
+Counter:	.res 1	; +42 (1) TRYS
+FdcHOWMANY:	.res 1	; +44 (1) (2 occurences)
+DirSector:	.res 1	; +45 (1) DIRSEC; momentary directory sector
+FdcFileName:	.res 30	; +48 (30) FILEBUF; temp storage for file name
+FdcFILETEM:	.res 11	; +78 (11) storage for 8.3 filename (2 occurences, only RENAME)
+FdcFILELEN:	.res 1	; +89 (1) filename length? (2 occurences, only RENAME)
+
+
+
 DirectoryBuffer		= $D000	; buffer ($0200, 1 sector) for directory operations (FAT operations will take EndofDir, so expect this area to be overwritten)
 FATBuffer		= $D200	; buffer ($0600, 3 sectors) for one whole FAT (set implicitly by taking EndofDir as start page)
 ; (note: if DirBuffer is put after FAT we could reduce this by 6 pages - only FAT needs to stay in memory)
