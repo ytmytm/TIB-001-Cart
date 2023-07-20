@@ -180,7 +180,7 @@ _ReadDirectory:		jmp	ReadDirectory		; [8060] -> [8E0F]
 _SaveReloc:		jmp	SaveReloc		; [8063] -> [8472]
 _ShowError:		jmp	ShowError		; [8069] -> [926C]
 _StripSP:		jmp	StripSP			; [8072] -> [90A7]
-_Search:		jmp	Search			; [8075] -> [9011]
+_Search:		jmp	Search			; [8075] -> [9011] ; XXX Remove from jumptable - FindFile should be public
 _FindBlank:		jmp	FindBlank		; [8078] -> [8F4F]
 _PadOut:		jmp	PadOut			; [807B] -> [90CE]
 _StopWatchdog:		jmp	StopWatchdog		; [807E] -> [8DBD]
@@ -345,6 +345,11 @@ StartupTxt:
 	.byte 0
  
 ;**  Rename a file 
+; in: (FNADR): [oldname]=[newname]"
+; in: FNLEN offset to '=' character (?)
+; in: FdcFILELEN offset to '"' character (?)
+; changes: FdcFileName, FdcFILETEM
+; out: ErrorCode, C=0 OK, C=1 ERROR
 Rename:					;				[81C0]
 	jsr	InitStackProg		;				[8D5A]
 	jsr	WaitRasterLine		;				[8851]
@@ -2592,6 +2597,9 @@ A_8FD3:					; found empty entry		[8FD3]
 
 
 ;**  Check the file name
+; in: (FNADR), FNLEN
+; changes FdcFileName
+; out: C=1 file found, C=0 file not found, and another error in ErrorCode
 FindFile:				;				[8FEA]
 	lda	FNLEN		; file name present?		[B7]
 	bne	@cont
@@ -2619,7 +2627,7 @@ FindFile:				;				[8FEA]
 
 ;**  Search for a file
 ; in: FdcFileName
-; out: C=0 file found, C=1 file not found, and another error can be in ErrorCode
+; out: C=1 file found, C=0 file not found, and another error can be in ErrorCode
 Search:					;				[9011]
 	LoadB	FdcNBUF, DD_NUM_ROOTDIR_SECTORS-1	; why not 7?
 
