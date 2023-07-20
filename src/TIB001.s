@@ -180,7 +180,6 @@ _ReadDirectory:		jmp	ReadDirectory		; [8060] -> [8E0F]
 _SaveReloc:		jmp	SaveReloc		; [8063] -> [8472]
 _ShowError:		jmp	ShowError		; [8069] -> [926C]
 _StripSP:		jmp	StripSP			; [8072] -> [90A7]
-_Search:		jmp	Search			; [8075] -> [9011] ; XXX Remove from jumptable - FindFile should be public
 _FindBlank:		jmp	FindBlank		; [8078] -> [8F4F]
 _PadOut:		jmp	PadOut			; [807B] -> [90CE]
 _StopWatchdog:		jmp	StopWatchdog		; [807E] -> [8DBD]
