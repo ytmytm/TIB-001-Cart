@@ -22,6 +22,7 @@ LF642           := $F642
 
 .import NewCkout
 
+.export DOSWedge_Reset 
 .export	DOSWedge_Install
 
 		.segment "wedge"
@@ -57,12 +58,8 @@ StartupTxt:
         .byte   "(C) 1982 COMMODORE BUSINESS MACHINES"
         .byte   $0D,$00
 
-DOSWedge_Install:
-	ldx     #2
-:	lda     patchCode,x
-        sta     $7C,x
-        dex
-        bpl     :-
+	; display startup message after RESET
+DOSWedge_Reset:
 	MoveB	CURDEVICE, Wedge_tmpDEVNUM
         ldx     #0
 :	lda     StartupTxt,x
@@ -70,7 +67,14 @@ DOSWedge_Install:
         jsr     KERNAL_CHROUT
         inx
         bne     :-
-:	rts
+:	; fall through - restore patch after RESET/RESTORE
+DOSWedge_Install:
+	ldx     #2
+:	lda     patchCode,x
+        sta     $7C,x
+        dex
+        bpl     :-
+	rts
 
 patchCode:
         jmp     RunPatch

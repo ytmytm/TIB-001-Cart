@@ -123,6 +123,7 @@ LoadSaveBuffer  	= $D800 ; buffer ($0400, 2 sectors) buffer for 1 cluster needed
 .import __romstack_SIZE__
 .import __romstack_LOAD__
 ; wedge
+.import DOSWedge_Reset
 .import DOSWedge_Install
 ; for wedge
 .export NewCkout
@@ -219,9 +220,9 @@ CartInit:				;				[8087]
 	jsr	$E453			; cold start: BASIC vectors
 	jsr	$E3BF			; cold start: BASIC ram init
 	jsr	$E422			; cold start: startup message
-	jsr	DOSWedge_Install	; install wedge
 	LoadB	CURDEVICE, DEVNUM	; make our device default
 	LoadB	VICCTR1, $1b		; screen is visible
+	jsr	DOSWedge_Reset		; install wedge
 	jmp	$E37B			; warm start & loop
 
 ; Error found
@@ -275,7 +276,7 @@ NewRoutines:				;				[80C0]
 	LoadW	ISAVE, NewSave
 	LoadW	ICKOUT, NewCkout
 
-	rts
+	jmp	DOSWedge_Install	; install wedge patch
 
 
 ;**  Initialize the C64 - part 1
