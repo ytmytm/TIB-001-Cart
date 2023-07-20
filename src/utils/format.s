@@ -7,10 +7,6 @@
 
 NDX             := $00C6                        ; Number of characters in keyboard queue
 CART_COLDSTART  := $8000                        ; cartridge cold start vector
-KERNAL_OPEN     := $FFC0                        ; Open file
-KERNAL_CLOSE    := $FFC3                        ; Close file
-KERNAL_CHKIN    := $FFC6                        ; Open channel for input
-KERNAL_CLRCHN   := $FFCC                        ; Clear I/O channels
 KERNAL_CHRIN    := $FFCF                        ; Get a character from the input channel
 
 	.segment "BASICHEADER"
@@ -30,29 +26,18 @@ KERNAL_CHRIN    := $FFCF                        ; Get a character from the input
 	LoadB	VICCTR1, $1B		; screen on
 
         cli
-        ldy     #0
-:	lda     StartupTxt,y		; print startup message
-        beq     :+
-        jsr     KERNAL_CHROUT
-        iny
-	bne	:-
-:
+	lda	#<StartupTxt
+	ldy	#>StartupTxt
+	jsr	PrintString		; print startup message
 
 DoFormatLoop:
 	LoadB	NDX, 0			; clear keyboard queue
-        lda     #13			; new line
-        jsr     KERNAL_CHROUT
-        ldy     #0
-:	lda     PromptTxt,y
-        beq     :+
-        jsr     KERNAL_CHROUT
-        iny
-        bne     :-
 
-        lda     #$0D			; XXX this is never reached
-        jsr     KERNAL_CHROUT
+	lda	#<PromptTxt
+	ldy	#>PromptTxt
+	jsr	PrintString
 
-:	lda     #$FF
+	lda     #$FF
 :	cmp     VICLINE			; wait for raster (why?)
         bne     :-
 
@@ -78,13 +63,12 @@ DoFormatLoop:
         bne     :+
         jmp     (CART_COLDSTART)	; RESET
 
-:	LoadB	FNADR, <FileNameBuf	; call API function
-	LoadB	FNADR+1,>FileNameBuf
-        jsr     FormatDisk
+:	LoadW	FNADR, FileNameBuf
+        jsr     FormatDisk		; call API function
         jmp     DoFormatLoop
 
 
-PromptTxt:	.asciiz	"PLEASE ENTER DISK NAME >"
+PromptTxt:	.byte	13,"PLEASE ENTER DISK NAME >",0
 
 StartupTxt:     ;0123456789012345678901234567890123456789
 	.byte	$93 ; clear screen
