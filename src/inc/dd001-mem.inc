@@ -26,8 +26,6 @@ FdcCLUSTER	= $9B	; (2)
 ErrorCode	= $9E	; (1) ERROR; error code, 0=ok, any other from Msg table
 
 FdcNBUF		= $BD	; (1) number of buffers
-StartofDir	= $BE	; (1)
-EndofDir	= $BF	; (1)
 
 ; The used RS232 variables:
 NumOfSectors	= $AB	; (1) TTLSEC - number of sectors to read or write

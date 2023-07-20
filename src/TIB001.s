@@ -111,6 +111,8 @@ FdcFileName:	.res 30	; +48 (30) FILEBUF; temp storage for file name
 FdcFILETEM:	.res 11	; +78 (11) storage for 8.3 filename (2 occurences, only RENAME)
 FdcFILELEN:	.res 1	; +89 (1) filename length? (2 occurences, only RENAME)
 
+StartofDir:	.res 1
+EndofDir:	.res 1
 
 
 DirectoryBuffer		= $D000	; buffer ($0200, 1 sector) for directory operations (FAT operations will take EndofDir, so expect this area to be overwritten)

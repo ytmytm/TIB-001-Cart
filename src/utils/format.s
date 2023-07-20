@@ -21,8 +21,8 @@ KERNAL_CHRIN    := $FFCF                        ; Get a character from the input
 
 	.segment "CODE"
 
-	LoadB	StartofDir, $C0		; buffer?
-	LoadB	EndofDir, $C2		; buffer?
+	lda	#$C0			; buffer in $C000-$C1FF, but why?
+	jsr	SetSpace		; set StartofDir/EndofDir
 	LoadB	COLOR, 1		; white text
 	LoadB	VICBOCL, 6		; blue border
 	LoadB	MSGFLG, $80		; Kernal messages on(?) (direct mode)
