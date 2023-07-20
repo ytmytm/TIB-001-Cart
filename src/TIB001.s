@@ -1544,30 +1544,27 @@ Delay41ms:				;				[89D0]
 	rts
 
 
+; format a disk in FAT12 filesystem with 1024 (2 sectors) cluster size
+; in: (FNADDR) volume name, ends with '"' (copied from CKOUT)
 FormatDisk:				;				[89DB]
-	sei
-	jsr	WaitRasterLine		; this could be done later
-
 	ldy	#0
-:	lda	(FNADR),Y	;				[BB]
-	cmp	#'"'
+:	lda	(FNADR),Y		;				[BB]
+	cmp	#'"'			; stop at '"' or 11th character
 	beq	:+
 	sta	FdcFileName,Y		;				[036C]
 	iny
-	cpy	#$0B
+	cpy	#FE_OFFS_NAME_END
 	bne	:-
-	sec
-	rts
 
-:	cpy	#$0B
+:	cpy	#FE_OFFS_NAME_END	; pad with spaces until 11 characters
 	beq	:+
-
 	lda	#' '
 	sta	FdcFileName,Y		;				[036C]
 	iny
 	bne	:-
 
-:	jsr	GetlengthFName		;				[8336]
+:	sei
+	jsr	WaitRasterLine
 	jsr	InitStackProg		;				[8D5A]
 
 	bbrf	6, FdcST3, :+		; bit 6=0?, yes -> jump
