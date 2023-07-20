@@ -360,14 +360,9 @@ Rename:					;				[81C0]
 
 :	ldy	FNLEN		;				[B7]
 ; ??? what is going on here ???
-	lda	(FNADR),Y	;				[BB]
-	lda	#0
-	lda	#0			; ??? again?
 	clc
-
 	cpy	FdcFILELEN		;				[0395]
 	bne	:+			;				[81DF]
-
 	lda	#ERR_FILE_NOT_FOUND
 	jmp	ShowError		;				[926C]
 
