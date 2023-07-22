@@ -252,16 +252,26 @@ CartInit:				;				[8087]
 	jsr	$A68E			; set current character pointer to start of basic - 1
 	jmp	$A7AE			; run
 
+;**  Initialize the C64
+InitC64:				;				[80F2]
+	jsr	InitSidCIAIrq2		;				[FDA3]
+	jsr	TestRAM2		;				[FD50]
+	jsr	SetVectorsIO2		;				[FD15]
+	jsr	InitialiseVIC2		;				[FF5B]
 
-;**  Initialize the C64 - part 2
-;    Note: not used anywhere else AFAIK, so why not one routine?
-InitC64_2:				;				[80B6]
-	lda	#>DirectoryBuffer
-	jsr	SetSpace
+	; store original vectors of intercepted routines
+	MoveW	ILOAD, NewILOAD
+	MoveW	ISAVE, NewISAVE
+	MoveW	ICKOUT, NewICKOUT
+	MoveW	IOPEN, NewIOPEN
+	MoveW	NmiVector, NewNMI
 
-; Replace some routines by new ones
+; Replace some routines by new ones (also called from NMI via RUN/STOP+RESTORE)
 NewRoutines:				;				[80C0]
 	lda	ResetFDC		; reset the FDC			[DF80]
+
+	lda	#>DirectoryBuffer
+	jsr	SetSpace
 
 ; Use the NMI routine of the cartridge as first routine for the C64
 	lda	#<CartNMI
@@ -279,26 +289,9 @@ NewRoutines:				;				[80C0]
 	LoadW	ICKOUT, NewCkout
 	LoadW	IOPEN, NewOpen
 
-	jmp	DOSWedge_Install	; install wedge patch
-
-
-;**  Initialize the C64 - part 1
-InitC64:				;				[80F2]
-	jsr	InitSidCIAIrq2		;				[FDA3]
-	jsr	TestRAM2		;				[FD50]
-	jsr	SetVectorsIO2		;				[FD15]
-	jsr	InitialiseVIC2		;				[FF5B]
-
-	LoadB	VICBOCL, 15		; light gray border
 	LoadB	COLOR, 1		; white on blue	
 
-	; store original vectors of intercepted routines
-	MoveW	ILOAD, NewILOAD
-	MoveW	ISAVE, NewISAVE
-	MoveW	ICKOUT, NewICKOUT
-	MoveW	NmiVector, NewNMI
-
-	jmp	InitC64_2		; part 2			[80B6]
+	jmp	DOSWedge_Install	; install wedge patch
 
 
 ;**  File "BOOT.EXE" has been found
@@ -2134,6 +2127,7 @@ CartNMI:				;				[8DE7]
 
 :	jsr	InitSidCIAIrq2		;				[FDA3]
 	jsr	InitScreenKeyb		;				[E518]
+	LoadB	COLOR, 1		; white on blue	
 	jmp	(BasicNMI)		;				[A002]
 
 
