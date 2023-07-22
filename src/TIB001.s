@@ -80,6 +80,7 @@ Wedge_tmp3:	.res 1	; (1)
 NewILOAD:	.res 2
 NewISAVE:	.res 2
 NewICKOUT:	.res 2
+NewIOPEN:	.res 2
 NewNMI:		.res 2
 
 FdcST0:		.res 1 ; +0 (1)	Status Register 0
@@ -276,6 +277,7 @@ NewRoutines:				;				[80C0]
 	LoadW	ILOAD, NewLoad
 	LoadW	ISAVE, NewSave
 	LoadW	ICKOUT, NewCkout
+	LoadW	IOPEN, NewOpen
 
 	jmp	DOSWedge_Install	; install wedge patch
 
@@ -469,11 +471,44 @@ Rename:					;				[81C0]
 	pla
 	rts
 
+;**  New routine for opening channel
+; use OPEN15,7,15,"N:DISK" to issue command
+NewOpen:
+	CmpBI	CURDEVICE, DEVNUM	; our DD drive?
+	bne	@org
+	CmpBI	SECADR, 15		; channel 15?
+	beq	@flen			; yes, a command
+	jmp	$F707			; print "DEVICE NOT PRESENT" error
+@flen:	lda	FNLEN			; is there a filename (command) provided?
+	bne	__NewOpen		; yes, execute it
+@org:	jmp	(NewIOPEN)		; no, fall back into Kernal, command can come from PRINT# (CKOUT)
+	; prepare command from file name like wedge does, enclose command in quotes
+__NewOpen:
+	lda	#'"'
+	sta	Wedge_BUFFER
+	ldy	#0
+	ldx	#1
+:	lda	(FNADR),y
+	sta	Wedge_BUFFER,x
+	inx
+	iny
+	cpy	FNLEN
+	bcc	:-
+	lda	#'"'
+	sta	Wedge_BUFFER,x
+	inx
+	stx	TempStore
+	PushW	PtrBasText
+	LoadW	PtrBasText, Wedge_BUFFER
+	jsr	NewCkout
+	PopW	PtrBasText
+	clc				; no error
+	rts
 
-;**  New routine for opening a channel for output
-; XXX manual says to use it for commands OPEN15,9,15:PRINT#15,"N:DISK"
-; XXX (there must be ending quote)
-; for OPEN15,9,15,"N:DISK" we would have to intercept Kernal OPEN
+;**  New routine for printing into a channel
+; manual says to use it for commands OPEN15,9,15:PRINT#15,"N:DISK"
+; (there must be ending quote)
+; (it must use channel 15)
 NewCkout:				;				[8295]
 	pha
 	CmpBI	CURDEVICE, DEVNUM	; our DD drive?

@@ -41,6 +41,7 @@ Z_FF		= $A7	; (1) directory sector counter used in directory load/display
 COLOR           = $0286                        ; foreground text color
 
 NmiVector	= $0318	; pointer to NMI-interrupt ($FE47)
+IOPEN		= $031A ; pointer to KERNAL OPEN routine ($F34A)
 ICKOUT		= $0320	; pointer to KERNAL CHKOUT routine
 ILOAD		= $0330	; pointer to KERNAL LOAD routine
 ISAVE		= $0332	; pointer to KERNAL SAVE routine
