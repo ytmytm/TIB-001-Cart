@@ -1,7 +1,7 @@
 ;
 ;	Disassembly of the ROM of the TIB-001 FDC cartridge
 
-; (started by unknown person - thank you very much!)
+; (started by Ruud Baltissen, http://www.softwolves.com/arkiv/cbm-hackers/28/28457.html - thank you very much!)
 ; continued by Maciej 'YTM/Elysium' Witkowiak, 2023
 
 ; - a lot of loading Pointer with (0, StartofDir), move that to a subroutine
