@@ -8,6 +8,15 @@ In my experience it is necessary to cover the HD hole (opposite to write protect
 ```
 OPEN 15,7,15:PRINT#15,"N:NEWDISK":CLOSE15
 ```
+or
+```
+OPEN 15,7,15,"N:NEWDISK":CLOSE15
+```
+or using built-in DOS wedge
+```
+@#7
+@N:NEWDISK
+```
 
 On a PC it is *very* important to choose correct allocation size. You need 1K (1024 bytes, 2 sectors) allocation size/cluster size, not 512 bytes.
 
@@ -16,7 +25,7 @@ On Linux this can be done with:
 mkfs.vfat -F 12 -r 112 -f 2 -s 2 /dev/fd # or disk.img
 ```
 
-This is:
+This means:
 
 - FAT12
 - 112 root directory entries
@@ -49,45 +58,7 @@ Hidden files are displayed with splat (`*PRG`).
 
 Read-only files will have lock mark (`PRG<`).
 
-## Tip
-
-After displaying directory you can quickload a file by moving cursor up next to the file you want to load and putting '/' into the first column and pressing RETURN.
-
-
-# TODO
-
-- fail fast if there is no FDD or no disk in FDD
-- display directory using tokenized BASIC to avoid own number/text routines
-	- add '<' for read-only files
-	- add 'DIR' for directories
-	- show 'BLOCKS FREE' assuming 256-byte blocks (we can't allocate it like that, but it makes CBM drives comparable, it's equally meaningless to 'BYTES FREE' message)
-
-# Source code
-
-- use constants for BIOS Parameter Block and file entries
-- complete FormatDisk part to include volume name and random serial number
-
-# Optimizations
-
-- filename processing code is repeating (8 characters, dot, 3 characters and space padding)
-- screen on is repeating a lot
-- loading vector to StartofDir repeats a lot
-- move temporary values to zero-page occupied by tape
-- actually implement VERIFY (needed?)
-
-# New utilities
-
-- take DraBrowser/DraCopy, make it a new BOOT.EXE and add support for DD-001
-	- directory browser
-	- file loader
-	- rename
-	- scratch
-	- disk format (with some visual $d020 indicator)
-	- disk backup
-		- 3.5 to 3.5 with progress information and **CLEAR** information about source/target disk
-                  and number of remaining switches
-		- 3.5 to IMG file on 1581 or SD2IEC and back
-- utility to explain what is not right with floppy format (i.e. 5-sector FATs with 512-byte cluster instead of expected 3-sector FAT with 1024-byte clusters).
+After displaying directory you can quickload a file by moving cursor up next to the file you want to load and putting '/' or '^' into the first column and pressing RETURN.
 
 # Build system
 
