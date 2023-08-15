@@ -1,7 +1,7 @@
 ;
 ;	Disassembly of the ROM of the TIB-001 FDC cartridge
 
-; (started by unknown person - thank you very much!)
+; (started by Ruud Baltissen, http://www.softwolves.com/arkiv/cbm-hackers/28/28457.html - thank you very much!)
 ; continued by Maciej 'YTM/Elysium' Witkowiak, 2023
 
 ; Changes (YTM):
@@ -11,24 +11,24 @@
 ; - SAVE also uses 1K buffer and saves standard PRG files with load address
 ; - corrected CHKOUT to that commands can be sent to both DD-001 and IEC devices
 ;   DD-001 supports: N(ew), S(cratch), R(ename)
-; - inverse volume name in DisplayDir
-; - load BOOT.PRG instead of BOOT.EXE
-; - make directory look like CBM directory listing
-; - show filesizes in blocks (256 bytes), same for disk free space
+; - loads BOOT.PRG instead of BOOT.EXE
+; - directory listing converted to BASIC, matching CBM DOS format
+; - filesizes shown in blocks (256 bytes), same for disk free space
 ; - DOS wedge for @#<number>, @$, /, %, ^, <- commands, @Q to disable
 ; - a lot of loading Pointer with (0, StartofDir), move that to a subroutine
+; - handle disk commands with both OPEN15,7,15,"R:..." and OPEN+PRINT#
+; - store version, number of drives and own device number in fixed signature right after jump table
 
 ; Remarks/TODO (YTM):
 ; - make DOS wedge commands shorter: @<number>, $, % (as load+run same as ^) 
 ; - if LOAD could stash FAT chain somewhere (up to 128 bytes) it could load files up to $FFFF
-; - handle disk commands with OPEN (need to check file name)
-; - for ICKOUT (PRINT#) check length of buffer, not just ending quote mark
-; - no matter the source, handle disk commands only on SA=15
-; - check disk format (BIOS Parameter Block) and explain when+why it's not supported
+; - for ICKOUT (PRINT#) check length of buffer, not just the ending quote mark
+; - handle disk commands only on SA=15
+; - check disk format (BIOS Parameter Block) and explain when+why it's not supported (e.g. because of 1 sector/cluster)
 ; - move more variables to zero page, check C64 memory maps on what it used with tape (a lot!)
-; - store version, number of drives and own device number in fixed signature right after jump table
+; - check code paths, which locations are temporary and can overlap between functions
 
-; My notes/ideas regarding this disassembly
+; My (Ruud's) notes/ideas regarding this disassembly
 ; - only a 3,5" 720 KB DD FDD can be used, not a 5.25" 360 KB one
 ; - only ONE drive can be used
 ; - a directory sector is stored in the RAM under the $Dxxx area, followed by FAT, followed by temp area for LOAD/SAVE first cluster (loadaddress)
@@ -118,7 +118,7 @@ EndofDir:	.res 1
 
 DirectoryBuffer		= $D000	; buffer ($0200, 1 sector) for directory operations (FAT operations will take EndofDir, so expect this area to be overwritten)
 FATBuffer		= $D200	; buffer ($0600, 3 sectors) for one whole FAT (set implicitly by taking EndofDir as start page)
-; (note: if DirBuffer is put after FAT we could reduce this by 6 pages - only FAT needs to stay in memory)
+; (note: if DirBuffer is put after FAT we could reduce this by 6 pages - only FAT needs to stay in memory during LOAD)
 LoadSaveBuffer  	= $D800 ; buffer ($0400, 2 sectors) buffer for 1 cluster needed by LOAD/SAVE, must not overlap FATBuffer
 
 ; linker will update that
