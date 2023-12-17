@@ -1451,7 +1451,18 @@ Recalibrate:				;				[88F7]
 	lda	FdcPCN			; track = 0?			[0344]
 	bne	:-			; no, -> wait			[8907]
 
-	jmp	SenseDrvStatus
+;**  Sense the status of the drive
+; XXX USED ONLY ONCE
+SenseDrvStatus:				;				[8933]
+	LoadB	DataRegister, $04	; ???
+	jsr	Wait4DataReady		;				[89C8]
+
+	LoadB 	DataRegister, 0		; select drive 0
+					; head select = 0
+	jsr	Wait4DataReady		;				[89C8]
+
+	MoveB	DataRegister, FdcST3
+	rts
 
 
 ;**  Set some values, head moves to track 0
@@ -1467,19 +1478,6 @@ Specify:				;				[891A]
 
 	LoadB	DataRegister, $01	; head load time, 0 = 2 ms.
 					; 1 = set "no DMA mode"
-	rts
-
-
-;**  Sense the status of the drive
-SenseDrvStatus:				;				[8933]
-	LoadB	DataRegister, $04	; ???
-	jsr	Wait4DataReady		;				[89C8]
-
-	LoadB 	DataRegister, 0		; select drive 0
-					; head select = 0
-	jsr	Wait4DataReady		;				[89C8]
-
-	MoveB	DataRegister, FdcST3
 	rts
 
 
