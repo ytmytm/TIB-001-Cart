@@ -14,11 +14,12 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Enter src
-      run: cd src
-
     - name: Make ROM
-      run: make
+      run: |
+        cd src
+        make
 
     - name: Make programs
-      run: make utils
+      run: |
+        cd src
+        make utils
