@@ -27,6 +27,7 @@
 ; - check disk format (BIOS Parameter Block) and explain when+why it's not supported (e.g. because of 1 sector/cluster)
 ; - move more variables to zero page, check C64 memory maps on what it used with tape (a lot!)
 ; - check code paths, which locations are temporary and can overlap between functions
+; - add programmable function keys (JiffyDOS / ActionReplay style)
 
 ; My (Ruud's) notes/ideas regarding this disassembly
 ; - only a 3,5" 720 KB DD FDD can be used, not a 5.25" 360 KB one
