@@ -14,6 +14,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: cc65 install
+      run: sudo apt-get install cc65
+
     - name: Make ROM
       run: |
         cd src
