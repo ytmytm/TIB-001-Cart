@@ -2268,11 +2268,15 @@ DisplayDir:
 	cmp	#FE_DELETED		; deleted file entry?
 	beq	@loop			; yes, next file entry
 
+	lda	FdcFileName+FE_OFFS_ATTR
+	cmp	#FE_ATTR_VOLUME_ID	; is that entry volume id?
+	beq	@cont			; yes, skip cluster==0 check
+
 	lda	FdcFileName+FE_OFFS_START_CLUSTER
 	ora	FdcFileName+FE_OFFS_START_CLUSTER+1
 	beq	@loop			; cluster=0 -> this is VFAT long file name, skip to next file entry
 
-	jsr	ConvertDirEntryToBASIC
+@cont:	jsr	ConvertDirEntryToBASIC
 	stx	TempStore
 
 	ldx	Wedge_BUFFER+2		; filesize lo
@@ -2474,11 +2478,14 @@ LoadDir:
 	beq	@end			; yes, end of directory
 	cmp	#FE_DELETED		; deleted file entry?
 	beq	@loop			; yes, next file entry
+	lda	FdcFileName+FE_OFFS_ATTR
+	cmp	#FE_ATTR_VOLUME_ID	; is that entry volume id?
+	beq	@cont			; yes, skip cluster==0 check
 	lda	FdcFileName+FE_OFFS_START_CLUSTER
 	ora	FdcFileName+FE_OFFS_START_CLUSTER+1
 	beq	@loop			; cluster=0 -> this is VFAT long file name, skip to next file entry
 
-	jsr	ConvertDirEntryToBASIC
+@cont:	jsr	ConvertDirEntryToBASIC
 	stx	TempStore
 	ldy	#0
 :	lda	Wedge_BUFFER,y		; copy line
