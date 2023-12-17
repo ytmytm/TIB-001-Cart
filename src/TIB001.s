@@ -2267,6 +2267,10 @@ DisplayDir:
 	cmp	#FE_DELETED		; deleted file entry?
 	beq	@loop			; yes, next file entry
 
+	lda	FdcFileName+FE_OFFS_START_CLUSTER
+	ora	FdcFileName+FE_OFFS_START_CLUSTER+1
+	beq	@loop			; cluster=0 -> this is VFAT long file name, skip to next file entry
+
 	jsr	ConvertDirEntryToBASIC
 	stx	TempStore
 
@@ -2469,6 +2473,9 @@ LoadDir:
 	beq	@end			; yes, end of directory
 	cmp	#FE_DELETED		; deleted file entry?
 	beq	@loop			; yes, next file entry
+	lda	FdcFileName+FE_OFFS_START_CLUSTER
+	ora	FdcFileName+FE_OFFS_START_CLUSTER+1
+	beq	@loop			; cluster=0 -> this is VFAT long file name, skip to next file entry
 
 	jsr	ConvertDirEntryToBASIC
 	stx	TempStore
