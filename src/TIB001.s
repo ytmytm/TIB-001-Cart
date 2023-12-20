@@ -93,14 +93,15 @@ FdcR:		.res 1 ; +5 (1)	Record = sector
 FdcN:		.res 1 ; +6 (1)	Number of data bytes written into a sector
 FdcST3:		.res 1 ; +7 (1)	Status Register 3
 FdcPCN:		.res 1 ; +8 (1)	present cylinder = track
-FdcCommand:	.res 1 ; +9 (1)
+FdcCommand:	.res 1 ; +9 (1) whole command structure has 9 bytes: FdcCommand to FdcDTL
 FdcHSEL:	.res 1	; +10 (1) head, shifted twice, needed for FDC commands
 FdcTrack:	.res 1	; +11 (1)
 FdcHead:	.res 1	; +12 (1)
 FdcSector:	.res 1	; +13 (1)
 FdcNumber:	.res 1	; +14 (1) bytes/sector during format, 2 = 512 b/s
 FdcEOT:		.res 1	; +15 (1) end of track
-FdcGPL:		.res 1	; +16 (1) unused but without this byte after FdcEOT FormatDisk fails; gap length? (but not for format), in docs initalized to $1b
+FdcGPL:		.res 1	; +16 (1) required, unused ; gap length (but not used by FormatTrack), initalized to $1b
+FdcDTL:		.res 1	; +17 (1) required, unused ; last byte of longest command structure 'Data length', would be used if FdcNumber=0 otherwise should be $FF (initialized like that)
 FdcTrack2:	.res 1	; +18 (1) CYLIND; = FdcTrack and $FE  ???
 TempStackPtr:	.res 1	; +20 (1) TSTACK; temporary storage for the stack pointer
 FdcFormatData:	.res 4	; +22 (4) FRED; block of data used only by the format command (4 bytes but overwrites the 5th - following SCLUSTER)
@@ -2061,7 +2062,7 @@ InitStackProg:				;				[8D5A]
 ; XXX check datasheet
 CmdReadData:				;				[8D77]
 .byte $66, $00, $02, $00, $01, $02, $01, $1B, $FF 
-
+; FdcCommand, FdcHSEL, FdcTrack, FdcHead, FdcSector, FdcNumber, FdcEOT, FdcGPL, FdcDTL
 
 ;**  Set the timer of CIA2 to generate an IRQ when FDC has to wait too long
 SetWatchdog:				;				[8D90]
