@@ -44,6 +44,12 @@ This means:
 
 Note that `mkfs.vfat` only writes the filesytem information, disk has to be formatted as DD before that.
 
+# Reset and BOOT.PRG
+
+After power-on or RESET a welcome screen will appear briefly. If you press `RUN/STOP` you will enter BASIC immediately. Otherwise ROM will try to load and run `BOOT.PRG` program from the floppy.
+
+You can put filebrowser on a floppy and rename it to `BOOT.PRG`. This one works very well: https://commodore.software/downloads/download/29-disk-menus/1140-cbm-filebrowser-v1-6
+
 # DOS wedge
 
 DOS wedge comes from disassembly of DOS 5.1 wedge from 1541 DEMO DISK by Bob Fairbairn (1982-07-13)
