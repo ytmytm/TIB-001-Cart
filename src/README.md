@@ -1,10 +1,11 @@
 
 # Supported hardware and disk format
 
-You can use standard PC floppy drive and HD floppies.
+You can use standard PC floppy drive and HD floppies, but the HD hole (opposite to write protect slider) **must** be covered.
 
-In my experience it is necessary to cover the HD hole (opposite to write protect) and then format HD disks - either using PC or from within BASIC:
+HD floppies have to be reformatted as DD.
 
+In BASIC:
 ```
 OPEN 15,7,15:PRINT#15,"N:NEWDISK":CLOSE15
 ```
@@ -20,6 +21,15 @@ or using built-in DOS wedge
 
 On a PC it is *very* important to choose correct allocation size. You need 1K (1024 bytes, 2 sectors) allocation size/cluster size, not 512 bytes.
 
+In DOS you can do:
+```
+format a: /f:720 /a:1024 /v:volname
+```
+or
+```
+format a: /a:1024 /v:volname /t:80 /n:9
+```
+
 On Linux this can be done with:
 ```
 mkfs.vfat -F 12 -r 112 -f 2 -s 2 /dev/fd # or disk.img
@@ -31,6 +41,8 @@ This means:
 - 112 root directory entries
 - 2 FATs
 - 2 sectors per cluster
+
+Note that `mkfs.vfat` only writes the filesytem information, disk has to be formatted as DD before that.
 
 # DOS wedge
 
