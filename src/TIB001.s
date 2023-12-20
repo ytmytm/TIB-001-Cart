@@ -100,6 +100,7 @@ FdcHead:	.res 1	; +12 (1)
 FdcSector:	.res 1	; +13 (1)
 FdcNumber:	.res 1	; +14 (1) bytes/sector during format, 2 = 512 b/s
 FdcEOT:		.res 1	; +15 (1) end of track
+FdcGPL:		.res 1	; +16 (1) unused but without this byte after FdcEOT FormatDisk fails; gap length? (but not for format), in docs initalized to $1b
 FdcTrack2:	.res 1	; +18 (1) CYLIND; = FdcTrack and $FE  ???
 TempStackPtr:	.res 1	; +20 (1) TSTACK; temporary storage for the stack pointer
 FdcFormatData:	.res 4	; +22 (4) FRED; block of data used only by the format command (4 bytes but overwrites the 5th - following SCLUSTER)
