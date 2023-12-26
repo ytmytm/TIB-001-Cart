@@ -128,6 +128,8 @@ LoadSaveBuffer  	= $D800 ; buffer ($0400, 2 sectors) buffer for 1 cluster needed
 .import __romstack_RUN__
 .import __romstack_SIZE__
 .import __romstack_LOAD__
+; function keys
+.import FunctionKeys_Install
 ; wedge
 .import DOSWedge_Reset
 .import DOSWedge_Install
@@ -294,6 +296,7 @@ NewRoutines:				;				[80C0]
 
 	LoadB	COLOR, 1		; white on blue	
 
+	jsr	FunctionKeys_Install	; install handler for function keys
 	jmp	DOSWedge_Install	; install wedge patch
 
 
