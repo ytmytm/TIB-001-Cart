@@ -26,3 +26,22 @@ jobs:
       run: |
         cd src
         make utils
+
+      # Upload artifacts
+    - name: Archive 8K ROM
+      uses: actions/upload-artifact@v3
+      with:
+          name: tib001-8K.bin
+          path: src/build/tib001.bin
+
+    - name: Archive 16K ROM (low 8K new, high 8K old ROM)
+      uses: actions/upload-artifact@v3
+      with:
+          name: tib001-16K.bin
+          path: src/build/tib001-16k.bin
+
+    - name: Archive tools for new ROM
+      uses: actions/upload-artifact@v3
+      with:
+          name: tib001-new-tools.zip
+          path: src/build/*.prg
