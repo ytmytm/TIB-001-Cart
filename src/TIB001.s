@@ -18,16 +18,16 @@
 ; - a lot of loading Pointer with (0, StartofDir), move that to a subroutine
 ; - handle disk commands with both OPEN15,7,15,"R:..." and OPEN+PRINT#
 ; - store version, number of drives and own device number in fixed signature right after jump table
+; - make DOS wedge commands shorter: @<number>, $, % (as load+run same as ^) 
+; - add programmable function keys (JiffyDOS / ActionReplay style)
 
 ; Remarks/TODO (YTM):
-; - make DOS wedge commands shorter: @<number>, $, % (as load+run same as ^) 
 ; - if LOAD could stash FAT chain somewhere (up to 128 bytes) it could load files up to $FFFF
 ; - for ICKOUT (PRINT#) check length of buffer, not just the ending quote mark
 ; - handle disk commands only on SA=15
 ; - check disk format (BIOS Parameter Block) and explain when+why it's not supported (e.g. because of 1 sector/cluster)
 ; - move more variables to zero page, check C64 memory maps on what it used with tape (a lot!)
 ; - check code paths, which locations are temporary and can overlap between functions
-; - add programmable function keys (JiffyDOS / ActionReplay style)
 
 ; My (Ruud's) notes/ideas regarding this disassembly
 ; - only a 3,5" 720 KB DD FDD can be used, not a 5.25" 360 KB one
@@ -2669,6 +2669,7 @@ FindFile:				;				[8FEA]
 ;**  Search for a file
 ; in: FdcFileName
 ; out: C=1 file found, C=0 file not found, and another error can be in ErrorCode
+;      Pointer: start of file entry
 Search:					;				[9011]
 	LoadB	FdcNBUF, DD_NUM_ROOTDIR_SECTORS-1	; why not 7?
 
