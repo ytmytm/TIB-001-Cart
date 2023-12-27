@@ -35,7 +35,7 @@ SectorH		= $AA	; -/
 TempStore	= $A8	; (1) temp storage, particularly in Rd/WrDataRamDxxx
 
 Pointer		= $A3	; (2) TO, general source/target memory pointer
-Z_FD		= $A5	; (2) memory pointer used in save routine
+Z_FD		= $A5	; (2) memory pointer used in save and Search routine
 Z_FF		= $A7	; (1) directory sector counter used in directory load/display
 
 COLOR           = $0286                        ; foreground text color

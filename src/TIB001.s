@@ -2677,8 +2677,8 @@ Search:					;				[9011]
 	sta	DirSector		;				[0369]
 	LoadB	SectorH, 0
 
-	jsr	SetupSector		;				[8899]
 A_9024:
+	jsr	SetupSector		;				[8899]
 	jsr	LoadDirPointer
 
 	LoadB	NumOfSectors, 1
@@ -2722,7 +2722,8 @@ A_9058:					;				[9058]
 	lda	FdcFileName,X		;				[036C]
 	cmp	#'*'			; wild card
 	beq	A_9077			; yes, -> name found		[9077]
-	bne	A_9079			; always ->			[9079]
+	cmp	#'?'			; wild card
+	bne	A_9079			; no, next file entry
 
 A_9072:					;				[9072]
 	inx
@@ -2731,7 +2732,19 @@ A_9072:					;				[9072]
 
 ; Name has been found
 A_9077:					;				[9077]
-	sec
+	ldy	#FE_OFFS_ATTR
+	jsr	RdDataRamDxxx
+	cmp	#FE_ATTR_VOLUME_ID	; is that entry volume id?
+	beq	A_9079			; yes -> skip over to next entry
+	ldy	#FE_OFFS_START_CLUSTER
+	jsr	RdDataRamDxxx
+	sta	Z_FD
+	iny
+	jsr	RdDataRamDxxx
+	ora	Z_FD
+	beq	A_9079			; if cluster number == 0 -> this is VFAT long file name, skip to next file entry
+
+	sec				; all checks passed, we found the file
 	rts
 
 A_9079:					;				[9079]
@@ -2741,16 +2754,16 @@ A_9079:					;				[9079]
 	CmpB	Pointer+1, EndofDir	; end of directory sector?	[0335]
 	bne	A_904F			; no, -> more			[904F]
 
+	dec	FdcNBUF			; searched all dir sectors?
+	bmi	A_90A0			; yes -> file not found
+
 ; Go to the next directory sector
 	lda	DirSector		;				[0369]
 	addv	1
 	sta	SectorL			;				[F8]
 	sta	DirSector		;				[0369]
+	jmp	A_9024			; no, -> next one		[9024]
 
-	jsr	SetupSector		;				[8899]
-
-	dec	FdcNBUF		; searched all dir sectors?	[0364]
-	bpl	A_9024			; no, -> next one		[9024]
 A_90A0:	
 	LoadB	ErrorCode, ERR_FILE_NOT_FOUND
 
