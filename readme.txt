@@ -2,6 +2,8 @@
 Maciej Witkowiak's note about software:
 ---------------------------------------
 
+Download new ROM to be flashed from "Releases" on the right.
+
 Go to src/ folder for updated and corrected firmware for both original and cloned TIB DD-001 Drive controller for C64.
 
 More information in src/README.md
