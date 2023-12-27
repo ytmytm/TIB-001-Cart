@@ -1,3 +1,40 @@
+# New firmware
+
+This is an updated firmware for TIB DD-001 cartridge. 
+
+The main, most important change is that I removed filesystem format used by original ROM. The load address comes from first two bytes of the file data stream, just like in CBM DOS, so PRG files can be easily exchanged between C64 and PC.
+
+The original firmware kept this information in date and time fields of FAT file entry, making it impossible to copy files without some custom software (that never existed) on PC side.
+
+I believe this design flaw was the main reason why this product failed and became curiosity instead of something as commmon as sd2iec but several years earlier.
+
+All modifications were done by Maciej Witkowiak, relying on work of:
+
+- Ruud Baltissen who disassembled and commented the original ROM http://www.softwolves.com/arkiv/cbm-hackers/28/28457.html
+- Steve Gray's cartridge project for hardware part (this repository is a fork of his project)
+
+## Modifications
+
+- load address, like in CBM DOS, comes from the first two bytes of file - just copy PRG file and it will work
+- device number configurable during ROM assembly (default is now 7, because original 9 was a very poor choice)
+- corrected handling of disk commands so R(ename), S(cratch), N(ew) work both via OPEN15,7,15,"...." and OPEN15,7,15:PRINT#15,"..."
+- changed disk directory format to match CBM standard when you LOAD"$",7 and LIST it
+- actually allow to load the directory like a BASIC program
+- after reset there is a brief pause after which ROM tries to load and run BOOT.PRG, this can be interrupted with `RUN/STOP`
+- several optimizations, removed unused code - also from the tools
+- GEOS macros (LoadW, MoveW, PushW/PopW) to make the code easier to read
+- LOAD/SAVE show start/end address, just like Action Replay loader
+- DOS wedge adapted into ROM from 1541 demo disk; with @$, @, /, ^, % commands
+- function keys with assigned commands
+- long filenames are ignored
+
+## Possible enhancements
+
+- support for changing directory, parsing paths is too much, but `CD:folder` and `CD..` would make a difference already
+- LOAD can load files up to $CFFF, it could do full $0400-$FFFF if chain of clusters to read would be cached somewhere in low memory
+- detect and support for FAT format with 1 sector per cluster (512 byte allocation unit instead of 1024)
+- support two drives
+- GEOS disk driver - only raw track and sector (256 bytes) access; with boot sector, FAT and directory indicating one file that occupies whole disk space
 
 # Supported hardware and disk format
 
