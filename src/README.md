@@ -98,7 +98,7 @@ Most often used commands are available via function keys. You can customize it i
 | F3 | `RUN:` | run BASIC program |
 | F4 | `^` | load and run, use it after `@$` - move cursor up and hit F4 |
 | F5 | `/` | load, use it after `@$` - move cursor up and hit F5 |
-| F6 | `{left arrow}` | save a file |
+| F6 | &larr; | save a file |
 | F7 | `@#7` | change current device to TIB-001 |
 | F8 | `@#8` | change current device to disk drive #8 |
 
@@ -118,7 +118,7 @@ DOS wedge comes from disassembly of DOS 5.1 wedge from 1541 DEMO DISK by Bob Fai
 |  `/<filename>` 			| load a file into BASIC area |
 |  `%<filename>` 			| load a file by its load address |
 |  `^<filename>` 			| load and run BASIC program |
-|  `{left arrow}<filename>`		| save a file |
+|  &larr;`<filename>`		| save a file |
 
 ## Directory
 
