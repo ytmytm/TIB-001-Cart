@@ -50,6 +50,21 @@ After power-on or RESET a welcome screen will appear briefly. If you press `RUN/
 
 You can put filebrowser on a floppy and rename it to `BOOT.PRG`. This one works very well: https://commodore.software/downloads/download/29-disk-menus/1140-cbm-filebrowser-v1-6
 
+# Function keys
+
+Most often used commands are available via function keys. You can customize it in [src/fkeys.s](fkeys.s)
+
+| key | command | description |
+|---- | ---- |---- |
+| F1 | `@$` | display directory |
+| F2 | `LIST` | clear the screen and list BASIC program |
+| F3 | `RUN:` | run BASIC program |
+| F4 | `^` | load and run, use it after `@$` - move cursor up and hit F4 |
+| F5 | `/` | load, use it after `@$` - move cursor up and hit F5 |
+| F6 | `{left arrow}` | save a file |
+| F7 | `@#7` | change current device to TIB-001 |
+| F8 | `@#8` | change current device to disk drive #8 |
+
 # DOS wedge
 
 DOS wedge comes from disassembly of DOS 5.1 wedge from 1541 DEMO DISK by Bob Fairbairn (1982-07-13)
@@ -80,6 +95,22 @@ After displaying directory you can quickload a file by moving cursor up next to 
 
 # Build system
 
+## GitHub actions
+
+It's possible to rebuild these ROMs entirely within GitHub using their infrastructure. Use it to customize your ROM: change device number of function key definitions.
+For any patches that fix bugs or add enhancements please send be back a pull request.
+
+1. Clone this repository
+2. Make any changes you wish, edit files directly within GitHub
+3. Look into `Actions` tab, there will be runs of 'Makefile CI' continuous integration workflow after each of the new commits
+4. Click on the name of the latest workflow run - on the bottom of the page there will be build artfiacts to download
+
+There are two ROMs build - 8K image that contains only the new code and a 16K image with new code in the lower half and the original code in the upper half.
+
+The tools archive contains only the tools that call functions from new code via jump table.
+
+## Local
+
 You need latest cc65 package with ca65/ld65 and GNU Make.
 
 Run `make` to build 8K ROM file in `build/tib001.bin`.
@@ -92,7 +123,7 @@ make DEVNUM=7
 ```
 to assemble ROM with DD-001 mapped to device #7.
 
-## Only on `dd001-rom-v1.1` branch
+### Only on `dd001-rom-v1.1` branch
 
 Run `make clean && make regress` to check of the resulting binary matches reference V1.1 ROM and utilities.
 
