@@ -13,6 +13,10 @@ All modifications were done by Maciej Witkowiak, relying on work of:
 - Ruud Baltissen who disassembled and commented the original ROM http://www.softwolves.com/arkiv/cbm-hackers/28/28457.html
 - Steve Gray's cartridge project for hardware part (this repository is a fork of his project)
 
+This firmware IS NOT compatible with the original file format. It seems however that the only disk image in existence is the boot disk released by TIB PLC.
+
+For archival purposes you can have a look into this repository, where I put together a Python script to extract contents of the boot disk. The files are also available in standard PRG format with load addresses: https://github.com/ytmytm/PyFAT12-DD-001
+
 ## Modifications
 
 - load address, like in CBM DOS, comes from the first two bytes of file - just copy PRG file and it will work
